@@ -1,0 +1,11 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "stm32-for-vscode.openOCDPath": false
+    },
+    "extensions": {}
+}

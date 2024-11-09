@@ -1,0 +1,39 @@
+
+
+OpenDocument="ins_task.h", FilePath="c:/Users/29224/Desktop/2024_Omni-Infantry-to_main/modules/imu/ins_task.h", Line=0
+OpenDocument="startup_stm32f407ighx.s", FilePath="c:/Users/29224/Desktop/2024_Omni-Infantry-to_main/Startup/startup_stm32f407ighx.s", Line=46
+OpenDocument="bsp_dwt.c", FilePath="c:/Users/29224/Desktop/2024_Omni-Infantry-to_main/bsp/dwt/bsp_dwt.c", Line=0
+OpenDocument="tasks.c", FilePath="c:/Users/29224/Desktop/2024_Omni-Infantry-to_main/Middlewares/Third_Party/FreeRTOS/Source/tasks.c", Line=3394
+OpenDocument="gimbal.c", FilePath="c:/Users/29224/Desktop/2024_Omni-Infantry-to_main/application/gimbal/gimbal.c", Line=40
+OpenDocument="main.c", FilePath="c:/Users/29224/Desktop/2024_Omni-Infantry-to_main/Src/main.c", Line=99
+OpenToolbar="File", Floating=0, x=1, y=0
+OpenToolbar="View", Floating=0, x=2, y=0
+OpenToolbar="Debug", Floating=0, x=0, y=0
+OpenToolbar="Breakpoints", Floating=0, x=3, y=0
+OpenWindow="Source Files", DockArea=LEFT, x=0, y=1, w=1027, h=304, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=591, h=628, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Break & Tracepoints", DockArea=LEFT, x=0, y=0, w=1027, h=252, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=254
+OpenWindow="Watched Data 1", DockArea=LEFT, x=0, y=2, w=1027, h=540, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Terminal", DockArea=BOTTOM, x=0, y=0, w=1557, h=323, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Data Sampling", DockArea=RIGHT, x=0, y=1, w=591, h=450, TabPos=1, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Timeline", DockArea=RIGHT, x=0, y=1, w=591, h=450, TabPos=0, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=1, DataPaneShown=1, PowerPaneShown=1, CodePaneShown=1, PinCursor="Cursor Movable", TimePerDiv="1 ns / Div", TimeStampFormat="Time", DataGraphDrawAsPoints=0, DataGraphLegendShown=1, DataGraphUniformSampleSpacing=0, DataGraphLegendPosition="364;0", DataGraphShowNamesAtCursor=0, PowerGraphDrawAsPoints=0, PowerGraphLegendShown=1, PowerGraphAvgFilterTime=Off, PowerGraphAvgFilterLen=Off, PowerGraphUniformSampleSpacing=0, PowerGraphLegendPosition="364;-69", CodeGraphLegendShown=1, CodeGraphLegendPosition="314;0"
+OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=1002, h=323, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
+TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time"], ColWidths=[100;100]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[341;100;100;100;100;100;110;126;126]
+TableHeader="Source Files", SortCol="File", SortOrder="ASCENDING", VisibleCols=["File";"Status";"Size";"#Insts";"Path"], ColWidths=[239;100;100;100;998]
+TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Refresh"], ColWidths=[257;309;435]
+TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[26;26;26;26]
+TableHeader="Vector Catches", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;651]
+TableHeader="Break & Tracepoints", SortCol="Extras", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;100;102;725]
+WatchedExpression="yaw_motor", RefreshRate=5, Window=Watched Data 1
+WatchedExpression=" gimbal_cmd_recv.yaw", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="gimbal_pub", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="gimbal_feedback_data", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="gimbal_yaw_set_angle", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="yaw_control", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="gimbal_yaw_set_angle", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="gimbal_yaw_current_angle", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="gimbal_fetch_data", RefreshRate=5, Window=Watched Data 1
