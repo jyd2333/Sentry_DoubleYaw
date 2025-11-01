@@ -54,3 +54,5 @@ build
 settings.json
 .cache
 eclipse.importer.warning.txt
+
+.github

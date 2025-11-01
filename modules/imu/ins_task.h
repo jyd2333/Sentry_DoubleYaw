@@ -24,6 +24,7 @@ typedef struct
     float timing_time; // 任务运行的时间 单位 s
 } INS_Instance;
 
+extern INS_Instance *NUC_SEND_IMU;
 /**
  * @brief 初始化惯导解算系统
  */

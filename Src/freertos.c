@@ -128,7 +128,7 @@ void _DaemonTask(void *argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
-
+// extern __attribute__((noreturn)) void _DaemonTask(void *argument);
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -173,15 +173,17 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of Shoot */
   ShootHandle = osThreadNew(_ShootTask, NULL, &Shoot_attributes);
-
+  
   /* creation of motorControl */
   motorControlHandle = osThreadNew(motorControlTask, NULL, &motorControl_attributes);
 
-  /* creation of UIDraw */
-  UIDrawHandle = osThreadNew(_UITask, NULL, &UIDraw_attributes);
-
   /* creation of Daemon */
-  DaemonHandle = osThreadNew(_DaemonTask, NULL, &Daemon_attributes);
+  // DaemonHandle = osThreadNew(_DaemonTask, NULL, &Daemon_attributes);
+
+  /* creation of UIDraw */
+  // UIDrawHandle = osThreadNew(_UITask, NULL, &UIDraw_attributes);
+
+
 
   /* USER CODE BEGIN RTOS_THREADS */
     /* add threads, ... */
@@ -344,7 +346,7 @@ __weak void _UITask(void *argument)
 * @retval None
 */
 /* USER CODE END Header__DaemonTask */
-__weak void _DaemonTask(void *argument)
+ __weak void _DaemonTask(void *argument)
 {
   /* USER CODE BEGIN _DaemonTask */
   /* Infinite loop */

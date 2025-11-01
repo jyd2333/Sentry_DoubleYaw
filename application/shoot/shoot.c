@@ -11,6 +11,9 @@
 /* 对于双发射机构的机器人,将下面的数据封装成结构体即可,生成两份shoot应用实例 */
 static DJIMotorInstance *friction_l, *friction_r, *loader; // 拨盘电机
 
+static ramp_t fric_on_ramp;
+static ramp_t fric_off_ramp;
+
 static Publisher_t *shoot_pub;
 static Subscriber_t *shoot_sub;
 static Shoot_Ctrl_Cmd_s shoot_cmd_recv;         // 来自cmd的发射控制信息
@@ -46,12 +49,12 @@ void ShootInit()
             .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
         },
         .motor_type = M3508};
-    friction_config.can_init_config.tx_id                             = 3; // 左摩擦轮,改txid和方向就行
+    friction_config.can_init_config.tx_id                             = 4; // 左摩擦轮,改txid和方向就行
     friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
 
     friction_l = DJIMotorInit(&friction_config);
 
-    friction_config.can_init_config.tx_id                             = 4; // 右摩擦轮,改txid和方向就行
+    friction_config.can_init_config.tx_id                             = 3; // 右摩擦轮,改txid和方向就行
     friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     friction_r                                                        = DJIMotorInit(&friction_config);
 
@@ -86,6 +89,7 @@ void ShootInit()
 
     shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
+    ramp_init(&fric_on_ramp, 300);
 
     DJIMotorStop(friction_l);
     DJIMotorStop(friction_r);
@@ -120,7 +124,7 @@ static void Load_Reverse()
         Reverse_Time++;
 
         // 反转时间
-        if (Reverse_Time >= 200) {
+        if (Reverse_Time >= 300) {
             Reverse_Time = 0;
             Block_Time   = 0;
         }
@@ -195,8 +199,8 @@ static void Shoot_Fric_data_process(void)
 }
 
 static int one_bullet;
-static ramp_t fric_on_ramp;
-static ramp_t fric_off_ramp;
+// static ramp_t fric_on_ramp;
+// static ramp_t fric_off_ramp;
 float fric_speed = 0; // 摩擦轮转速参考值
 uint32_t shoot_heat_count[2];
 
@@ -269,11 +273,11 @@ void ShootTask()
     // 确定是否开启摩擦轮,后续可能修改为键鼠模式下始终开启摩擦轮(上场时建议一直开启)
     if (shoot_cmd_recv.friction_mode == FRICTION_ON) {
         // 根据收到的弹速设置设定摩擦轮电机参考值,需实测后填入
-        fric_speed = (shoot_speed + (42500 - shoot_speed) * ramp_calc(&fric_on_ramp));
+        fric_speed = (shoot_speed + (36000 - shoot_speed) * ramp_calc(&fric_on_ramp));
         ramp_init(&fric_off_ramp, 300);
     } else if (shoot_cmd_recv.friction_mode == FRICTION_OFF) {
         fric_speed = (shoot_speed + (0 - shoot_speed) * ramp_calc(&fric_off_ramp));
-        ramp_init(&fric_on_ramp, 300);
+        // ramp_init(&fric_on_ramp, 300);
     }
 
     DJIMotorSetRef(friction_l, fric_speed);

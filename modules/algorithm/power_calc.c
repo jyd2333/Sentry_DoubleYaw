@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <math.h>
 
-float k1                   = 1.704137214E-07f;
-float k2                   = 1.83e-07f;
-float constant             = 1.0f;
-float torque_coefficient   = 2.94974577124e-06f; // (20/16384) * (0.3) /13 / (9.55)
+float k1                   = 4.88405e-07f;//1.704137214E-07f;
+float k2                   = 1.749615052e-07f;//1.83e-07f;
+float constant             = 0.25*12.0f;
+float torque_coefficient   = 1.050994734e-7f;//2.94974577124e-06f; // (20/16384) * (0.3) /13 / (9.55)
 float machine_power        = 0;
 float current_power        = 0;
 float speed_power          = 0;

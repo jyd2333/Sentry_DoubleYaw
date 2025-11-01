@@ -23,15 +23,15 @@ static float accel_fliter_2[3]   = {0.0f, 0.0f, 0.0f};
 static float accel_fliter_3[3]   = {0.0f, 0.0f, 0.0f};
 static const float fliter_num[3] = {1.929454039488895f, -0.93178349823448126f, 0.002329458745586203f};
 
-static INS_Instance *INS = NULL;
-
+INS_Instance *INS = NULL;
+INS_Instance *NUC_SEND_IMU=NULL;
 /**
  * @brief          旋转陀螺仪,加速度计和磁力计,并计算零漂,因为设备有不同安装方式
  * @param[out]     gyro: 加上零漂和旋转
  * @param[out]     accel: 加上零漂和旋转
  * @param[out]     mag: 加上零漂和旋转
  * @param[in]      bmi088: 陀螺仪和加速度计数据
- * @param[in]      ist8310: 磁力计数据
+ * @param[in]      ist8310: 磁力计数据      
  * @retval         none
  */
 inline static void imu_cali_slove(float gyro[3], float accel[3], float mag[3], BMI088_Data_t *data)
@@ -65,6 +65,7 @@ INS_Instance *INS_Init(BMI088Instance *bmi088)
     accel_fliter_1[2] = accel_fliter_2[2] = accel_fliter_3[2] = INSinstance->INS_data.INS_accel[2];
 
     INS = INSinstance;
+    NUC_SEND_IMU=INSinstance;
     return INSinstance;
 }
 
@@ -98,8 +99,8 @@ void INS_Task(){
     accel_fliter_3[2] = accel_fliter_2[2] * fliter_num[0] + accel_fliter_1[2] * fliter_num[1] + INS->INS_data.INS_accel[2] * fliter_num[2];
 
     INS->timing_time = DWT_GetDeltaT(&INS->BMI088->bias_dwt_cnt);
-//    AHRS_update(INS->INS_data.INS_quat, INS->timing_time, INS->INS_data.INS_gyro, accel_fliter_3, INS->INS_data.INS_mag);
-//        get_angle(INS->INS_data.INS_quat, INS->output.INS_angle + INS_YAW_ADDRESS_OFFSET, INS->output.INS_angle + INS_PITCH_ADDRESS_OFFSET, INS->output.INS_angle + INS_ROLL_ADDRESS_OFFSET);
+    AHRS_update(INS->INS_data.INS_quat, INS->timing_time, INS->INS_data.INS_gyro, accel_fliter_3, INS->INS_data.INS_mag);
+        get_angle(INS->INS_data.INS_quat, INS->output.INS_angle + INS_YAW_ADDRESS_OFFSET, INS->output.INS_angle + INS_PITCH_ADDRESS_OFFSET, INS->output.INS_angle + INS_ROLL_ADDRESS_OFFSET);
 
     // get Yaw total, yaw数据可能会超过360,处理一下方便其他功能使用(如小陀螺)
     static float last_yaw_angle    = 0; // 上一次的yaw角度

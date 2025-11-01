@@ -51,7 +51,8 @@ static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制�
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
 
 SuperCapInstance *cap;                                              // 超级电容
-static DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
+//修改内容
+DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
 
 // 为了方便调试加入的量
 static uint8_t center_gimbal_offset_x = CENTER_GIMBAL_OFFSET_X; // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
@@ -62,11 +63,12 @@ static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转�
 static PIDInstance Chassis_Follow_PID = {
     .Kp            = 105,   // 25,//25, // 50,//70, // 4.5
     .Ki            = 0,    // 0
-    .Kd            = 0.85, // 0.0,  // 0.07,  // 0
-    .DeadBand      = 4.0,  // 0.75,  //跟随模式设置了死区，防止抖动
+    .Kd            = 0.8, // 0.0,  // 0.07,  // 0
+    .DeadBand      =  0.75,  //跟随模式设置了死区，防止抖动
     .IntegralLimit = 3000,
     .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
     .MaxOut        = 30000,
+    
 
 };
 
@@ -76,7 +78,7 @@ static PIDInstance Chassis_Follow_PID = {
 /* 私有函数计算的中介变量,设为静态避免参数传递的开销 */
 static float chassis_vx, chassis_vy, chassis_vw; // 将云台系的速度投影到底盘
 static float vt_lf, vt_rf, vt_lb, vt_rb;         // 底盘速度解算后的临时输出,待进行限幅
-
+static ramp_t rotate_ramp;
 void ChassisInit()
 {
     // 四个轮子的参数一样,改tx_id和反转标志位即可
@@ -100,12 +102,13 @@ void ChassisInit()
         .motor_type = M3508,
     };
     //  @todo: 当前还没有设置电机的正反转,仍然需要手动添加reference的正负号,需要电机module的支持,待修改.
+    //修改内容
     chassis_motor_config.can_init_config.tx_id                             = 1;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     motor_lf                                                               = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.tx_id                             = 2;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
     motor_rf                                                               = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.tx_id                             = 3;
@@ -113,7 +116,7 @@ void ChassisInit()
     motor_rb                                                               = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.tx_id                             = 4;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     motor_lb                                                               = DJIMotorInit(&chassis_motor_config);
 
     // SuperCap_Init_Config_s cap_conf = {
@@ -123,7 +126,7 @@ void ChassisInit()
     //         .rx_id      = 0x300, // 超级电容默认发送id,注意tx和rx在其他人看来是反的
     //     }};
     // cap = SuperCapInit(&cap_conf); // 超级电容初始化
-
+    ramp_init(&rotate_ramp, 1000);
     // 发布订阅初始化,如果为双板,则需要can comm来传递消息
 #ifdef CHASSIS_BOARD
 
@@ -157,10 +160,10 @@ void ChassisInit()
  */
 static void MecanumCalculate()
 {
-    vt_lf = -chassis_vx + chassis_vy + chassis_cmd_recv.wz * LF_CENTER;
-    vt_rf = chassis_vx + chassis_vy - chassis_cmd_recv.wz * RF_CENTER;
-    vt_lb = chassis_vx + chassis_vy + chassis_cmd_recv.wz * LB_CENTER;
-    vt_rb = -chassis_vx + chassis_vy - chassis_cmd_recv.wz * RB_CENTER;
+    vt_lf = chassis_vx + chassis_vy + chassis_cmd_recv.wz * LF_CENTER;
+    vt_rf = -chassis_vx + chassis_vy - chassis_cmd_recv.wz * RF_CENTER;
+    vt_lb = -chassis_vx + chassis_vy + chassis_cmd_recv.wz * LB_CENTER;
+    vt_rb = chassis_vx + chassis_vy - chassis_cmd_recv.wz * RB_CENTER;
 }
 
 static ramp_t super_ramp;
@@ -190,8 +193,10 @@ static float Power_Output;
 //     //     Plimit = 0.05 + chassis_cmd_recv.power_buffer * 0.01;
 //     // else if (chassis_cmd_recv.power_buffer == 60)
 //     //     Plimit = 1;
-    chassis_cmd_recv.power_buffer = 60;
-    Plimit = 1;
+    // chassis_cmd_recv.power_buffer = 60;
+    //修改内容
+    Plimit = 0;
+    chassis_cmd_recv.power_limit = 80;
      Power_Output = chassis_cmd_recv.power_limit - 10 + 20 * Plimit;
      PowerControlupdate(Power_Output, 1.0f / REDUCTION_RATIO_WHEEL);
 
@@ -267,7 +272,8 @@ static float Power_Output;
  }
 
 float offset_angle_watch;
-
+uint8_t chassis_rate=100;
+int8_t chassis_flag=1;
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
 {
@@ -293,8 +299,9 @@ void ChassisTask()
     }
     static float offset_angle;
     static float sin_theta, cos_theta;
+    //
     static float current_speed_vw, vw_set;
-    static ramp_t rotate_ramp;
+    // static ramp_t rotate_ramp;
 
     offset_angle       = chassis_cmd_recv.offset_angle + chassis_cmd_recv.gimbal_error_angle;
     offset_angle_watch = offset_angle;
@@ -302,7 +309,8 @@ void ChassisTask()
     switch (chassis_cmd_recv.chassis_mode) {
         case CHASSIS_NO_FOLLOW:
             // 底盘不旋转,但维持全向机动,一般用于调整云台姿态
-            chassis_cmd_recv.wz = 0;
+            //修改内容
+            //chassis_cmd_recv.wz = 0;
 
             cos_theta = arm_cos_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
             sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
@@ -323,14 +331,20 @@ void ChassisTask()
 
             ramp_init(&rotate_ramp, 250);
             break;
+            //修改部分
         case CHASSIS_ROTATE: // 自旋,同时保持全向机动;当前wz维持定值,后续增加不规则的变速策略
            //  if (cap->cap_msg_s.SuperCap_open_flag_from_real == SUPERCAP_PMOS_OPEN) {
            //      vw_set = 7000;
            //  } else {
                 vw_set = 5000;
             // }
+            // if(vw_set<=3000) chassis_flag=1;
+            // if(vw_set>=6500) chassis_flag=-1;
+            // vw_set+=2*chassis_flag;
+
             chassis_vw       = (current_speed_vw + (vw_set - current_speed_vw) * ramp_calc(&rotate_ramp));
             current_speed_vw = chassis_vw;
+            
 
             chassis_cmd_recv.wz = chassis_vw;
             cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD); // 矫正小陀螺偏心

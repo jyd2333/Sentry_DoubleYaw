@@ -12,7 +12,7 @@
 
 #include "seasky_protocol.h"
 #include "crc8.h"
-#include "crc16.h"
+#include "crc_ref.h"
 #include "memory.h"
 
 /*获取CRC8校验码*/

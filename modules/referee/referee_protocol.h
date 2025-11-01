@@ -69,8 +69,8 @@ typedef enum {
     ID_game_result               = 0x0002, // 比赛结果数据
     ID_game_robot_survivors      = 0x0003, // 比赛机器人血量数据
     ID_event_data                = 0x0101, // 场地事件数据
-    ID_supply_projectile_action  = 0x0102, // 场地补给站动作标识数据
     ID_supply_projectile_booking = 0x0103, // 场地补给站预约子弹数据
+    ID_Referee_Warning           = 0x0104,
     ID_game_robot_state          = 0x0201, // 机器人状态数据
     ID_power_heat_data           = 0x0202, // 实时功率热量数据
     ID_game_robot_pos            = 0x0203, // 机器人位置数据
@@ -79,8 +79,17 @@ typedef enum {
     ID_robot_hurt                = 0x0206, // 伤害状态数据
     ID_shoot_data                = 0x0207, // 实时射击数据
     ID_projectile_allowance      = 0x0208, // 允许发弹量数据
-
-    ID_student_interactive = 0x0301, // 机器人间交互数据
+    ID_Rfid_Status               = 0x0209,
+    ID_Ddart_Client_Cmd          = 0x020A,
+    ID_Ground_Robot_Position     = 0x020B,
+    ID_Radar_Mark_Data           = 0x020C,
+    ID_Sentry_Info               = 0x020D,
+    ID_Radar_Info                = 0x020E,
+    ID_student_interactive       = 0x0301,// 机器人间交互数据
+    ID_Map_Command               = 0x0303,
+    ID_Map_Robot_Data            = 0x0305,
+    ID_Map_Data                  = 0x0307,
+    ID_Custom_Info               = 0x0308
 } CmdID_e;
 
 /* 命令码数据段长,根据官方协议来定义长度，还有自定义数据长度 */
@@ -89,7 +98,7 @@ typedef enum {
     LEN_game_result              = 1,                        // 0x0002
     LEN_game_robot_HP            = 2,                        // 0x0003
     LEN_event_data               = 4,                        // 0x0101
-    LEN_supply_projectile_action = 4,                        // 0x0102
+    LEN_referee_warning_t        = 4,                        // 0x0104
     LEN_game_robot_state         = 13,                       // 0x0201
     LEN_power_heat_data          = 16,                       // 0x0202
     LEN_game_robot_pos           = 16,                       // 0x0203
@@ -98,7 +107,18 @@ typedef enum {
     LEN_robot_hurt               = 1,                        // 0x0206
     LEN_shoot_data               = 7,                        // 0x0207
     LEN_projectile_allowance     = 6,                        // 0x0208
+    LEN_rfid_status              =4,                          // 0x0209
+    LEN_dart_client_cmd          =6,                        // 0x020A
+    LEN_ground_robot_position    =40,                       // 0x020B
+    LEN_radar_mark_data          =1,                        // 0x020C
+    LEN_sentry_info              =6,                        // 0x020D
     LEN_receive_data             = 6 + Communicate_Data_LEN, // 0x0301
+    LEN_map_command              =15,                        // 0x0303
+    LEN_map_robot_data           =24,                        // 0x0305
+    LEN_map_data                 =103,                       // 0x0307
+    LEN_custom_info              =34,                           // 0x0308
+    
+
 
 } JudgeDataLength_e;
 
@@ -152,14 +172,15 @@ typedef struct
     uint32_t event_type;
 } ext_event_data_t;
 
-/* ID: 0x0102  Byte:  3    场地补给站动作标识数据 */
-typedef struct
-{
-    uint8_t supply_projectile_id;
-    uint8_t supply_robot_id;
-    uint8_t supply_projectile_step;
-    uint8_t supply_projectile_num;
-} ext_supply_projectile_action_t;
+/* ID: 0x0104  Byte:  3    裁判警告数据 */
+typedef struct 
+{ 
+  uint8_t level; 
+  uint8_t offending_robot_id; 
+  uint8_t count; 
+}ext_referee_warning_t; 
+
+/* ID: 0x0105  Byte:  3    飞镖发射相关数据 */
 
 /* ID: 0X0201  Byte: 27    机器人状态数据 */
 typedef struct
@@ -174,7 +195,7 @@ typedef struct
     uint8_t mains_power_gimbal_output : 1;
     uint8_t mains_power_chassis_output : 1;
     uint8_t mains_power_shooter_output : 1;
-} ext_game_robot_state_t;
+} ext_game_robot_status_t;
 
 /* ID: 0X0202  Byte: 16    实时功率热量数据 */
 typedef struct
@@ -203,22 +224,23 @@ typedef struct
     uint8_t cooling_buff;       // 枪口冷却倍率
     uint8_t defence_buff;       // 防御增益
     uint8_t vulnerability_buff; // 负防御增益
-    uint16_t attack_buff;       // 攻击增益
-} ext_buff_musk_t;
+    uint16_t attack_buff;   // 攻击增益
+    uint8_t remaining_energy;     //剩余能量值反馈
+} ext_buff_t;
 
 /* ID: 0x0205  Byte:  1    空中机器人能量状态数据 */
 typedef struct
 {
     uint8_t airforce_status; // 空中机器人状态（0为正在冷却，1为冷却完毕，2为正在空中支援）
     uint8_t time_remain;     // 此状态的剩余时间
-} aerial_robot_energy_t;
+} ext_aerial_robot_energy_t;
 
 /* ID: 0x0206  Byte:  1    伤害状态数据 */
 typedef struct
 {
     uint8_t armor_id : 4;
     uint8_t hurt_type : 4; // 血量变化类型
-} ext_robot_hurt_t;
+} ext_hurt_data_t;
 
 /* ID: 0x0207  Byte:  7    实时射击数据 */
 typedef struct
@@ -235,7 +257,109 @@ typedef struct
     uint16_t projectile_allowance_17mm;
     uint16_t projectile_allowance_42mm;
     uint16_t remaining_gold_coin;
-} projectile_allowance_t;
+} ext_projectile_allowance_t;
+
+/* ID: 0x0209 Byte : 4   机器人RFID模块状态 */
+typedef struct 
+{ 
+  uint32_t rfid_status; 
+}ext_rfid_status_t; 
+
+/* ID: 0x020A Byte : 6   飞镖选手端指令数据 */
+typedef struct 
+{ 
+  uint8_t dart_launch_opening_status;  
+  uint8_t reserved;  
+  uint16_t target_change_time;  
+  uint16_t latest_launch_cmd_time; 
+}ext_dart_client_cmd_t; 
+
+/* ID: 0x020B Byte : 40   地面机器人位置数据 */
+typedef struct 
+{ 
+  float hero_x;  
+  float hero_y;  
+  float engineer_x;  
+  float engineer_y;  
+  float standard_3_x;  
+  float standard_3_y;  
+  float standard_4_x;  
+  float standard_4_y;  
+  float reserved;  
+}ext_ground_robot_position_t; 
+
+/* ID: 0x020C Byte : 1   雷达标记进度数据 */
+typedef struct 
+{ 
+  uint8_t progress;  
+}ext_radar_mark_data_t; 
+
+/* ID: 0x020D Byte : 6   哨兵自主决策信息同步 */
+typedef struct 
+{  
+uint32_t sentry_info; 
+  uint16_t sentry_info_2; 
+} ext_sentry_info_t; 
+
+/* ID: 0x020E Byte : 1   雷达自主决策信息同步 */
+typedef struct 
+{ 
+  uint8_t radar_info; 
+} ext_radar_info_t; 
+
+/* ID:  子ID：0x0102 Byte : 4    哨兵自主决策指令 */
+typedef struct 
+{ 
+ uint32_t sentry_cmd;  
+} ext_sentry_cmd_t; 
+
+/* ID: 0x0303 Byte : 15   选手端小地图交互数据 */
+typedef struct 
+{ 
+float target_position_x; 
+float target_position_y; 
+uint8_t cmd_keyboard; 
+uint8_t target_robot_id; 
+uint16_t cmd_source; 
+}ext_map_command_t; 
+
+/* ID: 0x0305 Byte : 24   选手端小地图接收雷达数据 */
+typedef struct 
+{  
+uint16_t hero_position_x; 
+  uint16_t hero_position_y; 
+  uint16_t engineer_position_x; 
+  uint16_t engineer_position_y; 
+  uint16_t infantry_3_position_x; 
+  uint16_t infantry_3_position_y; 
+  uint16_t infantry_4_position_x; 
+  uint16_t infantry_4_position_y; 
+  uint16_t infantry_5_position_x; 
+  uint16_t infantry_5_position_y; 
+  uint16_t sentry_position_x; 
+  uint16_t sentry_position_y; 
+} ext_map_robot_data_t; 
+
+/* ID: 0x0307 Byte : 103   选手端小地图接收哨兵数据 */
+typedef struct 
+{ 
+uint8_t intention; 
+uint16_t start_position_x; 
+uint16_t start_position_y; 
+int8_t delta_x[49]; 
+int8_t delta_y[49]; 
+uint16_t sender_id; 
+}ext_map_data_t; 
+
+/* ID: 0x0308 Byte : 34   选手端小地图接收机器人数据 */
+typedef struct 
+{  
+uint16_t sender_id; 
+uint16_t receiver_id; 
+uint8_t user_data[30]; 
+} ext_custom_info_t; 
+
+
 
 /****************************机器人交互数据****************************/
 /****************************机器人交互数据****************************/

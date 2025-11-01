@@ -5,7 +5,21 @@
         }
     ],
     "settings": {
-        "stm32-for-vscode.openOCDPath": false
+        "stm32-for-vscode.openOCDPath": false,
+        "files.associations": {
+            "robot_test.h": "c",
+            "message_center.h": "c",
+            "chassis.h": "c",
+            "ins_task.h": "c",
+            "dji_motor.h": "c",
+            "remote_control.h": "c",
+            "power_calc.h": "c",
+            "rm_referee.h": "c",
+            "stdio.h": "c",
+            "memory.h": "c",
+            "crc16.h": "c",
+            "crc_ref.h": "c"
+        }
     },
     "extensions": {}
 }

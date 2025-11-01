@@ -58,5 +58,5 @@ uint8_t DaemonIsOnline(DaemonInstance *instance);
  *
  */
 void DaemonTask();
-
+  
 #endif // !MONITOR_H

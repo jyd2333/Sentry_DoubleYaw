@@ -14,7 +14,7 @@ static uint8_t rc_init_flag = 0; // 遥控器初始化标志位
 
 // 遥控器拥有的串口实例,因为遥控器是单例,所以这里只有一个,就不封装了
 static USARTInstance *rc_usart_instance;
-static DaemonInstance *rc_daemon_instance;
+DaemonInstance *rc_daemon_instance;
 
 /**
  * @brief 矫正遥控器摇杆的值,超过660或者小于-660的值都认为是无效值,置0
@@ -101,7 +101,7 @@ static void RemoteControlRxCallback()
  * @brief 遥控器离线的回调函数,注册到守护进程中,串口掉线时调用
  *
  */
-static void RCLostCallback(void *id)
+void RCLostCallback(void *id)
 {
     memset(rc_ctrl, 0, sizeof(rc_ctrl)); // 清空遥控器数据
     USARTServiceInit(rc_usart_instance); // 尝试重新启动接收

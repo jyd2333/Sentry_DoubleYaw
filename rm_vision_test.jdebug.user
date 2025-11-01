@@ -1,0 +1,26 @@
+
+
+GraphedExpression="(NUC_cmd).yaw", Color=#e56a6f
+OpenDocument="main.c", FilePath="c:/Users/TOSHIBA/Downloads/0314shaobin/0226shaobin/1124shaobin/Src/main.c", Line=73
+OpenDocument="robot_test.c", FilePath="c:/Users/TOSHIBA/Downloads/0314shaobin/0226shaobin/1124shaobin/application/test/robot_test.c", Line=158
+OpenDocument="robot_cmd.c", FilePath="c:/Users/TOSHIBA/Downloads/0314shaobin/0226shaobin/1124shaobin/application/cmd/robot_cmd.c", Line=93
+OpenDocument="startup_stm32f407ighx.s", FilePath="c:/Users/TOSHIBA/Downloads/0314shaobin/0226shaobin/1124shaobin/Startup/startup_stm32f407ighx.s", Line=53
+OpenToolbar="Debug", Floating=0, x=0, y=0
+OpenWindow="Source Files", DockArea=LEFT, x=0, y=0, w=478, h=277, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=LEFT, x=0, y=1, w=478, h=249, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Data Sampling", DockArea=BOTTOM, x=0, y=0, w=470, h=407, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Timeline", DockArea=BOTTOM, x=1, y=0, w=1449, h=407, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=1, DataPaneShown=1, PowerPaneShown=0, CodePaneShown=0, PinCursor="Cursor Movable", TimePerDiv="1 s / Div", TimeStampFormat="Time", DataGraphDrawAsPoints=0, DataGraphLegendShown=1, DataGraphUniformSampleSpacing=0, DataGraphLegendPosition="1220;0", DataGraphShowNamesAtCursor=0, PowerGraphDrawAsPoints=0, PowerGraphLegendShown=0, PowerGraphAvgFilterTime=Off, PowerGraphAvgFilterLen=Off, PowerGraphUniformSampleSpacing=0, PowerGraphLegendPosition="1268;0", CodeGraphLegendShown=0, CodeGraphLegendPosition="1227;0"
+OpenWindow="Watched Data 2", DockArea=RIGHT, x=0, y=0, w=448, h=527, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
+TableHeader="Source Files", SortCol="File", SortOrder="ASCENDING", VisibleCols=["File";"Status";"Size";"#Insts";"Path"], ColWidths=[233;100;100;100;966]
+TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" (NUC_cmd).yaw"], ColWidths=[100;100;100]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[261;100;102;118;102;102;100;110;107]
+TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Refresh";"Location"], ColWidths=[202;166;100;100]
+TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;100;100;1343]
+TableHeader="Watched Data 2", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[172;100;100;100]
+WatchedExpression="NUC_cmd", RefreshRate=5, Window=Watched Data 1
+WatchedExpression="vision_yaw", RefreshRate=5, Window=Watched Data 2
+WatchedExpression="SendPacket", RefreshRate=5, Window=Watched Data 2
+WatchedExpression="INS", RefreshRate=5, Window=Watched Data 2

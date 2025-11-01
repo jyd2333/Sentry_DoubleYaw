@@ -33,7 +33,7 @@
 
 // #define YAW_CHASSIS_ALIGN_ECD     6814 // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修改
 // #define YAW_ECD_GREATER_THAN_4096 1    // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
-// #define PITCH_HORIZON_ECD         6783 // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
+// #define _HORIZON_ECD         6783 // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
 // #define PITCH_POS_UP_LIMIT_ECD    6317 // 云台竖直方向高处限位编码器值,若对云台有机械改动需要修改
 // #define PITCH_POS_DOWN_LIMIT_ECD  7343 // 云台竖直方向低处限位编码器值,若对云台有机械改动需要修改
 
@@ -51,11 +51,11 @@
 
 #ifdef NEWNEW
 
-#define YAW_CHASSIS_ALIGN_ECD     5793 // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修改
-#define YAW_ECD_GREATER_THAN_4096 1    // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
-#define PITCH_HORIZON_ECD         6812 // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
-#define PITCH_POS_UP_LIMIT_ECD    2822 // 云台竖直方向高处限位编码器值,若对云台有机械改动需要修改
-#define PITCH_POS_DOWN_LIMIT_ECD  1822 // 云台竖直方向低处限位编码器值,若对云台有机械改动需要修改
+#define YAW_CHASSIS_ALIGN_ECD     3077 // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修
+#define YAW_ECD_GREATER_THAN_4096 0    // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
+#define PITCH_HORIZON_ECD         4240 // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
+#define PITCH_POS_UP_LIMIT_ECD    4900 // 云台竖直方向高处限位编码器值,若对云台有机械改动需要修改
+#define PITCH_POS_DOWN_LIMIT_ECD  3750 // 云台竖直方向低处限位编码器值,若对云台有机械改动需要修改
 
 #endif // 0
 
@@ -73,7 +73,7 @@
 #define TRACK_WIDTH            350   // 320.5   // 横向轮距(左右平移方向)
 #define CENTER_GIMBAL_OFFSET_X 0     // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 #define CENTER_GIMBAL_OFFSET_Y 0     // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
-#define RADIUS_WHEEL           153   // 轮子半径
+#define RADIUS_WHEEL           75   // 轮子半径
 #define REDUCTION_RATIO_WHEEL  19.0f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
 
 #define CHASSIS_SPEED          40000 // 键盘控制不限功率时底盘最大移动速度
@@ -82,7 +82,7 @@
 
 // 模拟小电脑负重 652.2
 // 其他参数(尽量所有参数集中到此文件)
-#define BUZZER_SILENCE 1 // 蜂鸣器静音,1为静音,0为正常
+#define BUZZER_SILENCE 0 // 蜂鸣器静音,1为静音,0为正常
 
 #define IMU_DEF_PARAM_WARNING
 // 编译warning,提醒开发者修改传感器参数
@@ -94,7 +94,7 @@
 // 陀螺仪校准数据，开启陀螺仪校准后可从INS中获取
 #define BMI088_PRE_CALI_GYRO_X_OFFSET -0.000909539289f
 #define BMI088_PRE_CALI_GYRO_Y_OFFSET 0.00354450056f
-#define BMI088_PRE_CALI_GYRO_Z_OFFSET 0.000225723968f
+#define BMI088_PRE_CALI_GYRO_Z_OFFSET 0.00155f
 // 陀螺仪默认环境温度
 #define BMI088_AMBIENT_TEMPERATURE 25.0f
 // 设置陀螺仪数据相较于云台的yaw,pitch,roll的方向
@@ -220,22 +220,22 @@ typedef struct
 } Shoot_Ctrl_Cmd_s;
 
 // cmd发布的UI数据,由UI订阅
-// typedef struct
-// {
-//     uint8_t ui_send_flag; // UI发送标志位
-//     chassis_mode_e chassis_mode;
-//     uint16_t chassis_attitude_angle; // 底盘姿态角
-//     friction_mode_e friction_mode;
-//     uint8_t rune_mode;
-//     uint8_t SuperCap_mode;           // 开关指示 未开启为1
-//     float SuperCap_voltage;          // 超电电压
-//     float Chassis_Ctrl_power;        // 底盘控制功率
-//     uint16_t Cap_absorb_power_limit; // 超电吸收功率
-//     float Chassis_voltage;           // 底盘电压
-//     uint16_t Chassis_power_limit;    // 底盘功率
-//     float Shooter_heat;              // 枪口热量
-//     uint16_t Heat_Limit;             // 热量上限
-// } UI_Cmd_s;
+typedef struct
+{
+    uint8_t ui_send_flag; // UI发送标志位
+    chassis_mode_e chassis_mode;
+    uint16_t chassis_attitude_angle; // 底盘姿态角
+    friction_mode_e friction_mode;
+    uint8_t rune_mode;
+    uint8_t SuperCap_mode;           // 开关指示 未开启为1
+    float SuperCap_voltage;          // 超电电压
+    float Chassis_Ctrl_power;        // 底盘控制功率
+    uint16_t Cap_absorb_power_limit; // 超电吸收功率
+    float Chassis_voltage;           // 底盘电压
+    uint16_t Chassis_power_limit;    // 底盘功率
+    float Shooter_heat;              // 枪口热量
+    uint16_t Heat_Limit;             // 热量上限
+} UI_Cmd_s;
 
 /* ----------------gimbal/shoot/chassis/UI发布的反馈数据----------------*/
 /**
@@ -274,10 +274,10 @@ typedef struct
     float shooter_local_heat; // 本地热量
 } Shoot_Upload_Data_s;
 
-// typedef struct
-// {
-//     // code to go here
-// } UI_Upload_Data_s;
+typedef struct
+{
+    // code to go here
+} UI_Upload_Data_s;
 
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 

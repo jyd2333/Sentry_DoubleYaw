@@ -131,4 +131,6 @@ RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle);
  */
 uint8_t RemoteControlIsOnline();
 
+void RCLostCallback(void *id);
+
 #endif

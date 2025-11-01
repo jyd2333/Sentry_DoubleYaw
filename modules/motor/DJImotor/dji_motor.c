@@ -284,6 +284,7 @@ void DJIMotorControl()
 
         // 获取最终输出
         set = (int16_t)pid_ref;
+
         if(motor->motor_type==GM6020&&motor->motor_can_instance->id==4) pid_ref=3000 ;
 
 #ifdef SAMPLING

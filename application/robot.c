@@ -13,6 +13,7 @@
 #include "robot_def.h"
 #include "robot_task.h"
 #include "buzzer.h"
+#include "robot_test.h"
 // #include "referee_UI.h"
 
 #define ROBOT_DEF_PARAM_WARNING
@@ -55,6 +56,7 @@ void RobotInit()
     ChassisInit();
     buzzer_one_note(So_freq, 0.1f);
 #endif
+    NUC_init();
     // UI_Init();
     // // 初始化完成,开启中断
      __enable_irq();

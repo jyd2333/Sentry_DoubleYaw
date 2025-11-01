@@ -29,32 +29,42 @@ uint8_t UI_Graph_Setting(UI_GRAPH_INSTANCE *instance, RefreshMode_ mode){
     }
     switch(instance->type){
         case GraphType_Rect:
+            {
             uint32_t Rect_end_x = instance->pos_x + instance->param.Rect.width;
             uint32_t Rect_end_y = instance->pos_y + instance->param.Rect.height;
             UIRectangleDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->width, instance->pos_x, instance->pos_y, Rect_end_x, Rect_end_y);break;
-        case GraphType_Line:
+            }
+            case GraphType_Line:
+            {
             uint32_t Line_end_x = instance->pos_x - instance->param.Line.length*sinf(instance->param.Line.rotate_angle*DEGREE_2_RAD);
             uint32_t Line_end_y = instance->pos_y + instance->param.Line.length*cosf(instance->param.Line.rotate_angle*DEGREE_2_RAD);
             UILineDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->width, instance->pos_x, instance->pos_y, Line_end_x, Line_end_y);break;
+            }
         case GraphType_Round:
             UICircleDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->width, instance->pos_x, instance->pos_y, instance->param.Round.radius);break;
         case GraphType_Elipse:
             UIOvalDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->width, instance->pos_x, instance->pos_y, instance->param.Ellipse.radius_x, instance->param.Ellipse.radius_y);break;
         case GraphType_Arc:
+        {
             uint32_t start_angle = instance->param.Arc.start_angle % 360;
             uint32_t end_angle = (instance->param.Arc.start_angle + instance->param.Arc.angle_len)%360;
             UIArcDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, start_angle, end_angle, instance->width, instance->pos_x, instance->pos_y, instance->param.Arc.radius_x, instance->param.Arc.radius_y);break;
+        }
         case GraphType_Number:
             UIIntDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->param.Number.size, instance->width, instance->pos_x, instance->pos_y, instance->param.Number.value);break;
         case GraphType_Float:
+        {
             int32_t value = (int32_t)(instance->param.Float.value * 1000) / (10*instance->param.Float.digit==0?1:10*instance->param.Float.digit) * (10*instance->param.Float.digit);
             UIFloatDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->param.Float.size, instance->param.Float.digit, instance->width, instance->pos_x, instance->pos_y, value);break;
+        }
         case GraphType_Ray:
+        {
             uint32_t Ray_start_x = instance->pos_x - instance->param.Ray.offcenter_lenth*sinf(instance->param.Ray.rotate_angle*DEGREE_2_RAD);
             uint32_t Ray_start_y = instance->pos_y - instance->param.Ray.offcenter_lenth*cosf(instance->param.Ray.rotate_angle*DEGREE_2_RAD);
             uint32_t Ray_end_x = instance->pos_x - (instance->param.Ray.offcenter_lenth+instance->param.Ray.line_length)*sinf(instance->param.Ray.rotate_angle*DEGREE_2_RAD);
             uint32_t Ray_end_y = instance->pos_y + (instance->param.Ray.offcenter_lenth+instance->param.Ray.line_length)*cosf(instance->param.Ray.rotate_angle*DEGREE_2_RAD);
             UILineDraw(&graph_t, instance->graphic_name, Graph_Operate, instance->layer, instance->color, instance->width, Ray_start_x, Ray_start_y, Ray_end_x, Ray_end_y);break;
+        }
     }
 
     if(memcmp(&graph_t, graph, sizeof(Graph_Data_t)) != 0){

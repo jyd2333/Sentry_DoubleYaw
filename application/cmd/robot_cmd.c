@@ -2,6 +2,7 @@
 #include "robot_def.h"
 #include "robot_cmd.h"
 #include "omni_UI.h"
+#include "robot_test.h"
 // module
 #include "remote_control.h"
 #include "ins_task.h"
@@ -45,10 +46,15 @@ static CANCommInstance *cmd_can_comm; // 双板通信
 #endif
 #ifdef ONE_BOARD
 static Publisher_t *chassis_cmd_pub;   // 底盘控制消息发布者
+// static Publisher_t *chassis_cmd_pub_2;   // 底盘控制消息发布者
 static Subscriber_t *chassis_feed_sub; // 底盘反馈信息订阅者
-#endif                                 // ONE_BOARD
 
-static Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
+// static Subscriber_t *NUC_cmd_sub;   //整车信息订阅者 //=SubRegister("NUC_cmd",sizeof(NUC_cmd_t));
+// static  NUC_cmd_t NUC_cmd_use;  //speed
+// extern  NUC_cmd_t NUC_cmd;
+
+#endif                                 // ONE_BOARD
+Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
 static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反馈信息信息,底盘功率枪口热量与底盘运动状态等
 
 static RC_ctrl_t *rc_data; // 遥控器数据,初始化时返回
@@ -57,7 +63,7 @@ HostInstance *host_instance; // 上位机接口
 
 // 这里的四元数以wxyz的顺序
 static uint8_t vision_recv_data[9];  // 从视觉上位机接收的数据-绝对角度，第9个字节作为识别到目标的标志位
-static uint8_t vision_send_data[23]; // 给视觉上位机发送的数据-四元数
+// static uint8_t vision_send_data[23]; // 给视觉上位机发送的数据-四元数
 
 static Publisher_t *gimbal_cmd_pub  ;            // 云台控制消息发布者
 static Subscriber_t *gimbal_feed_sub;          // 云台反馈信息订阅者
@@ -85,6 +91,8 @@ uint8_t auto_rune; // 自瞄打符标志位
 float rec_yaw, rec_pitch;
 uint8_t i=0;
 uint8_t SuperCap_flag_from_user = 0; // 超电标志位
+float nuc_yaw_k =0.1;
+extern DaemonInstance *rc_daemon_instance;
 
 void HOST_RECV_CALLBACK()
 {
@@ -102,18 +110,37 @@ void RobotCMDInit()
     };
     host_instance = HostInit(&host_conf); // 视觉通信串口
 
- //   referee_data = RefereeHardwareInit(&huart6); // 裁判系统初始化,会同时初始化UI
+   referee_data = RefereeHardwareInit(&huart6); // 裁判系统初始化,会同时初始化UI
 
     gimbal_cmd_pub  = PubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
     gimbal_feed_sub = SubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     shoot_cmd_pub   = PubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
     shoot_feed_sub  = SubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     i=1;
+    // NUC_cmd_sub=SubRegister("NUC_cmd",sizeof(NUC_cmd_t));
+    
     // ui_cmd_pub  = PubRegister("ui_cmd", sizeof(UI_Cmd_s));
     // ui_feed_sub = SubRegister("ui_feed", sizeof(UI_Upload_Data_s));
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
+
+  /*Configure GPIO pin : PC8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 #ifdef ONE_BOARD // 双板兼容
     chassis_cmd_pub  = PubRegister("chassis_cmd", sizeof(Chassis_Ctrl_Cmd_s));
+    // chassis_cmd_pub_2  = PubRegister("chassis_cmd_2", sizeof(Chassis_Ctrl_Cmd_s));
     chassis_feed_sub = SubRegister("chassis_feed", sizeof(Chassis_Upload_Data_s));
 #endif // ONE_BOARD
 #ifdef GIMBAL_BOARD
@@ -147,9 +174,9 @@ void RobotCMDInit()
 static void DeterminRobotID()
 {
     // id小于7是红色,大于7是蓝色,0为红色，1为蓝色   #define Robot_Red 0    #define Robot_Blue 1
-    referee_data->referee_id.Robot_Color       = referee_data->GameRobotState.robot_id > 7 ? Robot_Blue : Robot_Red;
-    referee_data->referee_id.Cilent_ID         = 0x0100 + referee_data->GameRobotState.robot_id; // 计算客户端ID
-    referee_data->referee_id.Robot_ID          = referee_data->GameRobotState.robot_id;          // 计算机器人ID
+    referee_data->referee_id.Robot_Color       = referee_data->GameRobotStatus.robot_id > 7 ? Robot_Blue : Robot_Red;
+    referee_data->referee_id.Cilent_ID         = 0x0100 + referee_data->GameRobotStatus.robot_id; // 计算客户端ID
+    referee_data->referee_id.Robot_ID          = referee_data->GameRobotStatus.robot_id;          // 计算机器人ID
     referee_data->referee_id.Receiver_Robot_ID = 0;
 }
 
@@ -246,10 +273,11 @@ static void HeatControl()
         rate_coef = 0.6;
     else if (heat_coef < 0.6)
         rate_coef = 0.4;
-    heat_coef = ((referee_data->GameRobotState.shooter_id1_17mm_cooling_limit - referee_data->PowerHeatData.shooter_17mm_heat0 + rate_coef * referee_data->GameRobotState.shooter_id1_17mm_cooling_rate) * 1.0f) / (1.0f * referee_data->GameRobotState.shooter_id1_17mm_cooling_limit);
+    heat_coef = ((referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit - referee_data->PowerHeatData.shooter_17mm_heat0 + rate_coef * referee_data->GameRobotStatus.shooter_id1_17mm_cooling_rate) * 1.0f) / (1.0f * referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit);
     // 新热量管理
-    if (referee_data->GameRobotState.shooter_id1_17mm_cooling_limit - 40 + 30 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) {
-        shoot_cmd_send.load_mode = LOAD_STOP;
+    if (referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit - 40 + 30 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
+    {
+        // shoot_cmd_send.load_mode = LOAD_STOP;
     }
 }
 
@@ -280,7 +308,15 @@ static void EmergencyHandler()
     memset(rc_mode + 1, 0, sizeof(uint8_t) * 4);
     LOGERROR("[CMD] emergency stop!");
 }
-
+float speed_k=1;
+float32_t nuc_yaw=-0.08;//0.003;
+float32_t nuc_pitch=0.3;
+// uint16_t shoot_delay=0,fire_flag=0;
+uint16_t vision_wait=0;
+int8_t pitch_search_flag=1;//pitch上升下降
+int8_t yaw_search_flag=1;
+extern decision_state_t Decision_State;
+extern INS_Instance *INS;
 /**
  * @brief 控制输入为遥控器(调试时)的模式和控制量设置
  *
@@ -289,7 +325,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 30; // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 20;   // 射频默认30Hz
 
     if (rc_data[TEMP].rc.dial > 400) {
         SuperCap_flag_from_user = SUPER_USER_OPEN;
@@ -300,6 +336,9 @@ static void RemoteControlSet()
     // 使用相对角度控制
     //memcpy(&rec_yaw, vision_recv_data, sizeof(float));
     //memcpy(&rec_pitch, vision_recv_data + 4, sizeof(float));
+
+
+
 
     switch (rc_data[TEMP].rc.switch_right) {
         case RC_SW_MID:
@@ -323,7 +362,7 @@ static void RemoteControlSet()
         case RC_SW_DOWN:
             rc_mode[CHASSIS_FREE] = 0;
             if (rc_mode[CHASSIS_ROTATE] == 1) {
-                if (rc_data[TEMP].rc.dial < -400) {
+                if (rc_data[TEMP].rc.dial < -250) {
                     chassis_cmd_send.chassis_mode = CHASSIS_REVERSE_ROTATE;
                 } else {
                     chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
@@ -364,7 +403,7 @@ static void RemoteControlSet()
             }
             break;
         case RC_SW_DOWN:
-            if (rc_data[TEMP].rc.dial < -400) {
+            if (rc_data[TEMP].rc.dial < -250) {
                 shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
             } else {
                 shoot_cmd_send.load_mode = LOAD_1_BULLET;
@@ -373,14 +412,150 @@ static void RemoteControlSet()
             break;
     }
 
-    HeatControl();
 
+
+
+
+
+    // HeatControl();
+
+    //修改部分
+    // if(rc_data[TEMP].rc.switch_left == RC_SW_DOWN&&rc_data[TEMP].rc.switch_right == RC_SW_MID) chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
     // 底盘参数
-    chassis_cmd_send.vx = 70.0f * (float)rc_data[TEMP].rc.rocker_r_; // 水平方向
-    chassis_cmd_send.vy = 70.0f * (float)rc_data[TEMP].rc.rocker_r1; // 竖直方向
+    if(rc_data[TEMP].rc.switch_left == RC_SW_MID&&rc_data[TEMP].rc.switch_right == RC_SW_MID)
+    {    
+        // NUC_cmd.delay--;
+        // if(NUC_cmd.delay<=0)
+        // {
+        //     NUC_offline();
+        //     NUC_cmd.delay=200;
+        // }
+        // chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+        // shoot_cmd_send.friction_mode = FRICTION_ON;
+        // else
+        // {
+            
+            // SubGetMessage(NUC_cmd_sub,&NUC_cmd_use);
+            // if(NUC_cmd.vx>32767)NUC_cmd.vx-=65535;
+            // if(NUC_cmd.vy>32767)NUC_cmd.vy-=65535;
+            // if(NUC_cmd.wz>32767)NUC_cmd.wz-=65535;
+            if(NUC_cmd.vx!=0||NUC_cmd.vy!=0||NUC_cmd.wz!=0)
+            {
+                chassis_cmd_send.vx = speed_k * NUC_cmd.vy; // 水平方向
+                chassis_cmd_send.vy = speed_k * NUC_cmd.vx; // 竖直方向
+                yaw_control += YAW_K * NUC_cmd.wz*100;
+                // chassis_cmd_send.wz = speed_k * (float)NUC_cmd.wz; // 角速度
+                shoot_cmd_send.load_mode = LOAD_STOP;
+            }
+            else
+            {
+                chassis_cmd_send.vx = 0;
+                chassis_cmd_send.vy = 0;
+                // if(NUC_cmd.shot==0)
+                // {
+                //     vision_wait++;
+                //     if(vision_wait>1000&&Decision_State.Behaviour_State!=SENTRY_STOP)
+                //     {
+                //         yaw_control += -YAW_K * (float)rc_data[TEMP].rc.rocker_l_+(float) 15  * 0.005;
+                //         // if(referee_data->GameRobotPos.angle>160) yaw_search_flag=-1;
+                //         // if(referee_data->GameRobotPos.angle<100) yaw_search_flag=1;
+                //         // yaw_control += -YAW_K * (float)rc_data[TEMP].rc.rocker_l_+(float) yaw_search_flag* 10  * 0.005;
+                //         // pitch_control=-0.10;
+                //         pitch_control+=pitch_search_flag*0.0005+PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
+                //         if(pitch_control>-0.10)
+                //             pitch_search_flag=-1;
+                //         if(pitch_control<-0.30)
+                //             pitch_search_flag=1;
+                //     }
+                // }
+                // else
+                // {
+                    // vision_wait=0;
+                    // if(NUC_cmd.vision_breath_last!=NUC_cmd.vision_breath)
+                    // {
+                        // yaw_control +=  (float)NUC_cmd.yaw *360/8196 *nuc_yaw-YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
+                        yaw_control = INS->output.INS_angle[2]*RAD_2_DEGREE-(float)NUC_cmd.yaw*RAD_TO_ANGLE;//*nuc_yaw;
+                        // pitch_control += (float)NUC_cmd.pitch *RAD_TO_ANGLE*nuc_pitch+ PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;   
+                        // pitch_control = INS->output.INS_angle[1]+(float)NUC_cmd.pitch*360/8196*nuc_pitch;
+                    // }
+                    if(pitch_control<-0.30)
+                    {
+                        pitch_control=-0.30;
+                    }
+                    if(pitch_control>0.15)
+                    {
+                        pitch_control=0.15;
+                    }
+                // }
+                
+                // if(NUC_cmd.shot==2&&shoot_cmd_send.friction_mode== FRICTION_ON )//火控
+                // {
+                //     shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
+                // }
+                // else
+                // {
+                    shoot_cmd_send.load_mode = LOAD_STOP;
+                // }
+            }
+            
 
-    yaw_control -= YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
-    pitch_control -= PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
+            // if(NUC_cmd.vx==0 && NUC_cmd. vy==0 && NUC_cmd.wz==0)//
+            // {
+            //     if(NUC_cmd.shot==0)
+            //     {
+            //         vision_wait++;
+            //         if(vision_wait>1000)
+            //         {
+            //             yaw_control += (float) 5  * 0.01;
+            //         }
+            //     }
+            //     else
+            //     {
+            //         vision_wait=0;
+                    // yaw_control +=  (float)NUC_cmd.yaw *360/8196 *nuc_yaw-YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
+            //     }
+            // }
+            // else
+            // {
+            //     yaw_control += YAW_K * (float)NUC_cmd.wz*0.1;
+            // }
+           
+            // if(NUC_cmd.shot==2&&shoot_cmd_send.friction_mode== FRICTION_ON )//未开启火控
+            // {
+            //     shoot_delay++;
+            //     if(shoot_delay>50)
+            //     {
+            //         fire_flag=1;
+            //     }
+            // }
+            // if(fire_flag==1)
+            // {
+            //     shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
+            //     shoot_delay--;
+            // }
+            // if(shoot_delay<=0)
+            // {
+            //     shoot_cmd_send.load_mode = LOAD_STOP;
+            //     fire_flag=0;
+            //     shoot_delay=0;
+            // }
+            
+        // }
+    }
+    else
+    {
+        chassis_cmd_send.vx = 70.0f * (float)rc_data[TEMP].rc.rocker_r_; // 水平方向
+        chassis_cmd_send.vy = 70.0f * (float)rc_data[TEMP].rc.rocker_r1; // 竖直方向
+        chassis_cmd_send.wz = 7.0f * (float)rc_data[TEMP].rc.rocker_l_; // 角速度
+        yaw_control -= YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
+        pitch_control += PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
+        if(rc_data[TEMP].rc.switch_left == RC_SW_MID) shoot_cmd_send.load_mode = LOAD_STOP;
+    }
+    rc_daemon_instance->temp_count--;
+    if(rc_daemon_instance->temp_count<=0)
+    {
+        RCLostCallback(NULL);
+    }
     // 云台参数
     YawControlProcess();
     gimbal_cmd_send.yaw   = yaw_control;
@@ -492,7 +667,7 @@ static void ShootSet()
     } else {
         shoot_cmd_send.load_mode = LOAD_STOP;
     }
-    HeatControl();
+    
 }
 
 /**
@@ -606,7 +781,7 @@ void RobotCMDTask()
     } else {
         RemoteControlSet();
     }
-
+    HeatControl();
     // 设置视觉发送数据,还需增加加速度和角速度数据
 
     // 推送消息,双板通信,视觉通信等
@@ -614,19 +789,19 @@ void RobotCMDTask()
     // chassis
     memcpy(&chassis_cmd_send.chassis_power, &referee_data->PowerHeatData.chassis_power, sizeof(float));
     memcpy(&chassis_cmd_send.power_buffer, &referee_data->PowerHeatData.chassis_power_buffer, sizeof(uint16_t));
-    memcpy(&chassis_cmd_send.level, &referee_data->GameRobotState.robot_level, sizeof(uint8_t));
-    memcpy(&chassis_cmd_send.power_limit, &referee_data->GameRobotState.chassis_power_limit, sizeof(uint16_t));
+    memcpy(&chassis_cmd_send.level, &referee_data->GameRobotStatus.robot_level, sizeof(uint8_t));
+    memcpy(&chassis_cmd_send.power_limit, &referee_data->GameRobotStatus.chassis_power_limit, sizeof(uint16_t));
     memcpy(&chassis_cmd_send.SuperCap_flag_from_user, &SuperCap_flag_from_user, sizeof(uint8_t));
     // memcpy
 
     // shoot
-    memcpy(&shoot_cmd_send.shooter_heat_cooling_rate, &referee_data->GameRobotState.shooter_id1_17mm_cooling_rate, sizeof(uint16_t));
+    memcpy(&shoot_cmd_send.shooter_heat_cooling_rate, &referee_data->GameRobotStatus.shooter_id1_17mm_cooling_rate, sizeof(uint16_t));
     memcpy(&shoot_cmd_send.shooter_referee_heat, &referee_data->PowerHeatData.shooter_17mm_heat0, sizeof(uint16_t));
-    memcpy(&shoot_cmd_send.shooter_cooling_limit, &referee_data->GameRobotState.shooter_id1_17mm_cooling_limit, sizeof(uint16_t));
+    memcpy(&shoot_cmd_send.shooter_cooling_limit, &referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit, sizeof(uint16_t));
     memcpy(&shoot_cmd_send.bullet_speed, &referee_data->ShootData.bullet_speed, sizeof(float));
 
     // UI
-    // // memcpy(referee_data_for_ui, referee_data, sizeof(referee_info_t));
+    // memcpy(referee_data_for_ui, referee_data, sizeof(referee_info_t));
     // referee_data_for_ui = referee_data;
     // memcpy(&ui_cmd_send.ui_send_flag, &UI_SendFlag, sizeof(uint8_t));
     // memcpy(&ui_cmd_send.chassis_mode, &chassis_cmd_send.chassis_mode, sizeof(chassis_mode_e));
@@ -643,6 +818,7 @@ void RobotCMDTask()
 
 #ifdef ONE_BOARD
     PubPushMessage(chassis_cmd_pub, (void *)&chassis_cmd_send);
+    // PubPushMessage(chassis_cmd_pub_2, (void *)&chassis_cmd_send);
 #endif // ONE_BOARD
 #ifdef GIMBAL_BOARD
     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
@@ -652,13 +828,16 @@ void RobotCMDTask()
     // PubPushMessage(ui_cmd_pub, (void *)&ui_cmd_send);
 
     // master
-    static uint8_t frame_head[] = {0xAF, 0x32, 0x00, 0x12};
-    memcpy(vision_send_data, frame_head, 4);
-    memcpy(vision_send_data + 4, gimbal_fetch_data.gimbal_imu_data->INS_data.INS_quat, sizeof(float) * 4);
-    memcpy(vision_send_data + 20, &referee_data->GameRobotState.robot_id, sizeof(uint8_t));
-    memcpy(vision_send_data + 21, &auto_rune, sizeof(uint8_t));
-    vision_send_data[22] = 0;
-    for (size_t i = 0; i < 22; i++)
-        vision_send_data[22] += vision_send_data[i];
-    HostSend(host_instance, vision_send_data, 23);
+    // static uint8_t frame_head[] = {0xAF, 0x32, 0x00, 0x12};
+    // memcpy(vision_send_data, frame_head, 4);
+    // memcpy(vision_send_data + 4, gimbal_fetch_data.gimbal_imu_data->INS_data.INS_quat, sizeof(float) * 4);
+    // memcpy(vision_send_data + 20, &referee_data->GameRobotState.robot_id, sizeof(uint8_t));
+    // memcpy(vision_send_data + 21, &auto_rune, sizeof(uint8_t));
+    // vision_send_data[22] = 0;
+    // for (size_t i = 0; i < 22; i++)
+    //     vision_send_data[22] += vision_send_data[i];
+    // HostSend(host_instance, vision_send_data, 23);
+
+     NUC_Send_Data();
+     Decision_Tree();
 }

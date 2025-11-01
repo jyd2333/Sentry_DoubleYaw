@@ -4,8 +4,8 @@
 *                         www.segger.com                             *
 **********************************************************************
 
-File          : D:/desktop/combatstuff/frameworkversions/2024_Omni-Infantry-to_main (2)/ozone.jdebug
-Created       : 3 Nov 2024 20:49
+File          : C:/Users/TOSHIBA/Downloads/0314shaobin/0226shaobin/1124shaobin/rm_vision_test.jdebug
+Created       : 26 May 2025 22:20
 Ozone Version : V3.34a
 */
 
@@ -22,8 +22,8 @@ void OnProjectLoad (void) {
   //
   // Dialog-generated settings
   //
-  Project.AddPathSubstitute ("D:/desktop/combatstuff/frameworkversions/2024_Omni-Infantry-to_main (2)", "$(ProjectDir)");
-  Project.AddPathSubstitute ("d:/desktop/combatstuff/frameworkversions/2024_omni-infantry-to_main (2)", "$(ProjectDir)");
+  Project.AddPathSubstitute ("C:/Users/TOSHIBA/Downloads/0314shaobin/0226shaobin/1124shaobin", "$(ProjectDir)");
+  Project.AddPathSubstitute ("c:/users/toshiba/downloads/0314shaobin/0226shaobin/1124shaobin", "$(ProjectDir)");
   Project.SetDevice ("STM32F407IG");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
