@@ -92,7 +92,8 @@ void ChassisInit()
                 .IntegralLimit = 3000,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
                 .MaxOut        = 15000,
-            }},
+            }
+        },
         .controller_setting_init_config = {
             .angle_feedback_source = MOTOR_FEED,
             .speed_feedback_source = MOTOR_FEED,

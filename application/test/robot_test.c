@@ -80,7 +80,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		memcpy(&Navigation_Receive,NUC_rx_buff,sizeof(Navigation_Receive));
 		NUC_cmd.vx=Navigation_Receive.vx;
 		NUC_cmd.vy=-Navigation_Receive.vy;
-		NUC_cmd.wz=Navigation_Receive.wz;
+
+		// NUC_cmd.wz=Navigation_Receive.wz;
 		HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
 		}
 	}
@@ -92,8 +93,10 @@ void USB_Decode(void)
 	if(Navigation_Receive.header == 0x5A)
 	{
 		NUC_cmd.vx = Navigation_Receive.vx;
-		NUC_cmd.vy=-Navigation_Receive.vy;
-		NUC_cmd.wz=Navigation_Receive.wz;
+		NUC_cmd.vy = -Navigation_Receive.vy;
+		NUC_cmd.scanMode = Navigation_Receive.scanMode;
+		NUC_cmd.rotateMode = Navigation_Receive.rotateMode;
+		NUC_cmd.odomYaw = (float32_t)Navigation_Receive.odomYaw;
 	}
 }
 

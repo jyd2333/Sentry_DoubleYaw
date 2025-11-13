@@ -129,6 +129,9 @@ typedef struct
 	uint8_t vision_breath;
 	uint8_t vision_breath_last;
 	navigation_feed_e Navigation_Feed;
+	uint8_t scanMode;
+	uint8_t rotateMode;
+	float32_t odomYaw;
 }NUC_cmd_t;
 
 extern NUC_cmd_t NUC_cmd;
@@ -191,11 +194,11 @@ typedef struct
 	uint8_t length;
 	uint8_t ID;
 	uint8_t crc1;
-	uint32_t timestamp;
 	float32_t vx;
 	float32_t vy;
-	float32_t wz;
-	uint16_t crc2;
+	float64_t odomYaw;
+	uint8_t scanMode;
+	uint8_t rotateMode;
 }navigation_receive_t;
 #pragma pack ()	
 
