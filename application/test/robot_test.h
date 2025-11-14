@@ -196,9 +196,10 @@ typedef struct
 	uint8_t crc1;
 	float32_t vx;
 	float32_t vy;
-	float64_t odomYaw;
-	uint8_t scanMode;
+	float32_t odomYaw;
+	float32_t reserve1;
 	uint8_t rotateMode;
+	uint8_t reserve2;
 }navigation_receive_t;
 #pragma pack ()	
 

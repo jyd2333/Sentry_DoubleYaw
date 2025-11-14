@@ -94,9 +94,9 @@ void USB_Decode(void)
 	{
 		NUC_cmd.vx = Navigation_Receive.vx;
 		NUC_cmd.vy = -Navigation_Receive.vy;
-		NUC_cmd.scanMode = Navigation_Receive.scanMode;
+		// NUC_cmd.scanMode = Navigation_Receive.scanMode;
 		NUC_cmd.rotateMode = Navigation_Receive.rotateMode;
-		NUC_cmd.odomYaw = (float32_t)Navigation_Receive.odomYaw;
+		NUC_cmd.odomYaw = Navigation_Receive.odomYaw;
 	}
 }
 

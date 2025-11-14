@@ -441,11 +441,11 @@ static void RemoteControlSet()
             // if(NUC_cmd.wz>32767)NUC_cmd.wz-=65535;
             if(1||NUC_cmd.vx!=0||NUC_cmd.vy!=0||NUC_cmd.wz!=0)//导航用
             {
-                // chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
-                // chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
-                chassis_cmd_send.vx = NUC_cmd.vy * arm_cos_f32(NUC_cmd.odomYaw) - NUC_cmd.vx * arm_sin_f32(NUC_cmd.odomYaw);
-                chassis_cmd_send.vy = NUC_cmd.vy * arm_sin_f32(NUC_cmd.odomYaw) + NUC_cmd.vx * arm_cos_f32(NUC_cmd.odomYaw);
-                yaw_control += nuc_yaw_k * NUC_cmd.scanMode;
+                chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
+                chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
+                // chassis_cmd_send.vx = NUC_cmd.vy * arm_cos_f32(NUC_cmd.odomYaw) - NUC_cmd.vx * arm_sin_f32(NUC_cmd.odomYaw);
+                // chassis_cmd_send.vy = NUC_cmd.vy * arm_sin_f32(NUC_cmd.odomYaw) + NUC_cmd.vx * arm_cos_f32(NUC_cmd.odomYaw);
+                yaw_control += nuc_yaw_k * NUC_cmd.odomYaw;
                 // yaw_control += YAW_K * NUC_cmd.wz*100;
                 // chassis_cmd_send.wz = speed_k * (float)NUC_cmd.wz; // 角速度
                 shoot_cmd_send.load_mode = LOAD_STOP;
@@ -453,7 +453,7 @@ static void RemoteControlSet()
                     chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
                 else
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-                if(!NUC_cmd.scanMode)
+                if(abs(NUC_cmd.odomYaw)>0.1)
                 {
                     pitch_control+=pitch_search_flag*0.0005+PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
                     if(pitch_control>-0.10)
