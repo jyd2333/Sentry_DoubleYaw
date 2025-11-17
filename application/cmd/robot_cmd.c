@@ -449,10 +449,25 @@ static void RemoteControlSet()
                 // yaw_control += YAW_K * NUC_cmd.wz*100;
                 // chassis_cmd_send.wz = speed_k * (float)NUC_cmd.wz; // 角速度
                 shoot_cmd_send.load_mode = LOAD_STOP;
-                if(NUC_cmd.rotateMode == 1)
-                    chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
-                else
-                    chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
+                switch(NUC_cmd.rotateMode)
+                {
+                    case 0:
+                        chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
+                        break;
+                    case 1:
+                        chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+                        break;
+                    case 2:
+                        chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
+                        break;
+                    default:
+                        chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
+                        break;
+                }
+                // if(NUC_cmd.rotateMode == 1)
+                //     chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+                // else
+                //     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
                 if(abs(NUC_cmd.odomYaw)>0.1)
                 {
                     pitch_control+=pitch_search_flag*0.0005+PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
