@@ -34,6 +34,13 @@ typedef enum {
     ALL_THREE_LOOP         = 0b0111,
 } Closeloop_Type_e;
 
+typedef enum
+{
+    TORQUE_LOOP_CONTRO = 0, //电流/扭矩开环控制
+    ANGLE_LOOP_CONTRO = 1,  //位置闭环控制(由电机支持)
+  
+} Motor_Control_Type_e;
+
 typedef enum {
     FEEDFORWARD_NONE              = 0b00,
     CURRENT_FEEDFORWARD           = 0b01,
@@ -63,6 +70,12 @@ typedef enum {
     MOTOR_ENABLED = 1,
 } Motor_Working_Type_e;
 
+typedef struct {
+    float P_max;
+    float V_max;
+    float T_max;
+} Motor_Control_Range_s;
+
 /* 电机控制设置,包括闭环类型,反转标志和反馈来源 */
 typedef struct
 {
@@ -73,7 +86,7 @@ typedef struct
     Feedback_Source_e angle_feedback_source;       // 角度反馈类型
     Feedback_Source_e speed_feedback_source;       // 速度反馈类型
     Feedfoward_Type_e feedforward_flag;            // 前馈标志
-
+    Motor_Control_Range_s control_range;
 } Motor_Control_Setting_s;
 
 /* 电机控制器,包括其他来源的反馈数据指针,3环控制器和电机的参考输入*/
@@ -105,6 +118,7 @@ typedef enum {
     LK_MS5005,
     DR_PDA04,
     DR_B0X,
+    DM_Motor,
 }  Motor_Type_e;
 
 /**
@@ -134,6 +148,7 @@ typedef struct
     Motor_Control_Setting_s controller_setting_init_config;
     Motor_Type_e motor_type;
     CAN_Init_Config_s can_init_config;
+    Motor_Control_Type_e motor_contro_type;  //控制类型
 } Motor_Init_Config_s;
 
 #endif // !MOTOR_DEF_H

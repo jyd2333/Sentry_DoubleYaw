@@ -10,6 +10,8 @@
 #include "bmi088.h"
 #include "referee_UI.h"
 
+#include "DMmotor.h"
+
 static INS_Instance *gimbal_IMU_data; // 云台IMU数据
 DJIMotorInstance *yaw_motor, *pitch_motor;
 
