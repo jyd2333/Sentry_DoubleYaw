@@ -4,9 +4,9 @@
 *                         www.segger.com                             *
 **********************************************************************
 
-File          : D:/robomaster/2024_elctricity/2024_Omni-Infantry-main/test3.jdebug
-Created       : 8 May 2024 15:54
-Ozone Version : V3.30b
+File          : E:/Sentry/Sentry_DoubleYaw/test.jdebug
+Created       : 25 Dec 2025 23:11
+Ozone Version : V3.34a
 */
 
 /*********************************************************************
@@ -22,8 +22,8 @@ void OnProjectLoad (void) {
   //
   // Dialog-generated settings
   //
-  Project.AddPathSubstitute ("D:/robomaster/2024_elctricity/2024_Omni-Infantry-main", "$(ProjectDir)");
-  Project.AddPathSubstitute ("d:/robomaster/2024_elctricity/2024_omni-infantry-main", "$(ProjectDir)");
+  Project.AddPathSubstitute ("E:/Sentry/Sentry_DoubleYaw", "$(ProjectDir)");
+  Project.AddPathSubstitute ("e:/sentry/sentry_doubleyaw", "$(ProjectDir)");
   Project.SetDevice ("STM32F407IG");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
@@ -33,6 +33,7 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
+  Edit.SysVar (VAR_HSS_SPEED, FREQ_100_HZ);
   File.Open ("$(ProjectDir)/build/Debug/basic_framework.elf");
 }
 

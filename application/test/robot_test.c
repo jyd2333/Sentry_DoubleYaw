@@ -71,21 +71,21 @@ void NUC_offline()   //离线处理
 			
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart==&huart1)
-	{
-		if(NUC_rx_buff[0]==0xA5)
-		{
-		memcpy(&Navigation_Receive,NUC_rx_buff,sizeof(Navigation_Receive));
-		NUC_cmd.vx=Navigation_Receive.vx;
-		NUC_cmd.vy=-Navigation_Receive.vy;
+// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+// {
+// 	if(huart==&huart1)
+// 	{
+// 		if(NUC_rx_buff[0]==0xA5)
+// 		{
+// 		memcpy(&Navigation_Receive,NUC_rx_buff,sizeof(Navigation_Receive));
+// 		NUC_cmd.vx=Navigation_Receive.vx;
+// 		NUC_cmd.vy=-Navigation_Receive.vy;
 
-		// NUC_cmd.wz=Navigation_Receive.wz;
-		HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
-		}
-	}
-}
+// 		// NUC_cmd.wz=Navigation_Receive.wz;
+// 		HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
+// 		}
+// 	}
+// }
 
 void USB_Decode(void)
 {

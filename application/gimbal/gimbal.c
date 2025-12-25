@@ -57,27 +57,27 @@ void GimbalInit()
     //YAW
     Motor_Init_Config_s yaw_config = {
         .can_init_config = {
-            .can_handle = &hcan1,
+            .can_handle = &hcan2,
             .tx_id      = 1,
         },
         .controller_param_init_config = {
             .angle_PID = {
                 .Kp            = 0.5, // 0.24, // 0.31, // 0.45
                 .Ki            = 0,
-                .Kd            = 0.01,
+                .Kd            = 0,//0.01,
                 .DeadBand      = 0.0f,
-                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
+                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
                 .IntegralLimit = 20,
 
-                .MaxOut = 50,
+                .MaxOut = 20,
             },
             .speed_PID = {
-                .Kp            = 6000,//10000, //11000,
+                .Kp            = 800,//6000,//10000, //11000,
                 .Ki            = 0,    // 0
-                .Kd            = 5, // 30
-                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter,
+                .Kd            = 20,//5, // 30
+                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 5000,
-                .MaxOut        = 20000, // 20000
+                .MaxOut        = 5000, // 20000
             },
             .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET], // yaw反馈角度值
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -88,7 +88,7 @@ void GimbalInit()
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type       = ANGLE_LOOP,
             .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
-            .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
+            .motor_reverse_flag    = MOTOR_DIRECTION_REVERSE,
         },
         .motor_type = GM6020};
     // PITCH
@@ -129,7 +129,7 @@ void GimbalInit()
     };
     // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
     yaw_motor   = DJIMotorInit(&yaw_config);
-    pitch_motor = DJIMotorInit(&pitch_config);
+    // pitch_motor = DJIMotorInit(&pitch_config);
 
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));

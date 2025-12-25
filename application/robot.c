@@ -58,6 +58,9 @@ void RobotInit()
 #endif
     NUC_init();
     // UI_Init();
+    HAL_TIM_Base_Start(&htim1);//to be move to extern imu init part
+    __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1, 5000);
+    HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
     // // 初始化完成,开启中断
      __enable_irq();
 }

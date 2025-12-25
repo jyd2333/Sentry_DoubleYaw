@@ -439,7 +439,7 @@ static void RemoteControlSet()
             // if(NUC_cmd.vx>32767)NUC_cmd.vx-=65535;
             // if(NUC_cmd.vy>32767)NUC_cmd.vy-=65535;
             // if(NUC_cmd.wz>32767)NUC_cmd.wz-=65535;
-            if(1||NUC_cmd.vx!=0||NUC_cmd.vy!=0||NUC_cmd.wz!=0)//导航用
+            if(1||NUC_cmd.vx!=0||NUC_cmd.vy!=0||NUC_cmd.wz!=0)
             {
                 chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
                 chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
@@ -576,7 +576,7 @@ static void RemoteControlSet()
     {
         chassis_cmd_send.vx = 70.0f * (float)rc_data[TEMP].rc.rocker_r_; // 水平方向
         chassis_cmd_send.vy = 70.0f * (float)rc_data[TEMP].rc.rocker_r1; // 竖直方向
-        chassis_cmd_send.wz = 7.0f * (float)rc_data[TEMP].rc.rocker_l_; // 角速度
+        // chassis_cmd_send.wz = 7.0f * (float)rc_data[TEMP].rc.rocker_l_; // 角速度
         yaw_control -= YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
         pitch_control += PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
         if(rc_data[TEMP].rc.switch_left == RC_SW_MID) shoot_cmd_send.load_mode = LOAD_STOP;
@@ -588,6 +588,8 @@ static void RemoteControlSet()
     }
     // 云台参数
     YawControlProcess();
+    // if(yaw_control > 100) yaw_control = 100;
+    // if(yaw_control < -100) yaw_control = -100;
     gimbal_cmd_send.yaw   = yaw_control;
     gimbal_cmd_send.pitch = pitch_control;
 
