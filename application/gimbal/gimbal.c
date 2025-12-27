@@ -74,8 +74,8 @@ void GimbalInit()
             },
             .speed_PID = {
                 .Kp            = 150,//6000,//10000, //11000,
-                .Ki            = 0,    // 0
-                .Kd            = 10,//5, // 30
+                .Ki            = 100,    // 0
+                .Kd            = 20,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 5000,
                 .MaxOut        = 10000, // 20000
@@ -179,7 +179,7 @@ void GimbalTask()
     // 获取云台控制数据
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
-    big_yaw_target = big_yaw_motor->measure.pos + 0.5 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+    big_yaw_target = big_yaw_motor->measure.pos + 0.8 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {
