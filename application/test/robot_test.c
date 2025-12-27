@@ -10,7 +10,7 @@
 #include "crc16.h"
 NUC_cmd_t NUC_cmd;
 extern UART_HandleTypeDef huart1;
-extern DJIMotorInstance *yaw_motor,*pitch_motor;
+// extern DJIMotorInstance *yaw_motor,*pitch_motor;
 Chassis_Ctrl_Cmd_s chassis_nuc_send; 
 extern referee_info_t referee_info;           // 裁判系统数据
 // uint8_t dzx_is_awesome[USART_RXBUFF_LIMIT]; // nuc接收数组

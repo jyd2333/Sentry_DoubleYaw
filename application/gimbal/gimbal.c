@@ -13,7 +13,8 @@
 #include "DMmotor.h"
 
 static INS_Instance *gimbal_IMU_data; // 云台IMU数据
-DJIMotorInstance *yaw_motor, *pitch_motor;
+DJIMotorInstance *yaw_motor;
+DMMotorInstance *pitch_motor, *big_yaw_motor;
 
 static Publisher_t *gimbal_pub;                   // 云台应用消息发布者(云台反馈给cmd)
 static Subscriber_t *gimbal_sub;                  // cmd控制消息订阅者
@@ -91,45 +92,64 @@ void GimbalInit()
             .motor_reverse_flag    = MOTOR_DIRECTION_REVERSE,
         },
         .motor_type = GM6020};
-    // PITCH
-    Motor_Init_Config_s pitch_config = {
-        .can_init_config = {    
-            .can_handle = &hcan2,
-            .tx_id      = 4,
-        },
-        .controller_param_init_config = {
-            .angle_PID = {
-                .Kp            = 15, // 35, // 40, // 10
-                .Ki            = 0,
-                .Kd            = 0,
-                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 8,
-                .MaxOut        = 20
-            },
-            .speed_PID = {
-                .Kp            = 4000,//5000, // 10500, // 13000,//10500,  // 10500
-                .Ki            = 0,    // 12000, // 10000, // 10000
-                .Kd            = 0.5,    // 0
-                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter,
-                .IntegralLimit = 5000,
-                .MaxOut        = 16000,
-            },
-            .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
-            // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
-            .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_PITCH_ADDRESS_OFFSET],
-        },
-        .controller_setting_init_config = {
-            .angle_feedback_source = OTHER_FEED,
-            .speed_feedback_source = OTHER_FEED,
-            .outer_loop_type       = ANGLE_LOOP,
-            .close_loop_type       = SPEED_LOOP | ANGLE_LOOP,
-            .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
-        },
-        .motor_type = GM6020
-    };
-    // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
     yaw_motor   = DJIMotorInit(&yaw_config);
+    // PITCH
+    // Motor_Init_Config_s pitch_config = {
+    //     .can_init_config = {    
+    //         .can_handle = &hcan2,
+    //         .tx_id      = 4,
+    //     },
+    //     .controller_param_init_config = {
+    //         .angle_PID = {
+    //             .Kp            = 15, // 35, // 40, // 10
+    //             .Ki            = 0,
+    //             .Kd            = 0,
+    //             .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
+    //             .IntegralLimit = 8,
+    //             .MaxOut        = 20
+    //         },
+    //         .speed_PID = {
+    //             .Kp            = 4000,//5000, // 10500, // 13000,//10500,  // 10500
+    //             .Ki            = 0,    // 12000, // 10000, // 10000
+    //             .Kd            = 0.5,    // 0
+    //             .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter,
+    //             .IntegralLimit = 5000,
+    //             .MaxOut        = 16000,
+    //         },
+    //         .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
+    //         // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
+    //         .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_PITCH_ADDRESS_OFFSET],
+    //     },
+    //     .controller_setting_init_config = {
+    //         .angle_feedback_source = OTHER_FEED,
+    //         .speed_feedback_source = OTHER_FEED,
+    //         .outer_loop_type       = ANGLE_LOOP,
+    //         .close_loop_type       = SPEED_LOOP | ANGLE_LOOP,
+    //         .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
+    //     },
+    //     .motor_type = GM6020
+    // };
+    
+    // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
     // pitch_motor = DJIMotorInit(&pitch_config);
+
+    Motor_Init_Config_s pitch_motor_config = {//DM4310
+        .can_init_config = {
+            .can_handle = &hcan2,
+            .tx_id = 0x02,
+            .rx_id = 0x12,
+        },
+        .motor_type = DM_Motor,
+        .controller_setting_init_config = {
+            .control_range = {
+                .P_max = 12.5,
+                .V_max = 30,
+                .T_max = 10,
+            },
+        },
+    };
+    pitch_motor = DMMotorInit(&pitch_motor_config);
+
 
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
@@ -148,13 +168,14 @@ void GimbalTask()
         // 停止
         case GIMBAL_ZERO_FORCE:
             DJIMotorStop(yaw_motor);
-            DJIMotorStop(pitch_motor);
+            // DJIMotorStop(pitch_motor);
+            DMMotorStop(pitch_motor);
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
         case GIMBAL_GYRO_MODE: // 后续只保留此模式
             DJIMotorEnable(yaw_motor);
            //DJIMotorStop(yaw_motor);
-            DJIMotorEnable(pitch_motor);
+            DMMotorEnable1(pitch_motor);
            // DJIMotorStop(pitch_motor);
             //DJIMotorChangeFeed(yaw_motor, ANGLE_LOOP, OTHER_FEED);
             //DJIMotorChangeFeed(yaw_motor, SPEED_LOOP, OTHER_FEED);
@@ -163,7 +184,10 @@ void GimbalTask()
             //DJIMotorOuterLoop(yaw_motor, SPEED_LOOP);
             //DJIMotorEnable(yaw_motor);
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
-            DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
+            // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
+            pitch_motor->ctrl.kp_set = 8;
+            pitch_motor->ctrl.kd_set = 1;
+            pitch_motor->ctrl.pos_set = 1.086;
             break;
         default:
             break;

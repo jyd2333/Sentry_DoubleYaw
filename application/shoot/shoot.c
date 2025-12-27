@@ -49,7 +49,7 @@ void ShootInit()
             .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
         },
         .motor_type = M3508};
-    friction_config.can_init_config.tx_id                             = 4; // 左摩擦轮,改txid和方向就行
+    friction_config.can_init_config.tx_id                             = 1; // 左摩擦轮,改txid和方向就行
     friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
 
     friction_l = DJIMotorInit(&friction_config);
