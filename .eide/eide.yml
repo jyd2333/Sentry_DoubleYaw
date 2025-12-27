@@ -118,10 +118,11 @@ targets:
             language-cpp: c++11
             one-elf-section-per-data: true
             one-elf-section-per-function: true
-            optimization: level-debug
+            optimization: level-2
             warnings: all-warnings
           global:
             $float-abi-type: hard
+            arm-thumb-mode: thumb
             output-debug-info: enable
           linker:
             $toolName: auto

@@ -150,6 +150,22 @@ void GimbalInit()
     };
     pitch_motor = DMMotorInit(&pitch_motor_config);
 
+    Motor_Init_Config_s big_yaw_motor_config = {//DM6006
+        .can_init_config = {
+            .can_handle = &hcan1,
+            .tx_id = 0x01,
+            .rx_id = 0x11,
+        },
+        .motor_type = DM_Motor,
+        .controller_setting_init_config = {
+            .control_range = {
+                .P_max = 12.5,
+                .V_max = 45,
+                .T_max = 12,
+            },
+        },
+    };
+    big_yaw_motor = DMMotorInit(&big_yaw_motor_config);
 
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
@@ -170,12 +186,14 @@ void GimbalTask()
             DJIMotorStop(yaw_motor);
             // DJIMotorStop(pitch_motor);
             DMMotorStop(pitch_motor);
+            DMMotorStop(big_yaw_motor);
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
         case GIMBAL_GYRO_MODE: // 后续只保留此模式
             DJIMotorEnable(yaw_motor);
            //DJIMotorStop(yaw_motor);
             DMMotorEnable1(pitch_motor);
+            DMMotorEnable1(big_yaw_motor);
            // DJIMotorStop(pitch_motor);
             //DJIMotorChangeFeed(yaw_motor, ANGLE_LOOP, OTHER_FEED);
             //DJIMotorChangeFeed(yaw_motor, SPEED_LOOP, OTHER_FEED);
@@ -188,6 +206,10 @@ void GimbalTask()
             pitch_motor->ctrl.kp_set = 8;
             pitch_motor->ctrl.kd_set = 1;
             pitch_motor->ctrl.pos_set = 1.086;
+
+            big_yaw_motor->ctrl.kp_set = 10;
+            big_yaw_motor->ctrl.kd_set = 1;
+            big_yaw_motor->ctrl.pos_set = 3.05;
             break;
         default:
             break;

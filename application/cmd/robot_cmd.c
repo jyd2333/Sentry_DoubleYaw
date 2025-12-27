@@ -200,18 +200,19 @@ static void CalcOffsetAngle()
     gimbal_yaw_set_angle                = yaw_control;
     chassis_cmd_send.gimbal_error_angle = gimbal_yaw_set_angle - gimbal_yaw_current_angle; // 云台误差角
 
-#if YAW_ECD_GREATER_THAN_4096 // 如果大于180度
-    if (angle < 180.0f + YAW_ALIGN_ANGLE && angle >= YAW_ALIGN_ANGLE - 180.0f)
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-    else
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE + 360.0f;
-#else // 小于180度
-    if (angle >= YAW_ALIGN_ANGLE - 180.0f && angle <= YAW_ALIGN_ANGLE + 180.0f) {
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-    } else {
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE - 360.0f;
-    }
-#endif
+// #if YAW_ECD_GREATER_THAN_4096 // 如果大于180度
+//     if (angle < 180.0f + YAW_ALIGN_ANGLE && angle >= YAW_ALIGN_ANGLE - 180.0f)
+//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
+//     else
+//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE + 360.0f;
+// #else // 小于180度
+//     if (angle >= YAW_ALIGN_ANGLE - 180.0f && angle <= YAW_ALIGN_ANGLE + 180.0f) {
+//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
+//     } else {
+//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE - 360.0f;
+//     }
+// #endif
+    chassis_cmd_send.offset_angle = 180;
 }
 
 /**
