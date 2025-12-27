@@ -182,7 +182,7 @@ static void DeterminRobotID()
 
 float yaw_control;   // 遥控器YAW自由度输入值
 float pitch_control; // 遥控器PITCH自由度输入值
-
+float big_yaw_offset = 3.05f;
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
  *        单圈绝对角度的范围是0~360,说明文档中有图示
@@ -195,7 +195,7 @@ static void CalcOffsetAngle()
     static float angle;
     static float gimbal_yaw_current_angle;                                                // 云台yaw轴当前角度
     static float gimbal_yaw_set_angle;                                                    // 云台yaw轴目标角度
-    angle                               = gimbal_fetch_data.yaw_motor_single_round_angle; // 从云台获取的当前yaw电机单圈角度
+    angle                               = gimbal_fetch_data.yaw_motor_single_round_angle - (big_yaw_offset * RAD_2_DEGREE); // 从云台获取的当前yaw电机单圈角度
     gimbal_yaw_current_angle            = gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET];
     gimbal_yaw_set_angle                = yaw_control;
     chassis_cmd_send.gimbal_error_angle = gimbal_yaw_set_angle - gimbal_yaw_current_angle; // 云台误差角
@@ -212,7 +212,8 @@ static void CalcOffsetAngle()
 //         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE - 360.0f;
 //     }
 // #endif
-    chassis_cmd_send.offset_angle = 180;
+    if(angle < 0) angle += 360;
+    chassis_cmd_send.offset_angle = angle;
 }
 
 /**
@@ -326,7 +327,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 20;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 16;   // 射频默认30Hz
 
     if (rc_data[TEMP].rc.dial > 400) {
         SuperCap_flag_from_user = SUPER_USER_OPEN;
@@ -595,7 +596,7 @@ static void RemoteControlSet()
     gimbal_cmd_send.pitch = pitch_control;
 
     // 云台软件限位
-    PitchAngleLimit(); // PITCH限位
+    // PitchAngleLimit(); // PITCH限位
 }
 
 ramp_t fb_ramp;

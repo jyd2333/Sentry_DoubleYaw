@@ -272,7 +272,7 @@ static float Power_Output;
      cap->cap_msg_g.power_limit = chassis_cmd_recv.power_limit - 30 + 30 * (cap->cap_msg_s.CapVot - 17.0f) / 6.0f;
  }
 
-float offset_angle_watch;
+// float offset_angle_watch;
 uint8_t chassis_rate=100;
 int8_t chassis_flag=1;
 /* 机器人底盘控制核心任务 */
@@ -304,8 +304,8 @@ void ChassisTask()
     static float current_speed_vw, vw_set;
     // static ramp_t rotate_ramp;
 
-    offset_angle       = chassis_cmd_recv.offset_angle + chassis_cmd_recv.gimbal_error_angle;
-    offset_angle_watch = offset_angle;
+    offset_angle       = chassis_cmd_recv.offset_angle;// + chassis_cmd_recv.gimbal_error_angle;
+    // offset_angle_watch = offset_angle;
     // 根据控制模式设定旋转速度
     switch (chassis_cmd_recv.chassis_mode) {
         case CHASSIS_NO_FOLLOW:

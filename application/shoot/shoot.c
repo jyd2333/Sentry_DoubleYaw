@@ -50,12 +50,12 @@ void ShootInit()
         },
         .motor_type = M3508};
     friction_config.can_init_config.tx_id                             = 1; // 左摩擦轮,改txid和方向就行
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
 
     friction_l = DJIMotorInit(&friction_config);
 
     friction_config.can_init_config.tx_id                             = 3; // 右摩擦轮,改txid和方向就行
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
     friction_r                                                        = DJIMotorInit(&friction_config);
 
     // 拨盘电机
@@ -259,7 +259,7 @@ void ShootTask()
             break;
         // 连发模式
         case LOAD_BURSTFIRE:
-            DJIMotorSetRef(loader, shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 8);
+            DJIMotorSetRef(loader, shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 10 * 2.5);
             // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度,注意换算角速度(DJIMotor的速度单位是angle per second)
             break;
         case LOAD_REVERSE:
