@@ -182,7 +182,7 @@ static void DeterminRobotID()
 
 float yaw_control;   // 遥控器YAW自由度输入值
 float pitch_control; // 遥控器PITCH自由度输入值
-float big_yaw_offset = 3.05f;
+float big_yaw_offset = -1.584f;
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
  *        单圈绝对角度的范围是0~360,说明文档中有图示
@@ -319,6 +319,7 @@ int8_t pitch_search_flag=1;//pitch上升下降
 int8_t yaw_search_flag=1;
 extern decision_state_t Decision_State;
 extern INS_Instance *INS;
+int16_t yaw_test_count=1000,yaw_test_state=1,yaw_test_range = 45;
 /**
  * @brief 控制输入为遥控器(调试时)的模式和控制量设置
  *
@@ -592,6 +593,13 @@ static void RemoteControlSet()
     YawControlProcess();
     // if(yaw_control > 100) yaw_control = 100;
     // if(yaw_control < -100) yaw_control = -100;
+    // yaw_test_count--;
+    // if(yaw_test_count <= 0)
+    // {
+    //     yaw_test_count = 1000;
+    //     yaw_control += yaw_test_state * yaw_test_range;
+    //     yaw_test_state *= -1;
+    // }
     gimbal_cmd_send.yaw   = yaw_control;
     gimbal_cmd_send.pitch = pitch_control;
 

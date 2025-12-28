@@ -203,7 +203,7 @@ static int one_bullet;
 // static ramp_t fric_off_ramp;
 float fric_speed = 0; // 摩擦轮转速参考值
 uint32_t shoot_heat_count[2];
-
+static float target_fric_speed = 43500;
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
 {
@@ -273,7 +273,7 @@ void ShootTask()
     // 确定是否开启摩擦轮,后续可能修改为键鼠模式下始终开启摩擦轮(上场时建议一直开启)
     if (shoot_cmd_recv.friction_mode == FRICTION_ON) {
         // 根据收到的弹速设置设定摩擦轮电机参考值,需实测后填入
-        fric_speed = (shoot_speed + (36000 - shoot_speed) * ramp_calc(&fric_on_ramp));
+        fric_speed = (shoot_speed + (target_fric_speed - shoot_speed) * ramp_calc(&fric_on_ramp));
         ramp_init(&fric_off_ramp, 300);
     } else if (shoot_cmd_recv.friction_mode == FRICTION_OFF) {
         fric_speed = (shoot_speed + (0 - shoot_speed) * ramp_calc(&fric_off_ramp));

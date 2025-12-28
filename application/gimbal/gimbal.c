@@ -63,22 +63,22 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 1, // 0.24, // 0.31, // 0.45
-                .Ki            = 0,
-                .Kd            = 0,//0.01,
+                .Kp            = 12, // 0.24, // 0.31, // 0.45
+                .Ki            = 0.2,
+                .Kd            = 0.02,//0.01,
                 .DeadBand      = 0.0f,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
-                .IntegralLimit = 20,
+                .IntegralLimit = 20, 
 
-                .MaxOut = 50,
+                .MaxOut = 1000,
             },
             .speed_PID = {
-                .Kp            = 150,//6000,//10000, //11000,
-                .Ki            = 100,    // 0
-                .Kd            = 20,//5, // 30
+                .Kp            = 250,//6000,//10000, //11000,
+                .Ki            = 0,    // 0
+                .Kd            = 8,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 5000,
-                .MaxOut        = 10000, // 20000
+                .MaxOut        = 20000, // 20000
             },
             .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET], // yaw反馈角度值
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -207,8 +207,8 @@ void GimbalTask()
             // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             pitch_target = pitch_motor->measure.pos - (gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
 
-            pitch_motor->ctrl.kp_set = 8;
-            pitch_motor->ctrl.kd_set = 1;
+            pitch_motor->ctrl.kp_set = 50;
+            pitch_motor->ctrl.kd_set = 2;
             if(pitch_target>1.45) pitch_target = 1.45;
             if(pitch_target<0.6) pitch_target = 0.6;
             pitch_motor->ctrl.pos_set = pitch_target;
