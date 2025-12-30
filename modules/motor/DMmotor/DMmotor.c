@@ -195,11 +195,6 @@ void DMMotorControl()
                 pid_ref += *motor_controller->current_feedforward_ptr;
         motor->ctrl.tor_set = pid_ref;
         }
-
-       
-
-       
-
          if (motor->stop_flag == MOTOR_STOP) { 
             motor->ctrl.pos_set = 0 ;
             motor->ctrl.vel_set = 0 ;
@@ -212,16 +207,16 @@ void DMMotorControl()
         // memset(motor->motor_can_instance->tx_buff, 0, sizeof(motor->motor_can_instance->tx_buff));
         // memcpy(motor->motor_can_instance->tx_buff, &motor_controller->output_current, sizeof(float));
         // motor->motor_can_instance->tx_buff[6] = 0x01;
-       switch (motor->ctrl.mode) // 控制模式
-       {
-       case 0:
+    //    switch (motor->ctrl.mode) // 控制模式
+    //    {
+    //    case 0:
         mit_ctrl(motor);
-        break;
-         case 1:
-        pos_ctrl(motor);
-       default:
-        break;
-       }
+    //     break;
+    //      case 1:
+    //     pos_ctrl(motor);
+    //    default:
+    //     break;
+    //    }
         CANTransmit(motor->motor_can_instance, 0.1);
     }
 }

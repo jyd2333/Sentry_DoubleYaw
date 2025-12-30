@@ -157,7 +157,32 @@ void GimbalInit()
             .rx_id = 0x11,
         },
         .motor_type = DM_Motor,
-        .controller_setting_init_config = {
+        .controller_param_init_config ={
+            .angle_PID = {
+                .Kp = 15,
+                .Ki = 0.1,
+                .Kd = 0.5,
+                .DeadBand = 0,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
+                .IntegralLimit = 5,
+                .MaxOut = 30,
+            },
+            .speed_PID = {
+                .Kp = 1,
+                .Ki = 0,
+                .Kd = 0,
+                .DeadBand = 0,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
+                .IntegralLimit = 0,
+                .MaxOut = 10,
+            },
+        },
+        .controller_setting_init_config ={
+            .angle_feedback_source = MOTOR_FEED,
+            .speed_feedback_source = MOTOR_FEED,
+            .outer_loop_type       = ANGLE_LOOP,
+            .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
+            .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
             .control_range = {
                 .P_max = 12.5,
                 .V_max = 45,
@@ -179,7 +204,7 @@ void GimbalTask()
     // 获取云台控制数据
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
-    big_yaw_target = big_yaw_motor->measure.pos + 0.8 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+    big_yaw_target = big_yaw_motor->measure.pos + 1 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {
@@ -207,15 +232,16 @@ void GimbalTask()
             // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             pitch_target = pitch_motor->measure.pos - (gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
 
-            pitch_motor->ctrl.kp_set = 50;
+            pitch_motor->ctrl.kp_set = 30;
             pitch_motor->ctrl.kd_set = 2;
             if(pitch_target>1.45) pitch_target = 1.45;
             if(pitch_target<0.6) pitch_target = 0.6;
             pitch_motor->ctrl.pos_set = pitch_target;
 
-            big_yaw_motor->ctrl.kp_set = 5;
-            big_yaw_motor->ctrl.kd_set = 1;
-            big_yaw_motor->ctrl.pos_set = big_yaw_target;
+            // big_yaw_motor->ctrl.kp_set = 5;
+            // big_yaw_motor->ctrl.kd_set = 1;
+            // big_yaw_motor->ctrl.pos_set = big_yaw_target;
+            big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
             break;
         default:
             break;
@@ -229,7 +255,7 @@ void GimbalTask()
 
     big_yaw_fetch_angle = big_yaw_motor->measure.pos * RAD_2_DEGREE;
     big_yaw_fetch_angle_single = ((int32_t)big_yaw_fetch_angle + 180) % 360;
-    if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single+=360;
+    if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;
     gimbal_feedback_data.yaw_motor_single_round_angle = (uint16_t)big_yaw_fetch_angle_single; // 推送消息
     gimbal_feedback_data.yaw_ecd                      = yaw_motor->measure.ecd;
 
