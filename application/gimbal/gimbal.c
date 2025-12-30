@@ -159,7 +159,7 @@ void GimbalInit()
         .motor_type = DM_Motor,
         .controller_param_init_config ={
             .angle_PID = {
-                .Kp = 15,
+                .Kp = 5,
                 .Ki = 0.1,
                 .Kd = 0.5,
                 .DeadBand = 0,
@@ -196,6 +196,7 @@ void GimbalInit()
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
 }
 float pitch_target,big_yaw_target;
+float big_yaw_kp = 5;
 float big_yaw_fetch_angle;
 int32_t big_yaw_fetch_angle_single;
 /* 机器人云台控制核心任务,后续考虑只保留IMU控制,不再需要电机的反馈 */
@@ -205,6 +206,7 @@ void GimbalTask()
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
     big_yaw_target = big_yaw_motor->measure.pos + 1 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+    big_yaw_kp = 1 + (float)abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) / abs(YAW_LEFT_LIMIT_ECD - YAW_RIGHT_LIMIT_ECD) * 2 * 15;
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {
@@ -234,13 +236,14 @@ void GimbalTask()
 
             pitch_motor->ctrl.kp_set = 30;
             pitch_motor->ctrl.kd_set = 2;
-            if(pitch_target>1.45) pitch_target = 1.45;
-            if(pitch_target<0.6) pitch_target = 0.6;
+            if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
+            if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
             pitch_motor->ctrl.pos_set = pitch_target;
 
             // big_yaw_motor->ctrl.kp_set = 5;
             // big_yaw_motor->ctrl.kd_set = 1;
             // big_yaw_motor->ctrl.pos_set = big_yaw_target;
+            // big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
             big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
             break;
         default:

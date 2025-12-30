@@ -24,8 +24,8 @@
 
 
 #define NUC_TX_BUFF_SIZE  SEND_DATA_SIZE
-#define SEND_DATA_SIZE    sizeof(navigation_send_t)//28//24
-#define RECEIVE_DATA_SIZE sizeof(navigation_receive_t)
+#define SEND_DATA_SIZE    sizeof(vision_send_t)//28//24
+#define RECEIVE_DATA_SIZE sizeof(vision_receive_t)
 
 #define FRAME_HEADER      0X7B //Frame_header 
 #define FRAME_TAIL        0X7D //Frame_tail   
@@ -119,19 +119,22 @@ typedef struct
 typedef struct 
 {
     /* data */
-    float32_t vx;
-    float32_t vy;
-    float32_t wz;
+    int vx;
+    int vy;
+    int wz;
 	float pitch;
 	float yaw;
 	int shot;
-	uint16_t delay;
-	uint8_t vision_breath;
-	uint8_t vision_breath_last;
+	float distance;
+	int16_t delay;
+	uint32_t second;
+	uint32_t nano_second;
+	// uint8_t vision_breath;
+	// uint8_t vision_breath_last;
 	navigation_feed_e Navigation_Feed;
 	uint8_t scanMode;
 	uint8_t rotateMode;
-	float32_t odomYaw;
+	float odomYaw;
 }NUC_cmd_t;
 
 extern NUC_cmd_t NUC_cmd;
@@ -177,36 +180,56 @@ typedef struct
 
 typedef struct
 {
-	uint8_t header ;
-	uint8_t length;
-	uint8_t ID;
-	uint8_t crc1;
-	uint32_t timestamp;
-	float pitch;
-	float yaw;
-	uint16_t crc2;
-}navigation_send_t;
+	uint8_t head;//0
+	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）//1
+	uint16_t reserve_1;//2
+	float pitch;//4
+	float yaw;//8
+	uint16_t reserve_2;//12
+	uint16_t HP;//14
+	int16_t last_time;//16
+	// uint16_t outpost_HP;
+	// uint8_t outpost_state;
+	// uint8_t Back_forward;
+	// uint8_t drone_state;
+	// uint8_t game_state;
+	uint8_t reserve[13];//18
+	uint8_t end;//31
+}vision_send_t;
 
-#pragma pack (1)
 typedef struct
 {
-	uint8_t header;
-	uint8_t length;
-	uint8_t ID;
-	uint8_t crc1;
-	float32_t vx;
-	float32_t vy;
-	float32_t odomYaw;
-	float32_t reserve1;
-	uint8_t rotateMode;
-	uint8_t reserve2;
+	uint8_t head;
+	uint8_t shoot;//0：不开火 1：开火
+	uint16_t reserve;
+	float pitch;
+	float yaw;
+	float distance;
+	uint32_t second;
+	uint32_t nano_second;
+	uint8_t reserve1[6];
+	uint8_t buffer_type;//0x01
+	uint8_t end;
+}vision_receive_t;
+
+typedef struct
+{
+	uint8_t head;//0
+	uint8_t reserve;//1
+	uint8_t spin;
+	uint8_t reserve1[13];
+	float vx;
+	float vy;
+	float odomYaw;
+	uint8_t reserve2[2];
+	uint8_t buffer_type;//0x02
+	uint8_t end;
 }navigation_receive_t;
-#pragma pack ()	
 
 extern ReceivePacket_t ReceivePacket;
 
 void NUC_Send_Data();
-void data_transition(void);
+// void data_transition(void);
 void NUC_init(void);
 // void daemon_NUC();
 void NUC_offline();

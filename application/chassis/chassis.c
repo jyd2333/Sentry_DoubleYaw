@@ -355,7 +355,7 @@ void ChassisTask()
             break;
             
         case CHASSIS_REVERSE_ROTATE:
-            chassis_cmd_recv.wz = -5000;
+            chassis_cmd_recv.wz = -2500;
             cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD); // 矫正小陀螺偏心
             sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD);
         default:

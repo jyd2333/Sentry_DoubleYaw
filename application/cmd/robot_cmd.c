@@ -313,6 +313,8 @@ static void EmergencyHandler()
 float speed_k=1;
 float32_t nuc_yaw=-0.08;//0.003;
 float32_t nuc_pitch=0.3;
+uint32_t last_second,last_nano_second;
+int32_t shoot_wait=0;
 // uint16_t shoot_delay=0,fire_flag=0;
 uint16_t vision_wait=0;
 int8_t pitch_search_flag=1;//pitch上升下降
@@ -430,150 +432,62 @@ static void RemoteControlSet()
         // NUC_cmd.delay--;
         // if(NUC_cmd.delay<=0)
         // {
-        //     NUC_offline();
-        //     NUC_cmd.delay=200;
+        //     // NUC_offline();
+        //     NUC_cmd.delay=1000;
         // }
         // chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
         // shoot_cmd_send.friction_mode = FRICTION_ON;
         // else
         // {
             
-            // SubGetMessage(NUC_cmd_sub,&NUC_cmd_use);
-            // if(NUC_cmd.vx>32767)NUC_cmd.vx-=65535;
-            // if(NUC_cmd.vy>32767)NUC_cmd.vy-=65535;
-            // if(NUC_cmd.wz>32767)NUC_cmd.wz-=65535;
-            if(1||NUC_cmd.vx!=0||NUC_cmd.vy!=0||NUC_cmd.wz!=0)
-            {
-                chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
-                chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
-                // chassis_cmd_send.vx = NUC_cmd.vy * arm_cos_f32(NUC_cmd.odomYaw) - NUC_cmd.vx * arm_sin_f32(NUC_cmd.odomYaw);
-                // chassis_cmd_send.vy = NUC_cmd.vy * arm_sin_f32(NUC_cmd.odomYaw) + NUC_cmd.vx * arm_cos_f32(NUC_cmd.odomYaw);
-                yaw_control += nuc_yaw_k * NUC_cmd.odomYaw;
-                // yaw_control += YAW_K * NUC_cmd.wz*100;
-                // chassis_cmd_send.wz = speed_k * (float)NUC_cmd.wz; // 角速度
-                shoot_cmd_send.load_mode = LOAD_STOP;
-                switch(NUC_cmd.rotateMode)
-                {
-                    case 0:
-                        chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-                        break;
-                    case 1:
-                        chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
-                        break;
-                    case 2:
-                        chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
-                        break;
-                    default:
-                        chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-                        break;
-                }
-                // if(NUC_cmd.rotateMode == 1)
-                //     chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
-                // else
-                //     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-                if(abs(NUC_cmd.odomYaw)>0.1)
-                {
-                    pitch_control+=pitch_search_flag*0.0005+PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
-                    if(pitch_control>-0.10)
-                        pitch_search_flag=-1;
-                    if(pitch_control<-0.30)
-                        pitch_search_flag=1;
-                }
-            }
-            else
-            {
-                chassis_cmd_send.vx = 0;
-                chassis_cmd_send.vy = 0;
-                // if(NUC_cmd.shot==0)
-                // {
-                //     vision_wait++;
-                //     if(vision_wait>1000&&Decision_State.Behaviour_State!=SENTRY_STOP)
-                //     {
-                //         yaw_control += -YAW_K * (float)rc_data[TEMP].rc.rocker_l_+(float) 15  * 0.005;
-                //         // if(referee_data->GameRobotPos.angle>160) yaw_search_flag=-1;
-                //         // if(referee_data->GameRobotPos.angle<100) yaw_search_flag=1;
-                //         // yaw_control += -YAW_K * (float)rc_data[TEMP].rc.rocker_l_+(float) yaw_search_flag* 10  * 0.005;
-                //         // pitch_control=-0.10;
-                //         pitch_control+=pitch_search_flag*0.0005+PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
-                //         if(pitch_control>-0.10)
-                //             pitch_search_flag=-1;
-                //         if(pitch_control<-0.30)
-                //             pitch_search_flag=1;
-                //     }
-                // }
-                // else
-                // {
-                    // vision_wait=0;
-                    // if(NUC_cmd.vision_breath_last!=NUC_cmd.vision_breath)
-                    // {
-                        // yaw_control +=  (float)NUC_cmd.yaw *360/8196 *nuc_yaw-YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
-                        yaw_control = INS->output.INS_angle[2]*RAD_2_DEGREE-(float)NUC_cmd.yaw*RAD_TO_ANGLE;//*nuc_yaw;
-                        // pitch_control += (float)NUC_cmd.pitch *RAD_TO_ANGLE*nuc_pitch+ PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;   
-                        // pitch_control = INS->output.INS_angle[1]+(float)NUC_cmd.pitch*360/8196*nuc_pitch;
-                    // }
-                    if(pitch_control<-0.30)
-                    {
-                        pitch_control=-0.30;
-                    }
-                    if(pitch_control>0.15)
-                    {
-                        pitch_control=0.15;
-                    }
-                // }
-                
-                // if(NUC_cmd.shot==2&&shoot_cmd_send.friction_mode== FRICTION_ON )//火控
-                // {
-                //     shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
-                // }
-                // else
-                // {
-                    shoot_cmd_send.load_mode = LOAD_STOP;
-                // }
-            }
-            
+        chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
+        chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
+        if(NUC_cmd.rotateMode == 1)
+            chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
+        else
+            chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
 
-            // if(NUC_cmd.vx==0 && NUC_cmd. vy==0 && NUC_cmd.wz==0)//
-            // {
-            //     if(NUC_cmd.shot==0)
-            //     {
-            //         vision_wait++;
-            //         if(vision_wait>1000)
-            //         {
-            //             yaw_control += (float) 5  * 0.01;
-            //         }
-            //     }
-            //     else
-            //     {
-            //         vision_wait=0;
-                    // yaw_control +=  (float)NUC_cmd.yaw *360/8196 *nuc_yaw-YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
-            //     }
-            // }
-            // else
-            // {
-            //     yaw_control += YAW_K * (float)NUC_cmd.wz*0.1;
-            // }
-           
-            // if(NUC_cmd.shot==2&&shoot_cmd_send.friction_mode== FRICTION_ON )//未开启火控
-            // {
-            //     shoot_delay++;
-            //     if(shoot_delay>50)
-            //     {
-            //         fire_flag=1;
-            //     }
-            // }
-            // if(fire_flag==1)
-            // {
-            //     shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
-            //     shoot_delay--;
-            // }
-            // if(shoot_delay<=0)
-            // {
-            //     shoot_cmd_send.load_mode = LOAD_STOP;
-            //     fire_flag=0;
-            //     shoot_delay=0;
-            // }
+        if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
+        {
+            if(NUC_cmd.distance > 0)
+            {
+                yaw_control = NUC_cmd.yaw ;//+ INS->output.INS_angle_deg[2];
+                // yaw_control += NUC_cmd.yaw * nuc_yaw;
+                // yaw_control = INS->output.INS_angle[2]*RAD_2_DEGREE-(float)NUC_cmd.yaw*RAD_TO_ANGLE;//*nuc_yaw;
+                // pitch_control+= NUC_cmd.pitch * nuc_pitch;
+                pitch_control = NUC_cmd.pitch ;//+ INS->output.INS_angle[1] ; 
+                // pitch_control = INS->output.INS_angle[1]+(float)NUC_cmd.pitch*360/8196*nuc_pitch;
+                if(NUC_cmd.shot==1&&shoot_cmd_send.friction_mode== FRICTION_ON) 
+                {
+                    shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
+                    shoot_wait = 100;
+                }
+                else
+                {
+                    shoot_cmd_send.load_mode = LOAD_STOP;
+                }
+            }
+        }
+        if(shoot_wait>0) shoot_wait--;
+        if(shoot_wait<=0) shoot_cmd_send.load_mode = LOAD_STOP;
+        last_second=NUC_cmd.second;
+        last_nano_second=NUC_cmd.nano_second;
+        yaw_control-= YAW_K * (float)rc_data[TEMP].rc.rocker_l_;
+        pitch_control+=PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
+        // if(yaw_control>30) yaw_control=30;
+        // if(yaw_control<-30) yaw_control=-30;
+        if(1||NUC_cmd.distance < 0)
+        {
+            yaw_control += -YAW_K * (float)rc_data[TEMP].rc.rocker_l_+(float) NUC_cmd.odomYaw  * 0.001;
+            pitch_control += pitch_search_flag*0.0005+PITCH_K * (float)rc_data[TEMP].rc.rocker_l1;
+            if(pitch_control>-0.10)
+                pitch_search_flag=-1;
+            if(pitch_control<-0.30)
+                pitch_search_flag=1;
+        }
+        if(pitch_control<-0.20) pitch_control=-0.20;
+        if(pitch_control>0.3) pitch_control=0.3;
             
-        // }
     }
     else
     {

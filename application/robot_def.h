@@ -34,8 +34,14 @@
 #define PITCH_HORIZON_ECD         4240 // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
 #define PITCH_POS_UP_LIMIT_ECD    4900 // 云台竖直方向高处限位编码器值,若对云台有机械改动需要修改
 #define PITCH_POS_DOWN_LIMIT_ECD  3750 // 云台竖直方向低处限位编码器值,若对云台有机械改动需要修改
-#define YAW_BIG_YAW_ALIGN_ECD     2524 //大小Yaw对齐时小Yaw编码器值
 
+#define PITCH_HORIZON_POS           1.086f  //云台水平时电机反馈位置
+#define PITCH_UP_POS                0.60f  //云台上限位时电机反馈位置（较机械限位略微保守）
+#define PITCH_DOWN_POS              1.45f  //云台下限位时电机反馈位置（较机械限位略微保守）
+#define YAW_BIG_YAW_ALIGN_ECD       2524    //大小Yaw对齐时小Yaw编码器值
+#define YAW_LEFT_LIMIT_ECD          4015    //小Yaw左限位时电机反馈位置
+#define YAW_RIGHT_LIMIT_ECD         1027    //小Yaw右限位时电机反馈位置
+#define BIG_YAW_CHASSIS_ALIGN_POS   -1.584f //大Yaw与底盘对齐时单机反馈位置
 
 
 #define PITCH_FEED_TYPE     1// 云台PITCH轴反馈值来源:编码器为0,陀螺仪为1

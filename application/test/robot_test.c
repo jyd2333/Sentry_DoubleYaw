@@ -42,8 +42,9 @@ extern INS_Instance *INS;
 USART_Init_Config_s NUC_Init_Config;
 uint16_t daemon_reload=1000; //允许的串口离线时间
 decision_state_t Decision_State={};
-navigation_send_t Navigation_Send={};
-navigation_receive_t Navigation_Receive={};
+vision_send_t Vision_Send;
+vision_receive_t Vision_Receive;
+navigation_receive_t Navigation_Receive;
 
 
 extern struct SolveTrajectoryParams st;
@@ -89,15 +90,37 @@ void NUC_offline()   //离线处理
 
 void USB_Decode(void)
 {
-	memcpy(&Navigation_Receive,UserRxBufferFS ,sizeof(Navigation_Receive));
-	if(Navigation_Receive.header == 0x5A)
+	// if(NUC_rx_buff[0]==0xFF&&NUC_rx_buff[31]==0x0D)
+	// {
+	// 	NUC_cmd.delay=1000;
+	// }
+	if(UserRxBufferFS[31] == 0x01) memcpy(&Vision_Receive,UserRxBufferFS ,sizeof(Vision_Receive));
+	if(UserRxBufferFS[31] == 0x02) memcpy(&Navigation_Receive,UserRxBufferFS ,sizeof(Navigation_Receive));
+	
+	NUC_cmd.vx = Navigation_Receive.vx;
+	NUC_cmd.vy = -Navigation_Receive.vy;
+	// NUC_cmd.scanMode = Navigation_Receive.scanMode;
+	NUC_cmd.rotateMode = Navigation_Receive.spin;
+	NUC_cmd.odomYaw = Navigation_Receive.odomYaw;
+	
+	vision_yaw= Vision_Receive.yaw;
+	vision_pitch= Vision_Receive.pitch;
+	NUC_cmd.second=Vision_Receive.second;
+	NUC_cmd.nano_second=Vision_Receive.nano_second;
+	NUC_cmd.distance=Vision_Receive.distance;
+	if(Vision_Receive.distance > 0)
 	{
-		NUC_cmd.vx = Navigation_Receive.vx;
-		NUC_cmd.vy = -Navigation_Receive.vy;
-		// NUC_cmd.scanMode = Navigation_Receive.scanMode;
-		NUC_cmd.rotateMode = Navigation_Receive.rotateMode;
-		NUC_cmd.odomYaw = Navigation_Receive.odomYaw;
+		NUC_cmd.pitch = vision_pitch;
+		NUC_cmd.yaw =vision_yaw;
+		NUC_cmd.shot = Vision_Receive.shoot;
 	}
+	else
+	{
+		NUC_cmd.pitch=0;
+		NUC_cmd.yaw=0;
+		NUC_cmd.shot=0;
+	}
+	return;
 }
 
 void NUC_init(void)
@@ -115,74 +138,27 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
  *@Param:       形参
  *@Return:	  	返回值
  */
-void data_transition(void)
-{
 
-    //SubGetMessage(IMU_Data_sub, &IMU_Data);
-    // SubGetMessage(chassis_nuc_sub, &chassis_data_to_nuc);
-	chassis_data_to_nuc=&chassis_nuc_send;
-    //帧头
-	Send_Data.Frame_Header = FRAME_HEADER; 
-   //三轴线速度(直接从遥控器获取了，后续改实际反馈值)
-	Send_Data.X_speed =  chassis_data_to_nuc->vx ;
-	Send_Data.Y_speed =  chassis_data_to_nuc->vy ;
-	Send_Data.Z_speed =  chassis_data_to_nuc->wz ;  
-    //三轴线加速度
-    Send_Data.Accelerometer.X_data =  /*IMU_Data->gimbal_imu_data->*/NUC_SEND_IMU->INS_data.INS_accel[1] ;//加速度x、y轴与ROS轴互换
-    Send_Data.Accelerometer.Y_data =  /*IMU_Data->gimbal_imu_data->*/NUC_SEND_IMU->INS_data.INS_accel[0] ;
-    Send_Data.Accelerometer.Z_data =  /*IMU_Data->gimbal_imu_data->*/NUC_SEND_IMU->INS_data.INS_accel[2] ;
-    //三轴角加速度
-    Send_Data.Gyroscope.X_data =  /*IMU_Data->gimbal_imu_data->*/NUC_SEND_IMU->INS_data.INS_gyro[1] ;
-    Send_Data.Gyroscope.Y_data =  /*IMU_Data->gimbal_imu_data->*/NUC_SEND_IMU->INS_data.INS_gyro[0] ;
-if(Flag_Stop==0) 
-    Send_Data.Gyroscope.Z_data =  /*IMU_Data->gimbal_imu_data->*/NUC_SEND_IMU->INS_data.INS_gyro[2] ;
-else  
-	Send_Data.Gyroscope.Z_data=0;   
-    //帧尾
-    Send_Data.Frame_Tail = FRAME_TAIL; 
-    Send_Data.Power_Voltage = 5200; //放大一千倍，接收后缩小一千倍
-
-	current_vx_t=-0.03702*beta*(motor_lf->measure.speed_rpm-motor_rf->measure.speed_rpm+motor_lb->measure.speed_rpm-motor_rb->measure.speed_rpm);
-	if(NUC_cmd.vx!=0)
-	{
-		if(NUC_cmd.vx>0&&current_vx_t>-1)	current_vx=-1;
-		if(NUC_cmd.vx<0&&current_vx_t<1)	current_vx=1;
-		if(current_vx_t>=1||current_vx_t<=-1) current_vx=current_vx_t;
-	}
-	else 
-	current_vx=current_vx_t;
-	// current_vy*=0.104*RADIUS_WHEEL*0.025;
-	//current_vx*=-0.03702*beta;
-	current_vy_t=-0.03702*beta*(-motor_lf->measure.speed_rpm-motor_rf->measure.speed_rpm+motor_lb->measure.speed_rpm+motor_rb->measure.speed_rpm);
-	if(NUC_cmd.vy!=0)
-	{
-		if(NUC_cmd.vy>0&&current_vy_t<1)	current_vy=1;
-		if(NUC_cmd.vy<0&&current_vy_t>-1)	current_vy=-1;
-		if(current_vy_t>=1||current_vy_t<=-1) current_vy=current_vy_t;
-	}
-	else 
-	current_vy=current_vy_t;
-	// current_vx*=0.104*RADIUS_WHEEL*0.025;
-	// current_vy*=-0.03702*beta;
-	current_wz=-0.05234*beta*(-motor_lf->measure.speed_rpm-motor_rf->measure.speed_rpm-motor_lb->measure.speed_rpm-motor_rb->measure.speed_rpm);
-	// current_wz*=0.104*RADIUS_WHEEL*0.025/0.15;
-	// current_wz*=-0.05234*beta;
-	current_yaw=(INS->output.INS_angle[2]+PI)*RAD_2_DEGREE*360/8192;
-}
 
 
 void NUC_Send_Data(){
-	
-	Navigation_Send.header = 0x5A;
-	Navigation_Send.length = 8;
-	Navigation_Send.ID = 0x0C;
-	Navigation_Send.pitch = INS->output.INS_angle[1];
-	Navigation_Send.yaw = INS->output.INS_angle[2];
-	// Navigation_Send.test_data=0xAB;
-	// Navigation_Send.tail=0x5B;
-	memcpy(NUC_tx_buff,&Navigation_Send,sizeof(Navigation_Send));
-	USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
+    
+	// Vision_Send.head
+	Vision_Send.pitch=INS->output.INS_angle[1];
+	Vision_Send.yaw=INS->output.INS_angle[2];
+	if(referee_info.GameState.game_progress == 4)
+	{
+		Vision_Send.enemy_color = (referee_info.GameRobotStatus.robot_id < 7) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
+		Vision_Send.last_time =  referee_info.GameState.stage_remain_time;
+	}
+	else
+	{
+		Vision_Send.enemy_color = 0;
+		Vision_Send.last_time = -1;
+	}
+	memcpy(NUC_tx_buff,&Vision_Send ,sizeof(Vision_Send));
 	// HAL_UART_Transmit_IT(&huart1,NUC_tx_buff,sizeof(NUC_tx_buff));
+	USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
 	// DMA_Cmd(DMA_Stream_NUC_TX, ENABLE);
 }
 
