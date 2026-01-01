@@ -58,7 +58,8 @@ static void DMMotorDecode(CANInstance *_instance)
 
     DaemonReload(motor->daemon); // 喂狗
     motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
-
+    
+    measure->last_pos = measure->pos;
 
 	measure->id = (rx_buff[0])&0x0F;
 	measure->state = (rx_buff[0])>>4;
@@ -71,6 +72,9 @@ static void DMMotorDecode(CANInstance *_instance)
 	measure->Tmos = (float)(rx_buff[6]);
 	measure->Tcoil = (float)(rx_buff[7]);
    
+    if(measure->pos - measure->last_pos > 2 * PI) measure->total_round--;
+    if(measure->pos - measure->last_pos < -2 * PI) measure->total_round++;
+    measure->total_pos = measure->pos + measure->total_round * 25;
 
     DMMotorErrorDetection(motor);
 }

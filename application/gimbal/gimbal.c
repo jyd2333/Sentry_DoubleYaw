@@ -206,7 +206,7 @@ void GimbalTask()
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
     big_yaw_target = big_yaw_motor->measure.pos + 1 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
-    big_yaw_kp = 1 + (float)abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) / abs(YAW_LEFT_LIMIT_ECD - YAW_RIGHT_LIMIT_ECD) * 2 * 15;
+    big_yaw_kp = 2 + (float)((abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)) < 250 ? 0 : (abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)-250))/ abs(YAW_LEFT_LIMIT_ECD - YAW_RIGHT_LIMIT_ECD) * 2 * 16;
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {
@@ -233,8 +233,9 @@ void GimbalTask()
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
             // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             pitch_target = pitch_motor->measure.pos - (gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
+            // pitch_target = 1.086f;
 
-            pitch_motor->ctrl.kp_set = 30;
+            pitch_motor->ctrl.kp_set = 80;
             pitch_motor->ctrl.kd_set = 2;
             if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
             if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
@@ -243,7 +244,7 @@ void GimbalTask()
             // big_yaw_motor->ctrl.kp_set = 5;
             // big_yaw_motor->ctrl.kd_set = 1;
             // big_yaw_motor->ctrl.pos_set = big_yaw_target;
-            // big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
+            big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
             big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
             break;
         default:
@@ -256,7 +257,7 @@ void GimbalTask()
     // 设置反馈数据,主要是imu和yaw的ecd
     gimbal_feedback_data.gimbal_imu_data              = gimbal_IMU_data;
 
-    big_yaw_fetch_angle = big_yaw_motor->measure.pos * RAD_2_DEGREE;
+    big_yaw_fetch_angle = big_yaw_motor->measure.total_pos * RAD_2_DEGREE;
     big_yaw_fetch_angle_single = ((int32_t)big_yaw_fetch_angle + 180) % 360;
     if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;
     gimbal_feedback_data.yaw_motor_single_round_angle = (uint16_t)big_yaw_fetch_angle_single; // 推送消息
