@@ -72,9 +72,9 @@ static void DMMotorDecode(CANInstance *_instance)
 	measure->Tmos = (float)(rx_buff[6]);
 	measure->Tcoil = (float)(rx_buff[7]);
    
-    if(measure->pos - measure->last_pos > 2 * PI) measure->total_round--;
-    if(measure->pos - measure->last_pos < -2 * PI) measure->total_round++;
-    measure->total_pos = measure->pos + measure->total_round * 25;
+    if(measure->pos - measure->last_pos > (motor->motor_settings.control_range.P_max/2)) measure->total_round--;
+    if(measure->pos - measure->last_pos < -(motor->motor_settings.control_range.P_max/2)) measure->total_round++;
+    measure->total_pos = measure->pos + measure->total_round * 2 * motor->motor_settings.control_range.P_max;
 
     DMMotorErrorDetection(motor);
 }

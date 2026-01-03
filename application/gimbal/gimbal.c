@@ -184,7 +184,7 @@ void GimbalInit()
             .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
             .control_range = {
-                .P_max = 12.5,
+                .P_max = 12.5663704,
                 .V_max = 45,
                 .T_max = 12,
             },
@@ -257,7 +257,7 @@ void GimbalTask()
     // 设置反馈数据,主要是imu和yaw的ecd
     gimbal_feedback_data.gimbal_imu_data              = gimbal_IMU_data;
 
-    big_yaw_fetch_angle = big_yaw_motor->measure.total_pos * RAD_2_DEGREE;
+    big_yaw_fetch_angle = big_yaw_motor->measure.pos * RAD_2_DEGREE;
     big_yaw_fetch_angle_single = ((int32_t)big_yaw_fetch_angle + 180) % 360;
     if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;
     gimbal_feedback_data.yaw_motor_single_round_angle = (uint16_t)big_yaw_fetch_angle_single; // 推送消息
