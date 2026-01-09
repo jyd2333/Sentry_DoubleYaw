@@ -80,7 +80,7 @@
 // 陀螺仪校准数据，开启陀螺仪校准后可从INS中获取
 #define BMI088_PRE_CALI_GYRO_X_OFFSET -0.000909539289f
 #define BMI088_PRE_CALI_GYRO_Y_OFFSET 0.00354450056f
-#define BMI088_PRE_CALI_GYRO_Z_OFFSET 0.00155f
+#define BMI088_PRE_CALI_GYRO_Z_OFFSET -0.00185f
 // 陀螺仪默认环境温度
 #define BMI088_AMBIENT_TEMPERATURE 25.0f
 // 设置陀螺仪数据相较于云台的yaw,pitch,roll的方向
