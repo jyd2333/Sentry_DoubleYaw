@@ -1,25 +1,19 @@
 
 
-OpenDocument="startup_stm32f407ighx.s", FilePath="e:/Sentry/Sentry_DoubleYaw/Startup/startup_stm32f407ighx.s", Line=42
-OpenDocument="gimbal.c", FilePath="e:/Sentry/Sentry_DoubleYaw/application/gimbal/gimbal.c", Line=73
-OpenDocument="chassis.c", FilePath="e:/Sentry/Sentry_DoubleYaw/application/chassis/chassis.c", Line=75
-OpenDocument="main.c", FilePath="e:/Sentry/Sentry_DoubleYaw/Src/main.c", Line=70
+OpenDocument="stm32f4xx_hal_spi.c", FilePath="d:/Combat/Sentry_DoubleYaw/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c", Line=3483
+OpenDocument="bsp_dwt.c", FilePath="d:/Combat/Sentry_DoubleYaw/bsp/dwt/bsp_dwt.c", Line=100
+OpenDocument="main.c", FilePath="d:/Combat/Sentry_DoubleYaw/Src/main.c", Line=79
 OpenToolbar="Debug", Floating=0, x=0, y=0
-OpenWindow="Source Files", DockArea=LEFT, x=0, y=0, w=316, h=1060, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=0, w=507, h=1046, TabPos=1, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Data Sampling", DockArea=BOTTOM, x=1, y=0, w=378, h=254, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
-OpenWindow="Timeline", DockArea=BOTTOM, x=2, y=0, w=1803, h=254, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=1, DataPaneShown=1, PowerPaneShown=0, CodePaneShown=0, PinCursor="Cursor Movable", TimePerDiv="1 s / Div", TimeStampFormat="Time", DataGraphDrawAsPoints=0, DataGraphLegendShown=1, DataGraphUniformSampleSpacing=0, DataGraphLegendPosition="1396;0", DataGraphShowNamesAtCursor=0, PowerGraphDrawAsPoints=0, PowerGraphLegendShown=0, PowerGraphAvgFilterTime=Off, PowerGraphAvgFilterLen=Off, PowerGraphUniformSampleSpacing=0, PowerGraphLegendPosition="1612;-14", CodeGraphLegendShown=0, CodeGraphLegendPosition="1618;0"
-OpenWindow="Console", DockArea=BOTTOM, x=0, y=0, w=377, h=254, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Watched Data 2", DockArea=RIGHT, x=0, y=0, w=507, h=1046, TabPos=0, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Source Files", DockArea=LEFT, x=0, y=0, w=316, h=670, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=0, w=514, h=670, TabPos=0, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Data Sampling", DockArea=BOTTOM, x=1, y=0, w=959, h=254, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Console", DockArea=BOTTOM, x=0, y=0, w=960, h=254, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
-TableHeader="Watched Data 2", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[100;100;100;207]
-TableHeader="Source Files", SortCol="File", SortOrder="ASCENDING", VisibleCols=["File";"Status";"Size";"#Insts";"Path"], ColWidths=[151;100;100;100;662]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[150;156;100;100]
+TableHeader="Source Files", SortCol="File", SortOrder="ASCENDING", VisibleCols=["File";"Status";"Size";"#Insts";"Path"], ColWidths=[151;100;100;100;770]
 TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time"], ColWidths=[100;100]
-TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="DESCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[200;100;100;100;100;100;100;100;100]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="DESCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[200;100;100;100;100;100;100;107;107]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
 TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
-TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Refresh";"Location"], ColWidths=[150;156;100;100]
-TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;100;100;1351]
-WatchedExpression="yaw_motor", RefreshRate=5, Window=Watched Data 1
-WatchedExpression="yaw_control", RefreshRate=5, Window=Watched Data 2
-WatchedExpression="rc_data", RefreshRate=5, Window=Watched Data 2
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;100;100;372]
+WatchedExpression="yaw_motor", Window=Watched Data 1

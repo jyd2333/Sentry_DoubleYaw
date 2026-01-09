@@ -452,7 +452,7 @@ static void RemoteControlSet()
             if(NUC_cmd.distance > 0)
             {
                 yaw_control = NUC_cmd.yaw ;//+ INS->output.INS_angle_deg[2];
-                // yaw_control += NUC_cmd.yaw * nuc_yaw;
+                //yaw_control += NUC_cmd.yaw * nuc_yaw;
                 // yaw_control = INS->output.INS_angle[2]*RAD_2_DEGREE-(float)NUC_cmd.yaw*RAD_TO_ANGLE;//*nuc_yaw;
                 // pitch_control+= NUC_cmd.pitch * nuc_pitch;
                 pitch_control = NUC_cmd.pitch ;//+ INS->output.INS_angle[1] ; 

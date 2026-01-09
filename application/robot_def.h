@@ -35,12 +35,12 @@
 #define PITCH_POS_UP_LIMIT_ECD    4900 // 云台竖直方向高处限位编码器值,若对云台有机械改动需要修改
 #define PITCH_POS_DOWN_LIMIT_ECD  3750 // 云台竖直方向低处限位编码器值,若对云台有机械改动需要修改
 
-#define PITCH_HORIZON_POS           1.086f  //云台水平时电机反馈位置
-#define PITCH_UP_POS                0.60f  //云台上限位时电机反馈位置（较机械限位略微保守）
-#define PITCH_DOWN_POS              1.45f  //云台下限位时电机反馈位置（较机械限位略微保守）
-#define YAW_BIG_YAW_ALIGN_ECD       2524    //大小Yaw对齐时小Yaw编码器值
-#define YAW_LEFT_LIMIT_ECD          4015    //小Yaw左限位时电机反馈位置
-#define YAW_RIGHT_LIMIT_ECD         1027    //小Yaw右限位时电机反馈位置
+#define PITCH_HORIZON_POS           0.00f  //云台水平时电机反馈位置
+#define PITCH_UP_POS                -0.51f  //云台上限位时电机反馈位置（较机械限位略微保守）
+#define PITCH_DOWN_POS              0.45f  //云台下限位时电机反馈位置（较机械限位略微保守）
+#define YAW_BIG_YAW_ALIGN_ECD       5426    //大小Yaw对齐时小Yaw编码器值
+#define YAW_LEFT_LIMIT_ECD          7000    //小Yaw左限位时电机反馈位置
+#define YAW_RIGHT_LIMIT_ECD         4000    //小Yaw右限位时电机反馈位置
 #define BIG_YAW_CHASSIS_ALIGN_POS   -1.584f //大Yaw与底盘对齐时单机反馈位置
 
 
@@ -56,10 +56,11 @@
 // 机器人底盘修改的参数,单位为mm(毫米)
 #define WHEEL_BASE             350   // 320.5   // 纵向轴距(前进后退方向)
 #define TRACK_WIDTH            350   // 320.5   // 横向轮距(左右平移方向)
+#define CHASSIS_R              236   //轮子到车体中心的距离
 #define CENTER_GIMBAL_OFFSET_X 0     // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 #define CENTER_GIMBAL_OFFSET_Y 0     // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
-#define RADIUS_WHEEL           75   // 轮子半径
-#define REDUCTION_RATIO_WHEEL  19.0f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
+#define RADIUS_WHEEL           80   // 轮子半径
+#define REDUCTION_RATIO_WHEEL  15.76f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
 
 #define CHASSIS_SPEED          40000 // 键盘控制不限功率时底盘最大移动速度
 #define YAW_K                  0.0004f

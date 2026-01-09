@@ -94,8 +94,8 @@ void USB_Decode(void)
 	// {
 	// 	NUC_cmd.delay=1000;
 	// }
-	if(UserRxBufferFS[31] == 0x01) memcpy(&Vision_Receive,UserRxBufferFS ,sizeof(Vision_Receive));
-	if(UserRxBufferFS[31] == 0x02) memcpy(&Navigation_Receive,UserRxBufferFS ,sizeof(Navigation_Receive));
+	if(UserRxBufferFS[30] == 0x01) memcpy(&Vision_Receive,UserRxBufferFS ,sizeof(Vision_Receive));
+	if(UserRxBufferFS[30] == 0x02) memcpy(&Navigation_Receive,UserRxBufferFS ,sizeof(Navigation_Receive));
 	
 	NUC_cmd.vx = Navigation_Receive.vx;
 	NUC_cmd.vy = -Navigation_Receive.vy;
@@ -143,7 +143,7 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 
 void NUC_Send_Data(){
     
-	// Vision_Send.head
+	Vision_Send.head = 0xff;
 	Vision_Send.pitch=INS->output.INS_angle[1];
 	Vision_Send.yaw=INS->output.INS_angle[2];
 	if(referee_info.GameState.game_progress == 4)
@@ -156,6 +156,7 @@ void NUC_Send_Data(){
 		Vision_Send.enemy_color = 0;
 		Vision_Send.last_time = -1;
 	}
+	Vision_Send.end = 0x0d;
 	memcpy(NUC_tx_buff,&Vision_Send ,sizeof(Vision_Send));
 	// HAL_UART_Transmit_IT(&huart1,NUC_tx_buff,sizeof(NUC_tx_buff));
 	USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));

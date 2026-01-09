@@ -178,7 +178,7 @@ void MX_FREERTOS_Init(void) {
   motorControlHandle = osThreadNew(motorControlTask, NULL, &motorControl_attributes);
 
   /* creation of Daemon */
-  // DaemonHandle = osThreadNew(_DaemonTask, NULL, &Daemon_attributes);
+   DaemonHandle = osThreadNew(_DaemonTask, NULL, &Daemon_attributes);
 
   /* creation of UIDraw */
   // UIDrawHandle = osThreadNew(_UITask, NULL, &UIDraw_attributes);
