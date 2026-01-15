@@ -114,6 +114,19 @@ typedef struct
     uint8_t key_count[3][16];
 } RC_ctrl_t;
 
+typedef struct
+{
+    int16_t rocker_l_;  //CH4
+    int16_t rocker_l1;  //CH3
+    int16_t rocker_r_;  //CH1
+    int16_t rocker_r1;  //CH2
+    int16_t switch_SA;  //CH5
+    int16_t switch_SB;  //CH6
+    int16_t switch_SC;  //CH7
+    int16_t switch_SD;  //CH8
+    // uint8_t ori[10];
+} WFLY_ctrl_t;
+
 /* ------------------------- Internal Data ----------------------------------- */
 
 /**
