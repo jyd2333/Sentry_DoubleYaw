@@ -24,7 +24,7 @@ static Gimbal_Ctrl_Cmd_s gimbal_cmd_recv;         // 来自cmd的控制信息
 float chassis_rotate_wz_measure = 0;
 float chassis_rotate_sum = 0;
 float chassis_rotate_avg = 0;
-uint8_t chassis_rotate_count = 0;
+uint32_t chassis_rotate_count = 0;
 void GimbalInit()
 {
     BMI088_Init_Config_s config = {
@@ -180,7 +180,7 @@ void GimbalInit()
                 .IntegralLimit = 0,
                 .MaxOut = 10,
             },
-            // .speed_feedforward_ptr = &chassis_rotate_wz,
+            .speed_feedforward_ptr = &chassis_rotate_avg,
         },
         .controller_setting_init_config ={
             .angle_feedback_source = MOTOR_FEED,
@@ -193,7 +193,7 @@ void GimbalInit()
                 .V_max = 45,
                 .T_max = 12,
             },
-            // .feedforward_flag = SPEED_FEEDFORWARD,
+            .feedforward_flag = SPEED_FEEDFORWARD,
         },
     };
     big_yaw_motor = DMMotorInit(&big_yaw_motor_config);
@@ -212,15 +212,15 @@ void GimbalTask()
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
     big_yaw_target = big_yaw_motor->measure.pos + 1 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
-    big_yaw_kp = 2 + (float)((abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)) < 250 ? 0 : \
+    big_yaw_kp = 2 + (float)((abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)) < 250 ? 0 : 
                 (abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)-250))/ abs(YAW_LEFT_LIMIT_ECD - YAW_RIGHT_LIMIT_ECD) * 2 * 16;
     
-    chassis_rotate_wz_measure =  (motor_lf->measure.speed_rpm - motor_rf->measure.speed_rpm - motor_rb->measure.speed_rpm + motor_lb->measure.speed_rpm) / 4 / 60 * 2 * PI;
+    chassis_rotate_wz_measure =  (motor_lf->measure.speed_rpm + motor_rf->measure.speed_rpm + motor_rb->measure.speed_rpm + motor_lb->measure.speed_rpm) / 4 / 60 * 2 * PI;
     chassis_rotate_sum +=  chassis_rotate_wz_measure;
     chassis_rotate_count++;
-    if(chassis_rotate_count >= 999)
+    if(chassis_rotate_count >= 99)
     {
-        chassis_rotate_avg = 1.0 * chassis_rotate_sum / 1000;
+        chassis_rotate_avg = -1.1 * chassis_rotate_sum / 100 / 50;
         chassis_rotate_count = 0;
         chassis_rotate_sum = 0;
     }
@@ -255,7 +255,7 @@ void GimbalTask()
 
             pitch_motor->ctrl.kp_set = 80;
             pitch_motor->ctrl.kd_set = 2;
-            pitch_motor->ctrl.tor_set = -0.5;
+            pitch_motor->ctrl.tor_set = -0.584 * tan(0.82 + gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
             if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
             if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
             pitch_motor->ctrl.pos_set = pitch_target;
