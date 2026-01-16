@@ -255,6 +255,7 @@ void GimbalTask()
 
             pitch_motor->ctrl.kp_set = 80;
             pitch_motor->ctrl.kd_set = 2;
+            pitch_motor->ctrl.tor_set = -0.5;
             if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
             if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
             pitch_motor->ctrl.pos_set = pitch_target;

@@ -114,6 +114,12 @@ typedef struct
     uint8_t key_count[3][16];
 } RC_ctrl_t;
 
+typedef enum {
+    SWITCH_UP = 0,
+    SWITCH_MIDDLE,
+    SWITCH_DOWN,
+} switch_state_e;
+
 typedef struct
 {
     int16_t rocker_l_;  //CH4
@@ -124,6 +130,10 @@ typedef struct
     int16_t switch_SB;  //CH6
     int16_t switch_SC;  //CH7
     int16_t switch_SD;  //CH8
+    switch_state_e state_SA;
+    switch_state_e state_SB;
+    switch_state_e state_SC;
+    switch_state_e state_SD;
     // uint8_t ori[10];
 } WFLY_ctrl_t;
 

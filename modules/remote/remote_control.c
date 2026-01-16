@@ -10,7 +10,7 @@
 
 // 遥控器数据
 static RC_ctrl_t rc_ctrl[2];     //[0]:当前数据TEMP,[1]:上一次的数据LAST.用于按键持续按下和切换的判断
-volatile static WFLY_ctrl_t WFLY_ctrl;
+volatile static WFLY_ctrl_t WFLY_ctrl[2];
 static uint8_t rc_init_flag = 0; // 遥控器初始化标志位
 
 // 遥控器拥有的串口实例,因为遥控器是单例,所以这里只有一个,就不封装了
@@ -21,12 +21,12 @@ DaemonInstance *rc_daemon_instance;
  * @brief 矫正遥控器摇杆的值,超过660或者小于-660的值都认为是无效值,置0
  *
  */
-static void RectifyRCjoystick()
-{
-    for (uint8_t i = 0; i < 5; ++i)
-        if (abs(*(&rc_ctrl[TEMP].rc.rocker_l_ + i)) > 660)
-            *(&rc_ctrl[TEMP].rc.rocker_l_ + i) = 0;
-}
+// static void RectifyRCjoystick()
+// {
+//     for (uint8_t i = 0; i < 5; ++i)
+//         if (abs(*(&rc_ctrl[TEMP].rc.rocker_l_ + i)) > 660)
+//             *(&rc_ctrl[TEMP].rc.rocker_l_ + i) = 0;
+// }
 
 /**
  * @brief 遥控器数据解析
@@ -86,28 +86,26 @@ static void sbus_to_rc(const uint8_t *sbus_buf)
     // }
     if(sbus_buf[0] == 0x0F)
     {
+        memcpy(&WFLY_ctrl[LAST], &WFLY_ctrl[TEMP], sizeof(WFLY_ctrl_t));
 
-        WFLY_ctrl.rocker_r_ = (int16_t)((sbus_buf[1] & 0xFF)       |((sbus_buf[2] & 0x07) << 8)) - RC_CH_VALUE_OFFSET;
-        WFLY_ctrl.rocker_r1 = (int16_t)(((sbus_buf[2] >> 3) & 0x1F)|((sbus_buf[3] & 0x3F) << 5)) - RC_CH_VALUE_OFFSET;
-        WFLY_ctrl.rocker_l1 = (int16_t)(((sbus_buf[3] >> 6) & 0x03)|((sbus_buf[4] & 0xFF) << 2)    |((sbus_buf[5] & 0x01) << 10)) - RC_CH_VALUE_OFFSET;
-        WFLY_ctrl.rocker_l_ = (int16_t)(((sbus_buf[5] >> 1) & 0x7F)|((sbus_buf[6] & 0x0F) << 7)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].rocker_r_ = (int16_t)((sbus_buf[1] & 0xFF)       |((sbus_buf[2] & 0x07) << 8)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].rocker_r1 = (int16_t)(((sbus_buf[2] >> 3) & 0x1F)|((sbus_buf[3] & 0x3F) << 5)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].rocker_l1 = (int16_t)(((sbus_buf[3] >> 6) & 0x03)|((sbus_buf[4] & 0xFF) << 2)    |((sbus_buf[5] & 0x01) << 10)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].rocker_l_ = (int16_t)(((sbus_buf[5] >> 1) & 0x7F)|((sbus_buf[6] & 0x0F) << 7)) - RC_CH_VALUE_OFFSET;
 
-        WFLY_ctrl.switch_SA = (int16_t)(((sbus_buf[6] >> 4) & 0x0F)|((sbus_buf[7] & 0x7F) << 4)) - RC_CH_VALUE_OFFSET;
-        WFLY_ctrl.switch_SB = (int16_t)(((sbus_buf[7] >> 7) & 0x01)|((sbus_buf[8] & 0xFF) << 1)    |((sbus_buf[9] & 0x03) << 9)) - RC_CH_VALUE_OFFSET;
-        WFLY_ctrl.switch_SC = (int16_t)(((sbus_buf[9] >> 2) & 0x3F)|((sbus_buf[10] & 0x1F) << 6)) - RC_CH_VALUE_OFFSET;
-        WFLY_ctrl.switch_SD = (int16_t)(((sbus_buf[10] >> 5) & 0x07)|((sbus_buf[11] & 0xFF) << 3)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].switch_SA = (int16_t)(((sbus_buf[6] >> 4) & 0x0F)|((sbus_buf[7] & 0x7F) << 4)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].switch_SB = (int16_t)(((sbus_buf[7] >> 7) & 0x01)|((sbus_buf[8] & 0xFF) << 1)    |((sbus_buf[9] & 0x03) << 9)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].switch_SC = (int16_t)(((sbus_buf[9] >> 2) & 0x3F)|((sbus_buf[10] & 0x1F) << 6)) - RC_CH_VALUE_OFFSET;
+        WFLY_ctrl[TEMP].switch_SD = (int16_t)(((sbus_buf[10] >> 5) & 0x07)|((sbus_buf[11] & 0xFF) << 3)) - RC_CH_VALUE_OFFSET;
 
-        // WFLY_ctrl.ori[0] = sbus_buf[12];
-        // WFLY_ctrl.ori[1] = sbus_buf[13];
-        // WFLY_ctrl.ori[2] = sbus_buf[14];
-        // WFLY_ctrl.ori[3] = sbus_buf[15];
-        // WFLY_ctrl.ori[4] = sbus_buf[16];
-        // WFLY_ctrl.ori[5] = sbus_buf[17];
-        // WFLY_ctrl.ori[6] = sbus_buf[18];
-        // WFLY_ctrl.ori[7] = sbus_buf[19];
-        // WFLY_ctrl.ori[8] = sbus_buf[20];
+        WFLY_ctrl[TEMP].state_SA = WFLY_ctrl[TEMP].switch_SA >= 0 ? SWITCH_DOWN : SWITCH_UP;
+        if(WFLY_ctrl[TEMP].switch_SB == 0) WFLY_ctrl[TEMP].state_SB = SWITCH_MIDDLE;
+        else WFLY_ctrl[TEMP].state_SB = WFLY_ctrl[TEMP].switch_SB > 0 ? SWITCH_DOWN : SWITCH_UP;
+        if(WFLY_ctrl[TEMP].switch_SC == 0) WFLY_ctrl[TEMP].state_SC = SWITCH_MIDDLE;
+        else WFLY_ctrl[TEMP].state_SC = WFLY_ctrl[TEMP].switch_SC > 0 ? SWITCH_DOWN : SWITCH_UP;
+        WFLY_ctrl[TEMP].state_SD = WFLY_ctrl[TEMP].switch_SD >= 0 ? SWITCH_DOWN : SWITCH_UP;
     }
-    memcpy(&rc_ctrl[LAST], &rc_ctrl[TEMP], sizeof(RC_ctrl_t)); // 保存上一次的数据,用于按键持续按下和切换的判断
+    // memcpy(&rc_ctrl[LAST], &rc_ctrl[TEMP], sizeof(RC_ctrl_t)); // 保存上一次的数据,用于按键持续按下和切换的判断
 }
 
 /**
@@ -148,7 +146,7 @@ RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
     rc_daemon_instance = DaemonRegister(&daemon_conf);
 
     rc_init_flag = 1;
-    return rc_ctrl;
+    return WFLY_ctrl;
 }
 
 uint8_t RemoteControlIsOnline()
