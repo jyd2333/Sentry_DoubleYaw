@@ -27,8 +27,8 @@
 #define SEND_DATA_SIZE    sizeof(vision_send_t)//28//24
 #define RECEIVE_DATA_SIZE sizeof(vision_receive_t)
 
-#define FRAME_HEADER      0X7B //Frame_header 
-#define FRAME_TAIL        0X7D //Frame_tail   
+#define FRAME_HEADER    0X5A
+#define FRAME_END		0X55
 
 // #define NUC_RX_BUFF_SIZE 7+RECEIVE_DATA_SIZE  //NUC通信缓存大小
 #define NUC_RX_BUFF_SIZE RECEIVE_DATA_SIZE
@@ -46,29 +46,6 @@ SENTRY_TARGET:
 */
 
 
-
-
-
-//存放陀螺仪三轴可直接读取的数据（加速度、角加速度）的结构体//
-typedef struct __Mpu6050_Data_ 
-{
-	short X_data; //2 bytes //2¸ö×Ö½Ú
-	float Y_data; //2 bytes //2¸ö×Ö½Ú
-	float Z_data; //2 bytes //2¸ö×Ö½Ú
-}Mpu6050_Data;
-
-//串口发送数据的总格式（共22位）//
-typedef struct _SEND_DATA_
-{
-		unsigned char Frame_Header; //1¸字节
-		short X_speed;	            //2 bytes 
-		short Z_speed;              //2 bytes 
-		short Y_speed;              //2 bytes 
-		short Power_Voltage;        //2 bytes 
-		Mpu6050_Data Accelerometer; //6 bytes 
-		Mpu6050_Data Gyroscope;     //6 bytes 
-		unsigned char Frame_Tail;   //1 bytes 
-}SEND_DATA;
 typedef enum
 {
 	SENTRY_STOP,
@@ -139,78 +116,40 @@ typedef struct
 
 extern NUC_cmd_t NUC_cmd;
 
-typedef struct 
-{
-  uint8_t header;
-  uint8_t tracking; // 代表当前是否锁定目标
-  uint8_t id ;          // 0-outpost 6-guard 7-base
-  uint8_t armors_num ;  // 2-balance 3-outpost 4-normal
-  uint8_t reserved ;
-  float x; // 目标在世界坐标系下的 x 坐标
-  float y; // 目标在世界坐标系下的 Y 坐标
-  float z; //目标在世界坐标系下的 Z 坐标
-  float yaw; // 目标在世界坐标系下的倾斜角度
-  float vx; // 目标在世界坐标系下 x 方向的速度
-  float vy; // 目标在世界坐标系下 y 方向的速度
-  float vz; // 目标在世界坐标系下 z 方向的速度
-  float v_yaw; // 目标旋转的角速度
-  float r1; // 目标其中一组装甲板相对中心的半径
-  float r2; // 目标另一组装甲板相对中心的半径
-  float dz; // tracking 中的装甲板的上一块装甲板的 z 轴位置
-  uint16_t checksum ;
-} __attribute__((packed)) SendPacket_t;
-
-extern SendPacket_t SendPacket;
-
-typedef struct 
-{
-  uint8_t header ;
-  uint8_t detect_color ; // 0: red, 1: blue
-  uint8_t reset_tracker;
-  uint8_t reserved ;
-  float roll; // // 世界坐标系下云台当前的 roll
-  float pitch; // 世界坐标系下云台当前的 pitch
-  float yaw; // 世界坐标系下云台当前的 yaw
-  float aim_x;
-  float aim_y;
-  float aim_z;
-  uint16_t reserved_2;
-  uint16_t checksum ;
-} __attribute__((packed)) ReceivePacket_t;
-
+#pragma pack(1) // 压缩结构体,取消字节对齐
 typedef struct
 {
 	uint8_t head;//0
-	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）//1
-	uint16_t reserve_1;//2
-	float pitch;//4
-	float yaw;//8
-	uint16_t reserve_2;//12
-	uint16_t HP;//14
-	int16_t last_time;//16
-	// uint16_t outpost_HP;
-	// uint8_t outpost_state;
-	// uint8_t Back_forward;
-	// uint8_t drone_state;
-	// uint8_t game_state;
-	uint8_t reserve[13];//18
-	uint8_t end;//31
+	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
+	uint8_t game_progress;
+	uint8_t robot_level;
+	uint32_t Rfid_Status;
+	uint16_t current_hp;
+	uint16_t maximum_hp;
+	float pitch;
+	float yaw;
+	float bullet_speed;
+	uint16_t stage_remain_time;
+	uint8_t reserve[5];
+	uint8_t end;
 }vision_send_t;
 
 typedef struct
 {
 	uint8_t head;
-	uint8_t shoot;//0：不开火 1：开火
-	uint16_t reserve;
+	uint8_t fireadvise;//0：不开火 1：开火
+	uint8_t detect;
+	uint8_t chassis_status;
 	float pitch;
 	float yaw;
-	float distance;
 	uint32_t second;
 	uint32_t nano_second;
-	uint8_t reserve1[6];
-	uint8_t buffer_type;//0x01
+	float vx;
+	float vy;
+	uint8_t reserve[3];
 	uint8_t end;
 }vision_receive_t;
+#pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 
 typedef struct
 {
@@ -226,7 +165,6 @@ typedef struct
 	uint8_t end;
 }navigation_receive_t;
 
-extern ReceivePacket_t ReceivePacket;
 
 void NUC_Send_Data();
 // void data_transition(void);

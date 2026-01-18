@@ -124,7 +124,8 @@ static void RemoteControlRxCallback()
  */
 void RCLostCallback(void *id)
 {
-    memset(rc_ctrl, 0, sizeof(rc_ctrl)); // 清空遥控器数据
+    memset(WFLY_ctrl, 0, sizeof(WFLY_ctrl)); // 清空遥控器数据
+
     USARTServiceInit(rc_usart_instance); // 尝试重新启动接收
     LOGWARNING("[rc] remote control lost");
 }
@@ -144,7 +145,7 @@ RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
         .owner_id = NULL, // 只有1个遥控器,不需要owner_id
     };
     rc_daemon_instance = DaemonRegister(&daemon_conf);
-
+    memset(WFLY_ctrl, 0, sizeof(WFLY_ctrl));
     rc_init_flag = 1;
     return WFLY_ctrl;
 }

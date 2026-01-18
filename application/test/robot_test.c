@@ -18,12 +18,9 @@ extern referee_info_t referee_info;           // 裁判系统数据
 USARTInstance *NUC_recv;
 // static void NUC_Data_Decode(short *buff);
 
-SEND_DATA Send_Data;
 uint8_t NUC_tx_buff[NUC_TX_BUFF_SIZE]={0};
 uint8_t NUC_rx_buff[NUC_RX_BUFF_SIZE]={0};
 uint8_t *USB_rx_buff;
-SendPacket_t SendPacket;
-ReceivePacket_t ReceivePacket;
 float current_vx_t,current_vy_t;
 int16_t current_wz,current_vx,current_vy;
 uint16_t current_pitch,current_yaw;
@@ -34,8 +31,6 @@ int yaw_temp=0;
 uint8_t Flag_Stop=1; //失能标志位
 // static Subscriber_t * IMU_Data_sub;    //接收陀螺仪数据的订阅者实例
 //static Gimbal_Upload_Data_s *IMU_Data; // 用于接收陀螺仪数据
-static Subscriber_t *chassis_nuc_sub;  // 获取cmd发送给底盘的订阅者实例
-static Chassis_Ctrl_Cmd_s *chassis_data_to_nuc; // 用于接收cmd发送给底盘的控制信息 
 uint8_t Check_Sum(unsigned char StartNum ,unsigned char  Count_Number,unsigned char Mode);
 // static Publisher_t* NUC_pub;
 extern INS_Instance *INS;
@@ -94,44 +89,40 @@ void USB_Decode(void)
 	// {
 	// 	NUC_cmd.delay=1000;
 	// }
-	if(UserRxBufferFS[30] == 0x01) memcpy(&Vision_Receive,UserRxBufferFS ,sizeof(Vision_Receive));
-	if(UserRxBufferFS[30] == 0x02) memcpy(&Navigation_Receive,UserRxBufferFS ,sizeof(Navigation_Receive));
-	
-	NUC_cmd.vx = Navigation_Receive.vx;
-	NUC_cmd.vy = -Navigation_Receive.vy;
-	// NUC_cmd.scanMode = Navigation_Receive.scanMode;
-	NUC_cmd.rotateMode = Navigation_Receive.spin;
-	NUC_cmd.odomYaw = Navigation_Receive.odomYaw;
-	
-	vision_yaw= Vision_Receive.yaw;
-	vision_pitch= Vision_Receive.pitch;
-	NUC_cmd.second=Vision_Receive.second;
-	NUC_cmd.nano_second=Vision_Receive.nano_second;
-	NUC_cmd.distance=Vision_Receive.distance;
-	if(Vision_Receive.distance > 0)
+	if(UserRxBufferFS[0] == FRAME_HEADER && UserRxBufferFS[31] == FRAME_END)
 	{
-		NUC_cmd.pitch = vision_pitch;
-		NUC_cmd.yaw =vision_yaw;
-		NUC_cmd.shot = Vision_Receive.shoot;
-	}
-	else
-	{
-		NUC_cmd.pitch=0;
-		NUC_cmd.yaw=0;
-		NUC_cmd.shot=0;
+		memcpy(&Vision_Receive,UserRxBufferFS ,sizeof(Vision_Receive));
+		NUC_cmd.vx = Vision_Receive.vx;
+		NUC_cmd.vy = -Vision_Receive.vy;
+		NUC_cmd.rotateMode = Vision_Receive.chassis_status;
+		NUC_cmd.second=Vision_Receive.second;
+		NUC_cmd.nano_second=Vision_Receive.nano_second;
+		NUC_cmd.distance=Vision_Receive.detect;
+		if(Vision_Receive.detect)
+		{
+			NUC_cmd.pitch = vision_pitch;
+			NUC_cmd.yaw =vision_yaw;
+			NUC_cmd.shot = Vision_Receive.fireadvise;
+		}
+		else
+		{
+			NUC_cmd.pitch=0;
+			NUC_cmd.yaw=0;
+			NUC_cmd.shot=0;
+		}
 	}
 	return;
 }
 
 void NUC_init(void)
 {
-	
 	// HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
 	NUC_cmd.delay=200;
 	USB_rx_buff = USBInit(USB_conf);
-    chassis_nuc_sub  = SubRegister("chassis_cmd_2", sizeof(Chassis_Ctrl_Cmd_s));
 }
+
 extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
+
 /**
  *@Function:	NUC_Send_Data()
  *@Description:	NUC数据发送
@@ -139,24 +130,20 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
  *@Return:	  	返回值
  */
 
-
-
 void NUC_Send_Data(){
-    
-	Vision_Send.head = 0xff;
+	Vision_Send.head = FRAME_HEADER;
+	Vision_Send.enemy_color = (referee_info.GameRobotStatus.robot_id < 7) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
 	Vision_Send.pitch=INS->output.INS_angle[1];
 	Vision_Send.yaw=INS->output.INS_angle[2];
-	if(referee_info.GameState.game_progress == 4)
-	{
-		Vision_Send.enemy_color = (referee_info.GameRobotStatus.robot_id < 7) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
-		Vision_Send.last_time =  referee_info.GameState.stage_remain_time;
-	}
-	else
-	{
-		Vision_Send.enemy_color = 0;
-		Vision_Send.last_time = -1;
-	}
-	Vision_Send.end = 0x0d;
+	Vision_Send.game_progress = referee_info.GameState.game_progress;
+	Vision_Send.robot_level = referee_info.GameRobotStatus.robot_level;
+	Vision_Send.Rfid_Status = referee_info.Rfid_Status.rfid_status;
+	Vision_Send.current_hp = referee_info.GameRobotStatus.remain_HP;
+	Vision_Send.maximum_hp = referee_info.GameRobotStatus.max_HP;
+	Vision_Send.bullet_speed = referee_info.ShootData.bullet_speed;
+	Vision_Send.stage_remain_time = referee_info.GameState.stage_remain_time;
+	Vision_Send.end = FRAME_END;
+
 	memcpy(NUC_tx_buff,&Vision_Send ,sizeof(Vision_Send));
 	// HAL_UART_Transmit_IT(&huart1,NUC_tx_buff,sizeof(NUC_tx_buff));
 	USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));

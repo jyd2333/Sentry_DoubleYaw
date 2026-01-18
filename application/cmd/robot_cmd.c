@@ -558,6 +558,7 @@ static void RemoteControlSet()
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
                 else
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
+                // chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
                 yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_;+(float) NUC_cmd.odomYaw  * 0.001;
                 pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
                 break;

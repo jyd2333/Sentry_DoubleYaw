@@ -115,9 +115,9 @@ typedef struct
 } RC_ctrl_t;
 
 typedef enum {
-    SWITCH_UP = 0,
+    SWITCH_DOWN = 0,
     SWITCH_MIDDLE,
-    SWITCH_DOWN,
+    SWITCH_UP,
 } switch_state_e;
 
 typedef struct
