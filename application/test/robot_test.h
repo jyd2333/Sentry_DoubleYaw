@@ -102,7 +102,7 @@ typedef struct
 	float pitch;
 	float yaw;
 	int shot;
-	float distance;
+	uint8_t detect;
 	int16_t delay;
 	uint32_t second;
 	uint32_t nano_second;

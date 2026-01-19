@@ -54,12 +54,12 @@ extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 void NUC_offline()   //离线处理
 {																																																					
 
-            NUC_cmd.vx=0;
-            NUC_cmd.vy=0;
-            NUC_cmd.wz=0;
-            NUC_cmd.pitch=0;
-            NUC_cmd.shot=0;
-            NUC_cmd.yaw=0;
+            NUC_cmd.vx = 0;
+            NUC_cmd.vy = 0;
+            NUC_cmd.wz = 0;
+            NUC_cmd.pitch = 0;
+            NUC_cmd.shot = 0;
+            NUC_cmd.yaw = 0;
 			// HAL_UART_Init(&huart1);
 			__HAL_UART_DISABLE_IT(&huart1,UART_IT_RXNE);
 
@@ -95,20 +95,22 @@ void USB_Decode(void)
 		NUC_cmd.vx = Vision_Receive.vx;
 		NUC_cmd.vy = -Vision_Receive.vy;
 		NUC_cmd.rotateMode = Vision_Receive.chassis_status;
-		NUC_cmd.second=Vision_Receive.second;
-		NUC_cmd.nano_second=Vision_Receive.nano_second;
-		NUC_cmd.distance=Vision_Receive.detect;
+		NUC_cmd.second = Vision_Receive.second;
+		NUC_cmd.nano_second = Vision_Receive.nano_second;
+		NUC_cmd.detect = Vision_Receive.detect;
+		vision_pitch = Vision_Receive.pitch;
+		vision_yaw = Vision_Receive.yaw;
 		if(Vision_Receive.detect)
 		{
 			NUC_cmd.pitch = vision_pitch;
-			NUC_cmd.yaw =vision_yaw;
+			NUC_cmd.yaw = vision_yaw;
 			NUC_cmd.shot = Vision_Receive.fireadvise;
 		}
 		else
 		{
-			NUC_cmd.pitch=0;
-			NUC_cmd.yaw=0;
-			NUC_cmd.shot=0;
+			NUC_cmd.pitch = 0;
+			NUC_cmd.yaw = 0;
+			NUC_cmd.shot = 0;
 		}
 	}
 	return;
@@ -117,7 +119,7 @@ void USB_Decode(void)
 void NUC_init(void)
 {
 	// HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
-	NUC_cmd.delay=200;
+	NUC_cmd.delay = 200;
 	USB_rx_buff = USBInit(USB_conf);
 }
 
@@ -132,9 +134,9 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 
 void NUC_Send_Data(){
 	Vision_Send.head = FRAME_HEADER;
-	Vision_Send.enemy_color = (referee_info.GameRobotStatus.robot_id < 7) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
-	Vision_Send.pitch=INS->output.INS_angle[1];
-	Vision_Send.yaw=INS->output.INS_angle[2];
+	Vision_Send.enemy_color = (referee_info.GameRobotStatus.robot_id < 7) ? 1 : 0 ;//Red 1~7 BLUE 101~107本机器人
+	Vision_Send.pitch = INS->output.INS_angle[1];
+	Vision_Send.yaw = INS->output.INS_angle[2];
 	Vision_Send.game_progress = referee_info.GameState.game_progress;
 	Vision_Send.robot_level = referee_info.GameRobotStatus.robot_level;
 	Vision_Send.Rfid_Status = referee_info.Rfid_Status.rfid_status;

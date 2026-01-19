@@ -424,12 +424,12 @@ static void RemoteControlSet()
 
 
 
-    // HeatControl();
+    
 
     //修改部分
     // if(rc_data[TEMP].rc.switch_left == RC_SW_DOWN&&rc_data[TEMP].rc.switch_right == RC_SW_MID) chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
     // 底盘参数
-    if(WFLY_data[TEMP].switch_SB == SWITCH_DOWN && WFLY_data[TEMP].switch_SC == SWITCH_DOWN && WFLY_data[TEMP].switch_SD == SWITCH_UP)
+    if(WFLY_data[TEMP].state_SB == SWITCH_DOWN && WFLY_data[TEMP].state_SC == SWITCH_DOWN && WFLY_data[TEMP].state_SD == SWITCH_UP)
     {    
         // NUC_cmd.delay--;
         // if(NUC_cmd.delay<=0)
@@ -438,27 +438,19 @@ static void RemoteControlSet()
         //     NUC_cmd.delay=1000;
         // }
         // chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
-        // shoot_cmd_send.friction_mode = FRICTION_ON;
+        shoot_cmd_send.friction_mode = FRICTION_ON;
         // else
         // {
             
         chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
         chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
-        if(NUC_cmd.rotateMode == 1)
-            chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
-        else
-            chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-
+        chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
         if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
         {
-            if(NUC_cmd.distance > 0)
+            if(NUC_cmd.detect)
             {
-                yaw_control = NUC_cmd.yaw ;//+ INS->output.INS_angle_deg[2];
-                //yaw_control += NUC_cmd.yaw * nuc_yaw;
-                // yaw_control = INS->output.INS_angle[2]*RAD_2_DEGREE-(float)NUC_cmd.yaw*RAD_TO_ANGLE;//*nuc_yaw;
-                // pitch_control+= NUC_cmd.pitch * nuc_pitch;
-                pitch_control = NUC_cmd.pitch ;//+ INS->output.INS_angle[1] ; 
-                // pitch_control = INS->output.INS_angle[1]+(float)NUC_cmd.pitch*360/8196*nuc_pitch;
+                yaw_control = NUC_cmd.yaw ;
+                pitch_control = NUC_cmd.pitch ;
                 if(NUC_cmd.shot==1&&shoot_cmd_send.friction_mode== FRICTION_ON) 
                 {
                     shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
@@ -476,27 +468,17 @@ static void RemoteControlSet()
         last_nano_second=NUC_cmd.nano_second;
         yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
         pitch_control+=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-        // if(yaw_control>30) yaw_control=30;
-        // if(yaw_control<-30) yaw_control=-30;
-        if(NUC_cmd.distance < 0)
+        if(NUC_cmd.detect == 0)
         {
-            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_;+(float) NUC_cmd.odomYaw  * 0.001;
-            pitch_control += pitch_search_flag*0.0005+PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
+            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.15;
+            pitch_control += pitch_search_flag*0.001+PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
             if(pitch_control>0.25)
                 pitch_search_flag=-1;
             if(pitch_control<-0.15)
                 pitch_search_flag=1;
         }
     }
-    // else
-    // {
-    //     chassis_cmd_send.vx = 70.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
-    //     chassis_cmd_send.vy = 70.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
-    //     // chassis_cmd_send.wz = 7.0f * (float)rc_data[TEMP].rc.rocker_l_; // 角速度
-    //     yaw_control -= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
-    //     pitch_control += PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-    //     if(rc_data[TEMP].rc.switch_left == RC_SW_MID) shoot_cmd_send.load_mode = LOAD_STOP;
-    // }
+
 
     if(WFLY_data[TEMP].state_SD == SWITCH_DOWN)
     {
@@ -536,7 +518,7 @@ static void RemoteControlSet()
         yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
         pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
     }
-    if(WFLY_data[TEMP].state_SD == SWITCH_UP && !(WFLY_data[TEMP].switch_SB == SWITCH_DOWN && WFLY_data[TEMP].switch_SC == SWITCH_DOWN))
+    if(WFLY_data[TEMP].state_SD == SWITCH_UP && !(WFLY_data[TEMP].state_SB == SWITCH_DOWN && WFLY_data[TEMP].state_SC == SWITCH_DOWN))
     {
         switch(WFLY_data[TEMP].state_SC)
         {
@@ -559,7 +541,7 @@ static void RemoteControlSet()
                 else
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
                 // chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
-                yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_;+(float) NUC_cmd.odomYaw  * 0.001;
+                yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_;//+(float) NUC_cmd.odomYaw  * 0.001;
                 pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
                 break;
             case SWITCH_UP://Vision
@@ -594,7 +576,7 @@ static void RemoteControlSet()
                 chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
                 if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
                 {
-                    if(NUC_cmd.distance > 0)
+                    if(NUC_cmd.detect)
                     {
                         yaw_control = NUC_cmd.yaw ;
                         pitch_control = NUC_cmd.pitch ;
@@ -625,6 +607,7 @@ static void RemoteControlSet()
     }
     // 云台参数
     YawControlProcess();
+    // HeatControl();
     // if(yaw_control > 100) yaw_control = 100;
     // if(yaw_control < -100) yaw_control = -100;
     // yaw_test_count--;

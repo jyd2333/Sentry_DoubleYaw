@@ -337,7 +337,7 @@ void ChassisTask()
            //  if (cap->cap_msg_s.SuperCap_open_flag_from_real == SUPERCAP_PMOS_OPEN) {
            //      vw_set = 7000;
            //  } else {
-                vw_set = 2500;
+                vw_set = 3000;
             // }
             // if(vw_set<=3000) chassis_flag=1;
             // if(vw_set>=6500) chassis_flag=-1;
@@ -348,8 +348,8 @@ void ChassisTask()
             
 
             chassis_cmd_recv.wz = chassis_vw;
-            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD); // 矫正小陀螺偏心
-            sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD);
+            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD); // 矫正小陀螺偏心
+            sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD);
             chassis_cmd_recv.vx *= 0.6;
             chassis_cmd_recv.vy *= 0.6;
             break;
