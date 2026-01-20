@@ -182,7 +182,6 @@ void DMMotorControl()
             pid_ref = PIDCalculate(&motor_controller->angle_PID, pid_measure, pid_ref);
             if (setting->feedforward_flag & SPEED_FEEDFORWARD)
                 pid_ref += *motor_controller->speed_feedforward_ptr;
-            motor->ctrl.vel_set = pid_ref;
         }
 
         // 电机反转判断
@@ -197,8 +196,10 @@ void DMMotorControl()
             pid_ref = PIDCalculate(&motor_controller->speed_PID, pid_measure, pid_ref);
             if (setting->feedforward_flag & CURRENT_FEEDFORWARD)
                 pid_ref += *motor_controller->current_feedforward_ptr;
-            motor->ctrl.tor_set = pid_ref;
         }
+        if (setting->feedback_reverse_flag == FEEDBACK_DIRECTION_REVERSE)
+            pid_ref *= -1;
+        motor->ctrl.tor_set = pid_ref;
         if (motor->stop_flag == MOTOR_STOP) {
             motor->ctrl.pos_set = 0;
             motor->ctrl.vel_set = 0;

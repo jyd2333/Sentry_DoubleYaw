@@ -471,7 +471,7 @@ static void RemoteControlSet()
         if(NUC_cmd.detect == 0)
         {
             yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.15;
-            pitch_control += pitch_search_flag*0.001+PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
+            pitch_control += pitch_search_flag*0.002+PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
             if(pitch_control>0.25)
                 pitch_search_flag=-1;
             if(pitch_control<-0.15)
