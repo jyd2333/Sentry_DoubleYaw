@@ -134,7 +134,7 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 
 void NUC_Send_Data(){
 	Vision_Send.head = FRAME_HEADER;
-	Vision_Send.enemy_color = (referee_info.GameRobotStatus.robot_id < 7) ? 1 : 0 ;//Red 1~7 BLUE 101~107本机器人
+	Vision_Send.enemy_color = (referee_info.referee_id.Robot_ID < 10) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
 	Vision_Send.pitch = INS->output.INS_angle[1];
 	Vision_Send.yaw = INS->output.INS_angle[2];
 	Vision_Send.game_progress = referee_info.GameState.game_progress;

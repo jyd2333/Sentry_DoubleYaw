@@ -166,7 +166,7 @@ void RobotCMDInit()
 
     robot_state = ROBOT_READY; // 启动时机器人进入工作模式,后续加入所有应用初始化完成之后再进入
 }
-
+uint16_t real_robot_id = 0;
 /**
  * @brief  判断各种ID，选择客户端ID
  * @param  referee_info_t *referee_info
@@ -176,9 +176,12 @@ void RobotCMDInit()
 static void DeterminRobotID()
 {
     // id小于7是红色,大于7是蓝色,0为红色，1为蓝色   #define Robot_Red 0    #define Robot_Blue 1
-    referee_data->referee_id.Robot_Color       = referee_data->GameRobotStatus.robot_id > 7 ? Robot_Blue : Robot_Red;
-    referee_data->referee_id.Cilent_ID         = 0x0100 + referee_data->GameRobotStatus.robot_id; // 计算客户端ID
-    referee_data->referee_id.Robot_ID          = referee_data->GameRobotStatus.robot_id;          // 计算机器人ID
+    if(referee_data->GameRobotStatus.robot_id == 7) real_robot_id = 7;//2025裁判系统发送未定义随机ID
+    if(referee_data->GameRobotStatus.robot_id == 107) real_robot_id = 107;//哨兵特判，其他兵种请修改
+    referee_data->referee_id.Robot_Color       = real_robot_id > 10 ? Robot_Blue : Robot_Red;
+    referee_data->referee_id.Cilent_ID         = 0x0100 + real_robot_id; // 计算客户端ID
+    referee_data->referee_id.Robot_ID          = real_robot_id;          // 计算机器人ID
+
     referee_data->referee_id.Receiver_Robot_ID = 0;
 }
 
