@@ -133,8 +133,9 @@ typedef struct
 	uint8_t armor_id;
 	uint8_t hurt_type;
 	float Yaw_diff;
-	uint8_t reserve[30];
+	uint8_t reserve[29];
 	uint16_t check_sum;
+	uint8_t end;
 }vision_send_t;
 typedef struct
 {
@@ -156,8 +157,9 @@ typedef struct
 	float detect_y2;
 	float detect_z2;
 	uint8_t detect_number2;
-	uint8_t reserve[8];
+	uint8_t reserve[7];
 	uint16_t check_sum;
+	uint8_t end;
 }vision_receive_t;
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 

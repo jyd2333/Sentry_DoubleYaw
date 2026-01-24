@@ -130,7 +130,7 @@ void RCLostCallback(void *id)
     LOGWARNING("[rc] remote control lost");
 }
 
-RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
+WFLY_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
 {
     USART_Init_Config_s conf;
     conf.module_callback = RemoteControlRxCallback;

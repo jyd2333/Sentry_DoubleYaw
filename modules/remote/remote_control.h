@@ -145,7 +145,7 @@ typedef struct
  * @attention 注意分配正确的串口硬件,遥控器在C板上使用USART3
  *
  */
-RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle);
+WFLY_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle);
 
 /**
  * @brief 检查遥控器是否在线,若尚未初始化也视为离线

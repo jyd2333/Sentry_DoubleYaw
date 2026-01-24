@@ -81,7 +81,7 @@ void ShootInit()
                 .Ki            = 0, // 1
                 .Kd            = 0,
                 .Improve       = PID_Integral_Limit,
-                .IntegralLimit = 5000,
+                .IntegralLimit = 3000,
                 .MaxOut        = 10000,
             },
         },
@@ -220,14 +220,16 @@ static int one_bullet;
 // static ramp_t fric_off_ramp;
 float fric_speed = 0; // 摩擦轮转速参考值
 uint32_t shoot_heat_count[2];
-static float target_fric_speed = 43500;
+static float target_fric_speed = 40000;
 uint8_t infraredSensor = 0,lastInfraredSensor = 0;
 loader_mode_e last_load_mode = LOAD_STOP;
 loader_state_e loader_state = LOAD_UNINIT;
 float loader_initial_offset = 0;
 float loader_pitch_offset = 0;
-float loader_offset = 0;
+float loader_offset = 300;
 int32_t load_count = 0;
+float cool_down_time = 0;
+float load_time_ms = 0;
 
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
@@ -264,7 +266,7 @@ void ShootTask()
         DJIMotorEnable(friction_r);
         DJIMotorEnable(loader);
     }
-
+    cool_down_time = 1000 / shoot_cmd_recv.shoot_rate;
     // 如果上一次触发单发或3发指令的时间加上不应期仍然大于当前时间(尚未休眠完毕),直接返回即可
     // 单发模式主要提供给能量机关激活使用(以及英雄的射击大部分处于单发)
     if (hibernate_time + dead_time > DWT_GetTimeline_ms())
@@ -305,6 +307,11 @@ void ShootTask()
             break;
         // 连发模式
         case LOAD_BURSTFIRE:
+            if((DWT_GetTimeline_ms() - load_time_ms) > cool_down_time)
+            {
+                load_count++;
+                load_time_ms = DWT_GetTimeline_ms();
+            }
             // DJIMotorSetRef(loader, shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 10 * 2.5);
             // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度,注意换算角速度(DJIMotor的速度单位是angle per second)
             break;

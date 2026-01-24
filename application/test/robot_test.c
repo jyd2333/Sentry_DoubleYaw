@@ -86,7 +86,7 @@ void USB_Decode(void)
 	// 	NUC_cmd.delay=1000;
 	// }
 	memcpy(&Vision_Receive,UserRxBufferFS,sizeof(Vision_Receive));
-	if(Vision_Receive.head == FRAME_HEADER && Vision_Receive.check_sum == Check_Sum(&Vision_Receive.head,sizeof(vision_receive_t)-2))
+	if(Vision_Receive.head == FRAME_HEADER && Vision_Receive.end == FRAME_END && Vision_Receive.check_sum == Check_Sum(&Vision_Receive.head,sizeof(vision_receive_t)-3))
 	{
 		NUC_cmd.vx = Vision_Receive.vx;
 		NUC_cmd.vy = -Vision_Receive.vy;
@@ -143,7 +143,8 @@ void NUC_Send_Data(){
 	Vision_Send.armor_id = referee_info.RobotHurt.armor_id;
 	Vision_Send.hurt_type = referee_info.RobotHurt.hurt_type;
 	Vision_Send.Yaw_diff = GetYawDiff();
-	Vision_Send.check_sum = Check_Sum(&Vision_Send.head,sizeof(vision_send_t)-2);
+	Vision_Send.check_sum = Check_Sum(&Vision_Send.head,sizeof(vision_send_t)-3);
+	Vision_Send.end = FRAME_END;
 
 	memcpy(NUC_tx_buff,&Vision_Send ,sizeof(Vision_Send));
 	// HAL_UART_Transmit_IT(&huart1,NUC_tx_buff,sizeof(NUC_tx_buff));

@@ -413,11 +413,11 @@ static void RemoteControlSet()
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 break;
             case SWITCH_MIDDLE:
-                shoot_cmd_send.friction_mode = FRICTION_OFF;//FRICTION_ON;
+                shoot_cmd_send.friction_mode = FRICTION_ON;
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 break;
             case SWITCH_UP:
-                shoot_cmd_send.friction_mode = FRICTION_OFF;//FRICTION_ON;
+                shoot_cmd_send.friction_mode = FRICTION_ON;
                 shoot_cmd_send.load_mode = LOAD_1_BULLET;
                 break;
             default:
