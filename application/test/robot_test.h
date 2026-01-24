@@ -24,7 +24,7 @@
 
 
 #define NUC_TX_BUFF_SIZE  SEND_DATA_SIZE
-#define SEND_DATA_SIZE    sizeof(vision_send_t)//28//24
+#define SEND_DATA_SIZE    sizeof(vision_send_t)
 #define RECEIVE_DATA_SIZE sizeof(vision_receive_t)
 
 #define FRAME_HEADER    0X5A
@@ -130,15 +130,17 @@ typedef struct
 	float yaw;
 	float bullet_speed;
 	uint16_t stage_remain_time;
-	uint8_t reserve[5];
-	uint8_t end;
+	uint8_t armor_id;
+	uint8_t hurt_type;
+	float Yaw_diff;
+	uint8_t reserve[30];
+	uint16_t check_sum;
 }vision_send_t;
-
 typedef struct
 {
 	uint8_t head;
 	uint8_t fireadvise;//0：不开火 1：开火
-	uint8_t detect;
+	uint8_t major_number;
 	uint8_t chassis_status;
 	float pitch;
 	float yaw;
@@ -146,8 +148,16 @@ typedef struct
 	uint32_t nano_second;
 	float vx;
 	float vy;
-	uint8_t reserve[3];
-	uint8_t end;
+	float detect_x1;
+	float detect_y1;
+	float detect_z1;
+	uint8_t detect_number1;
+	float detect_x2;
+	float detect_y2;
+	float detect_z2;
+	uint8_t detect_number2;
+	uint8_t reserve[8];
+	uint16_t check_sum;
 }vision_receive_t;
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 

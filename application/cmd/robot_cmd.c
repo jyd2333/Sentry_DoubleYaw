@@ -90,7 +90,7 @@ uint8_t UI_SendFlag = 1; // UI发送标志位
 
 uint8_t auto_rune; // 自瞄打符标志位
 
-float rec_yaw, rec_pitch;
+// float rec_yaw, rec_pitch;
 uint8_t i=0;
 uint8_t SuperCap_flag_from_user = 0; // 超电标志位
 float nuc_yaw_k = 0.00001;
@@ -326,7 +326,9 @@ int8_t pitch_search_flag=1;//pitch上升下降
 int8_t yaw_search_flag=1;
 extern decision_state_t Decision_State;
 extern INS_Instance *INS;
-int16_t yaw_test_count=1000,yaw_test_state=1,yaw_test_range = 45;
+int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 45;
+int16_t pitch_test_count = 1000,pitch_test_state = 1;
+float pitch_test_range = 0.05;
 /**
  * @brief 控制输入为遥控器(调试时)的模式和控制量设置
  *
@@ -347,91 +349,10 @@ static void RemoteControlSet()
     //memcpy(&rec_yaw, vision_recv_data, sizeof(float));
     //memcpy(&rec_pitch, vision_recv_data + 4, sizeof(float));
 
-
-
-
-    // switch (rc_data[TEMP].rc.switch_right) {
-    //     case RC_SW_MID:
-    //         if (rc_mode[CHASSIS_FREE] == 1) {
-    //             chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-    //         }
-            
-    //         if (rc_data[TEMP].rc.switch_left == RC_SW_MID && chassis_cmd_send.chassis_mode == CHASSIS_NO_FOLLOW) {
-    //             rc_mode[CHASSIS_ROTATION] = 1;
-    //             rc_mode[CHASSIS_FOLLOW]   = 1;
-    //         }
-
-    //         if (chassis_cmd_send.chassis_mode == CHASSIS_ROTATE) {
-    //             rc_mode[CHASSIS_ROTATION] = 0;
-    //         }
-
-    //         if (chassis_cmd_send.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW) {
-    //             rc_mode[CHASSIS_FOLLOW] = 0;
-    //         }
-    //         break;
-    //     case RC_SW_DOWN:
-    //         rc_mode[CHASSIS_FREE] = 0;
-    //         if (rc_mode[CHASSIS_ROTATE] == 1) {
-    //             if (rc_data[TEMP].rc.dial < -250) {
-    //                 chassis_cmd_send.chassis_mode = CHASSIS_REVERSE_ROTATE;
-    //             } else {
-    //                 chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
-    //             }
-    //         } else {
-    //             chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-    //         }
-    //         break;
-    //     case RC_SW_UP:
-    //         rc_mode[CHASSIS_FREE] = 0;
-    //         if (rc_mode[CHASSIS_FOLLOW] == 1) {
-    //             chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
-    //         } else {
-    //             chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
-    //         }
-    //         break;
-    //     default:
-    //         break;
-    // }
-
-    // switch (rc_data[TEMP].rc.switch_left) {
-    //     case RC_SW_MID:
-    //         if (rc_data[TEMP].rc.switch_right == RC_SW_MID) {
-    //             // 摩擦轮
-    //             if (rc_mode[SHOOT_FRICTION] == 0 && shoot_cmd_send.friction_mode == FRICTION_OFF) {
-    //                 rc_mode[SHOOT_FRICTION] = 1;
-    //             }
-    //         }
-    //         if (shoot_cmd_send.friction_mode == FRICTION_ON) {
-    //             rc_mode[SHOOT_FRICTION] = 0;
-    //         }
-    //         break;
-    //     case RC_SW_UP:
-    //         if (rc_mode[SHOOT_FRICTION] == 1) {
-    //             shoot_cmd_send.friction_mode = FRICTION_ON;
-    //         } else {
-    //             shoot_cmd_send.friction_mode = FRICTION_OFF;
-    //         }
-    //         break;
-    //     case RC_SW_DOWN:
-    //         if (rc_data[TEMP].rc.dial < -250) {
-    //             shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
-    //         } else {
-    //             shoot_cmd_send.load_mode = LOAD_1_BULLET;
-    //         }
-    //     default:
-    //         break;
-    // }
-
-
-
-
-
-
     
 
     //修改部分
     // if(rc_data[TEMP].rc.switch_left == RC_SW_DOWN&&rc_data[TEMP].rc.switch_right == RC_SW_MID) chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
-    // 底盘参数
     if(WFLY_data[TEMP].state_SB == SWITCH_DOWN && WFLY_data[TEMP].state_SC == SWITCH_DOWN && WFLY_data[TEMP].state_SD == SWITCH_UP)
     {    
         // NUC_cmd.delay--;
@@ -601,7 +522,7 @@ static void RemoteControlSet()
         }
     }
 
-    if(pitch_control<-0.20) pitch_control=-0.20;
+    if(pitch_control<-0.30) pitch_control=-0.30;
     if(pitch_control>0.3) pitch_control=0.3;
     rc_daemon_instance->temp_count--;
     if(rc_daemon_instance->temp_count<=0)
@@ -619,6 +540,13 @@ static void RemoteControlSet()
     //     yaw_test_count = 1000;
     //     yaw_control += yaw_test_state * yaw_test_range;
     //     yaw_test_state *= -1;
+    // }
+    // pitch_test_count--;
+    // if(pitch_test_count <= 0)
+    // {
+    //     pitch_test_count = 1000;
+    //     pitch_control += pitch_test_state * pitch_test_range;
+    //     pitch_test_state *= -1;
     // }
     gimbal_cmd_send.yaw   = yaw_control;
     gimbal_cmd_send.pitch = pitch_control;
@@ -887,17 +815,5 @@ void RobotCMDTask()
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
     // PubPushMessage(ui_cmd_pub, (void *)&ui_cmd_send);
 
-    // master
-    // static uint8_t frame_head[] = {0xAF, 0x32, 0x00, 0x12};
-    // memcpy(vision_send_data, frame_head, 4);
-    // memcpy(vision_send_data + 4, gimbal_fetch_data.gimbal_imu_data->INS_data.INS_quat, sizeof(float) * 4);
-    // memcpy(vision_send_data + 20, &referee_data->GameRobotState.robot_id, sizeof(uint8_t));
-    // memcpy(vision_send_data + 21, &auto_rune, sizeof(uint8_t));
-    // vision_send_data[22] = 0;
-    // for (size_t i = 0; i < 22; i++)
-    //     vision_send_data[22] += vision_send_data[i];
-    // HostSend(host_instance, vision_send_data, 23);
-
      NUC_Send_Data();
-     Decision_Tree();
 }

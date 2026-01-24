@@ -99,45 +99,6 @@ void GimbalInit()
         },
         .motor_type = GM6020};
     yaw_motor   = DJIMotorInit(&yaw_config);
-    // PITCH
-    // Motor_Init_Config_s pitch_config = {
-    //     .can_init_config = {    
-    //         .can_handle = &hcan2,
-    //         .tx_id      = 4,
-    //     },
-    //     .controller_param_init_config = {
-    //         .angle_PID = {
-    //             .Kp            = 15, // 35, // 40, // 10
-    //             .Ki            = 0,
-    //             .Kd            = 0,
-    //             .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-    //             .IntegralLimit = 8,
-    //             .MaxOut        = 20
-    //         },
-    //         .speed_PID = {
-    //             .Kp            = 4000,//5000, // 10500, // 13000,//10500,  // 10500
-    //             .Ki            = 0,    // 12000, // 10000, // 10000
-    //             .Kd            = 0.5,    // 0
-    //             .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_OutputFilter,
-    //             .IntegralLimit = 5000,
-    //             .MaxOut        = 16000,
-    //         },
-    //         .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
-    //         // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
-    //         .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_PITCH_ADDRESS_OFFSET],
-    //     },
-    //     .controller_setting_init_config = {
-    //         .angle_feedback_source = OTHER_FEED,
-    //         .speed_feedback_source = OTHER_FEED,
-    //         .outer_loop_type       = ANGLE_LOOP,
-    //         .close_loop_type       = SPEED_LOOP | ANGLE_LOOP,
-    //         .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
-    //     },
-    //     .motor_type = GM6020
-    // };
-    
-    // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
-    // pitch_motor = DJIMotorInit(&pitch_config);
 
     Motor_Init_Config_s pitch_motor_config = {//DM4310
         .can_init_config = {
@@ -148,9 +109,9 @@ void GimbalInit()
         .motor_type = DM_Motor,
         .controller_param_init_config ={
             .angle_PID = {
-                .Kp = 50,
-                .Ki = 10,
-                .Kd = 0,
+                .Kp = 110,
+                .Ki = 100,
+                .Kd = 0.01,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
                 .IntegralLimit = 3,
@@ -158,11 +119,11 @@ void GimbalInit()
             },
             .speed_PID = {
                 .Kp = 1,
-                .Ki = 0,
+                .Ki = 1,
                 .Kd = 0,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
-                .IntegralLimit = 0,
+                .IntegralLimit = 1,
                 .MaxOut = 5,
             },
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
@@ -275,13 +236,7 @@ void GimbalTask()
            //DJIMotorStop(yaw_motor);
             DMMotorEnable1(pitch_motor);
             DMMotorEnable1(big_yaw_motor);
-           // DJIMotorStop(pitch_motor);
-            //DJIMotorChangeFeed(yaw_motor, ANGLE_LOOP, OTHER_FEED);
-            //DJIMotorChangeFeed(yaw_motor, SPEED_LOOP, OTHER_FEED);
-            // DJIMotorChangeFeed(pitch_motor, ANGLE_LOOP, OTHER_FEED);
-            // DJIMotorChangeFeed(pitch_motor, SPEED_LOOP, OTHER_FEED);
-            //DJIMotorOuterLoop(yaw_motor, SPEED_LOOP);
-            //DJIMotorEnable(yaw_motor);
+           
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
             // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             // pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
