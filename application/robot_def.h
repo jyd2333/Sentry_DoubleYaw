@@ -42,6 +42,7 @@
 #define YAW_LEFT_LIMIT_ECD          7000    //小Yaw左限位时电机反馈位置
 #define YAW_RIGHT_LIMIT_ECD         4000    //小Yaw右限位时电机反馈位置
 #define BIG_YAW_CHASSIS_ALIGN_POS   -1.584f //大Yaw与底盘对齐时单机反馈位置
+#define LOADER_ANGLE_PER_BULLET     3240.0f   //拨出一发弹丸拨盘转动角度(36*90)
 
 
 #define PITCH_FEED_TYPE     1// 云台PITCH轴反馈值来源:编码器为0,陀螺仪为1
@@ -156,6 +157,12 @@ typedef enum {
     LOAD_1_BULLET,  // 单发
     LOAD_BURSTFIRE, // 连发
 } loader_mode_e;
+
+typedef enum {
+    LOAD_UNINIT = 0,     // 未初始化
+    LOAD_REINIT,         // 预初始化
+    LOAD_INFRARED_INIT,  // 对射式红外传感器初始化
+} loader_state_e;
 
 /* ----------------CMD应用发布的控制数据,应当由gimbal/chassis/shoot/UI订阅---------------- */
 /**
