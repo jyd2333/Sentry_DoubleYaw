@@ -24,8 +24,14 @@ static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信�
 static float hibernate_time = 0, dead_time = 0;
 
 float d_watch;
+uint8_t infraredSensor = 0,lastInfraredSensor = 0;
 void ShootInit()
 {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_11;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
     // 左摩擦轮
     Motor_Init_Config_s friction_config = {
         .can_init_config = {
@@ -33,7 +39,7 @@ void ShootInit()
         },
         .controller_param_init_config = {
             .speed_PID = {
-                .Kp            = 1,
+                .Kp            = 0.5,
                 .Ki            = 0,
                 .Kd            = 0,
                 .Improve       = PID_Integral_Limit,
@@ -106,11 +112,8 @@ void ShootInit()
     DJIMotorStop(friction_r);
     DJIMotorStop(loader);
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_11;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+    lastInfraredSensor = HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_11);
+
 }
 
 float Block_Time;        // 堵转时间
@@ -131,9 +134,11 @@ static void Load_Reverse()
     current_record[4] = loader->measure.real_current; // 第五个为最近的拨弹盘電流
     current_record[5] = (current_record[0] + current_record[1] + current_record[2] + current_record[3] + current_record[4]) / 5.0;
 
-    if (current_record[5] > 9900) {
+    if (current_record[5] > 7000) {//9900
         Block_Time++;
     }
+    else
+        Block_Time = 0;
 
     // 反转
     if (Reverse_Time >= 1) {
@@ -221,12 +226,11 @@ static int one_bullet;
 float fric_speed = 0; // 摩擦轮转速参考值
 uint32_t shoot_heat_count[2];
 static float target_fric_speed = 40000;
-uint8_t infraredSensor = 0,lastInfraredSensor = 0;
 loader_mode_e last_load_mode = LOAD_STOP;
 loader_state_e loader_state = LOAD_UNINIT;
 float loader_initial_offset = 0;
 float loader_pitch_offset = 0;
-float loader_offset = 300;
+float loader_offset = 1000;
 int32_t load_count = 0;
 float cool_down_time = 0;
 float load_time_ms = 0;
@@ -278,6 +282,7 @@ void ShootTask()
         // 停止拨盘
         case LOAD_STOP:
             // DJIMotorSetRef(loader, 0); // 同时设定参考值为0,这样停止的速度最快
+            DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             shoot_heat_count[0] = shoot_count;
             shoot_heat_count[1] = shoot_heat_count[0];
             one_bullet          = 0;
@@ -303,7 +308,7 @@ void ShootTask()
             {
                 load_count++;
             }
-            // DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
+            DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             break;
         // 连发模式
         case LOAD_BURSTFIRE:
@@ -312,17 +317,15 @@ void ShootTask()
                 load_count++;
                 load_time_ms = DWT_GetTimeline_ms();
             }
-            // DJIMotorSetRef(loader, shoot_cmd_recv.shoot_rate * 360 * REDUCTION_RATIO_LOADER / 10 * 2.5);
-            // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度,注意换算角速度(DJIMotor的速度单位是angle per second)
+            DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             break;
         case LOAD_REVERSE:
-            // DJIMotorSetRef(loader, -40000);
-            // x颗/秒换算成速度: 已知一圈的载弹量,由此计算出1s需要转的角度,注意换算角速度(DJIMotor的速度单位是angle per second)
+            DJIMotorSetRef(loader, (load_count - 1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             break;
         default:
             while (1); // 未知模式,停止运行,检查指针越界,内存溢出等问题
     }
-    DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
+    // DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
     last_load_mode = shoot_cmd_recv.load_mode;
     // 确定是否开启摩擦轮,后续可能修改为键鼠模式下始终开启摩擦轮(上场时建议一直开启)
     if (shoot_cmd_recv.friction_mode == FRICTION_ON) {

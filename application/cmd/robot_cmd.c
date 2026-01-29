@@ -326,7 +326,7 @@ int8_t pitch_search_flag=1;//pitch上升下降
 int8_t yaw_search_flag=1;
 extern decision_state_t Decision_State;
 extern INS_Instance *INS;
-int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 45;
+int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 30;
 int16_t pitch_test_count = 1000,pitch_test_state = 1;
 float pitch_test_range = 0.05;
 /**
@@ -429,7 +429,7 @@ static void RemoteControlSet()
                 chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
                 break;
             case SWITCH_MIDDLE:
-                chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//todo
+                chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;//todo
                 break;
             case SWITCH_UP:
                 chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;

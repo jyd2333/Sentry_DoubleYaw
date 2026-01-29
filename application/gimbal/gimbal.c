@@ -69,17 +69,16 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 1.5,//12, // 0.24, // 0.31, // 0.45
-                .Ki            = 0.1,
+                .Kp            = 0.5,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 0.01,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
                 .IntegralLimit = 20, 
-
                 .MaxOut = 1000,
             },
             .speed_PID = {
-                .Kp            = 1600,//6000,//10000, //11000,
+                .Kp            = 3000,//6000,//10000, //11000,
                 .Ki            = 0,    // 0
                 .Kd            = 8,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
@@ -162,7 +161,7 @@ void GimbalInit()
                 .Kd = 0.5,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
-                .IntegralLimit = 5,
+                .IntegralLimit = 3,
                 .MaxOut = 30,
             },
             .speed_PID = {
@@ -229,6 +228,10 @@ void GimbalTask()
             DJIMotorStop(yaw_motor);
             DMMotorStop(pitch_motor);
             DMMotorStop(big_yaw_motor);
+            big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
+            yaw_motor->motor_controller.angle_PID.Iout      = 0;
+            pitch_motor->motor_controller.angle_PID.Iout    = 0;
+            pitch_motor->motor_controller.speed_PID.Iout    = 0;
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
         case GIMBAL_GYRO_MODE: // 后续只保留此模式

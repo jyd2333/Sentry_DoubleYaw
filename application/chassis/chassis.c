@@ -61,13 +61,13 @@ static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转�
 // 跟随模式底盘的pid
 // 目前没有设置单位，有些不规范，之后有需要再改
 static PIDInstance Chassis_Follow_PID = {
-    .Kp            = 105,   // 25,//25, // 50,//70, // 4.5
+    .Kp            = 50,   // 25,//25, // 50,//70, // 4.5
     .Ki            = 0,    // 0
-    .Kd            = 0.8, // 0.0,  // 0.07,  // 0
+    .Kd            = 0.3, // 0.0,  // 0.07,  // 0
     .DeadBand      =  0.75,  //跟随模式设置了死区，防止抖动
     .IntegralLimit = 3000,
     .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-    .MaxOut        = 30000,
+    .MaxOut        = 10000,
     
 
 };
@@ -320,9 +320,9 @@ void ChassisTask()
         case CHASSIS_FOLLOW_GIMBAL_YAW: // 跟随云台
 
              if (chassis_cmd_recv.offset_angle <= 90 && chassis_cmd_recv.offset_angle >= -90) // 0附近
-                offset_angle = chassis_cmd_recv.offset_angle;
+                offset_angle = -chassis_cmd_recv.offset_angle;
              else {
-                 offset_angle = chassis_cmd_recv.offset_angle >= 0 ? chassis_cmd_recv.offset_angle - 180 : chassis_cmd_recv.offset_angle + 180;
+                 offset_angle = -(chassis_cmd_recv.offset_angle >= 0 ? chassis_cmd_recv.offset_angle - 180 : chassis_cmd_recv.offset_angle + 180);
              }
 
             chassis_cmd_recv.wz = PIDCalculate(&Chassis_Follow_PID, offset_angle, 0);
