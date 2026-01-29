@@ -259,6 +259,7 @@ typedef struct
     INS_Instance *gimbal_imu_data;
     uint16_t yaw_motor_single_round_angle;
     uint16_t yaw_ecd;
+    uint8_t gimbal_online;
 } Gimbal_Upload_Data_s;
 
 typedef struct

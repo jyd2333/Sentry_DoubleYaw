@@ -239,7 +239,6 @@ void GimbalTask()
            //DJIMotorStop(yaw_motor);
             DMMotorEnable1(pitch_motor);
             DMMotorEnable1(big_yaw_motor);
-           
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
             // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             // pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
@@ -266,8 +265,9 @@ void GimbalTask()
     // ...
 
     // 设置反馈数据,主要是imu和yaw的ecd
+    if(yaw_motor->dt < 0.1) gimbal_feedback_data.gimbal_online = 1;
+    else gimbal_feedback_data.gimbal_online = 0;
     gimbal_feedback_data.gimbal_imu_data              = gimbal_IMU_data;
-
     big_yaw_fetch_angle = big_yaw_motor->measure.pos * RAD_2_DEGREE;
     big_yaw_fetch_angle_single = ((int32_t)big_yaw_fetch_angle + 180) % 360;
     if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;

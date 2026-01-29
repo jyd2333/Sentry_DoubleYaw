@@ -392,7 +392,7 @@ static void RemoteControlSet()
         last_nano_second=NUC_cmd.nano_second;
         yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
         pitch_control+=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-        if(NUC_cmd.detect == 0)
+        if(NUC_cmd.detect == 0 && gimbal_fetch_data.gimbal_online)
         {
             yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.15;
             pitch_control += pitch_search_flag*0.002+PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
