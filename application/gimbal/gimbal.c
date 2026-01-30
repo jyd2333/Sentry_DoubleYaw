@@ -11,6 +11,8 @@
 #include "referee_UI.h"
 
 #include "DMmotor.h"
+#include "math.h"
+#include "arm_math.h"
 
 static INS_Instance *gimbal_IMU_data; // 云台IMU数据
 DJIMotorInstance *yaw_motor;
@@ -199,6 +201,21 @@ float pitch_target,big_yaw_target;
 float big_yaw_kp = 5;
 float big_yaw_fetch_angle;
 int32_t big_yaw_fetch_angle_single;
+base_yaw_tilt_s base_yaw_tilt;
+
+base_yaw_tilt_s* GetBaseYawTilt(void)
+{
+    static float gimbal_yaw_pitch,gimbal_yaw_roll;
+    static float gimbal_yaw_tilt_direction, gimbal_yaw_tilt_alpha;
+    gimbal_yaw_pitch            = -(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] + (pitch_motor->measure.pos - PITCH_HORIZON_POS));
+    gimbal_yaw_roll             = gimbal_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
+    gimbal_yaw_tilt_direction   = atan2f(arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch), -arm_sin_f32(gimbal_yaw_pitch));
+    gimbal_yaw_tilt_alpha       = atan2f(sqrtf(arm_sin_f32(gimbal_yaw_pitch)*arm_sin_f32(gimbal_yaw_pitch) + arm_sin_f32(gimbal_yaw_roll)*arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch)*arm_cos_f32(gimbal_yaw_pitch)), arm_cos_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch));
+    base_yaw_tilt.direction     = RAD_2_DEGREE * (gimbal_yaw_tilt_direction - (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192);
+    base_yaw_tilt.alpha         = gimbal_yaw_tilt_alpha;
+    return &base_yaw_tilt;
+}
+
 /* 机器人云台控制核心任务,后续考虑只保留IMU控制,不再需要电机的反馈 */
 void GimbalTask()
 {
@@ -218,7 +235,6 @@ void GimbalTask()
         chassis_rotate_count = 0;
         chassis_rotate_sum = 0;
     }
-
     pitch_tor_feedforward = 0.584 * tan(0.82 - abs(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]));
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
@@ -273,6 +289,7 @@ void GimbalTask()
     if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;
     gimbal_feedback_data.yaw_motor_single_round_angle = (uint16_t)big_yaw_fetch_angle_single; // 推送消息
     gimbal_feedback_data.yaw_ecd                      = yaw_motor->measure.ecd;
+    gimbal_feedback_data.base_yaw_tilt                = GetBaseYawTilt();
 
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);

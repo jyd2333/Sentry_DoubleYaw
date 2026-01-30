@@ -35,7 +35,7 @@
 #define PITCH_POS_UP_LIMIT_ECD    4900 // 云台竖直方向高处限位编码器值,若对云台有机械改动需要修改
 #define PITCH_POS_DOWN_LIMIT_ECD  3750 // 云台竖直方向低处限位编码器值,若对云台有机械改动需要修改
 
-#define PITCH_HORIZON_POS           0.00f  //云台水平时电机反馈位置
+#define PITCH_HORIZON_POS           0.06f  //云台水平时电机反馈位置
 #define PITCH_UP_POS                -0.51f  //云台上限位时电机反馈位置（较机械限位略微保守）
 #define PITCH_DOWN_POS              0.45f  //云台下限位时电机反馈位置（较机械限位略微保守）
 #define YAW_BIG_YAW_ALIGN_ECD       5426    //大小Yaw对齐时小Yaw编码器值
@@ -256,10 +256,17 @@ typedef struct
 
 typedef struct
 {
+    float direction;
+    float alpha;
+} base_yaw_tilt_s;
+
+typedef struct
+{
     INS_Instance *gimbal_imu_data;
     uint16_t yaw_motor_single_round_angle;
     uint16_t yaw_ecd;
     uint8_t gimbal_online;
+    base_yaw_tilt_s *base_yaw_tilt;
 } Gimbal_Upload_Data_s;
 
 typedef struct
