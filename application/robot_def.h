@@ -182,6 +182,7 @@ typedef struct
     float vy;                        // 横移方向速度
     float wz;                        // 旋转速度
     float offset_angle;              // 底盘和归中位置的夹角
+    float align_angle;
     float gimbal_error_angle;        // 云台当前位置与目标（归中）位置的夹角
     chassis_mode_e chassis_mode;
     // UI部分

@@ -188,6 +188,7 @@ static void DeterminRobotID()
 float yaw_control;   // 遥控器YAW自由度输入值
 float pitch_control; // 遥控器PITCH自由度输入值
 float big_yaw_offset = -1.584f;
+uint8_t check_count=0;
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
  *        单圈绝对角度的范围是0~360,说明文档中有图示
@@ -219,6 +220,15 @@ static void CalcOffsetAngle()
 // #endif
     if(angle < 0) angle += 360;
     chassis_cmd_send.offset_angle = angle;
+
+    if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
+    for(check_count = 0; check_count < 10; check_count++)//防止阻塞
+    {
+        if(angle <= 45 && angle >= -45) break;
+        if(angle > 45) angle -= 90;
+        if(angle < -45) angle += 90;
+    }
+    chassis_cmd_send.align_angle = angle;
 }
 
 /**

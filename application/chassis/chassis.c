@@ -319,13 +319,13 @@ void ChassisTask()
             break;
         case CHASSIS_FOLLOW_GIMBAL_YAW: // 跟随云台
 
-             if (chassis_cmd_recv.offset_angle <= 90 && chassis_cmd_recv.offset_angle >= -90) // 0附近
-                offset_angle = -chassis_cmd_recv.offset_angle;
-             else {
-                 offset_angle = -(chassis_cmd_recv.offset_angle >= 0 ? chassis_cmd_recv.offset_angle - 180 : chassis_cmd_recv.offset_angle + 180);
-             }
+            //  if (chassis_cmd_recv.offset_angle <= 90 && chassis_cmd_recv.offset_angle >= -90) // 0附近
+            //     offset_angle = -chassis_cmd_recv.offset_angle;
+            //  else {
+            //      offset_angle = -(chassis_cmd_recv.offset_angle >= 0 ? chassis_cmd_recv.offset_angle - 180 : chassis_cmd_recv.offset_angle + 180);
+            //  }
 
-            chassis_cmd_recv.wz = PIDCalculate(&Chassis_Follow_PID, offset_angle, 0);
+            chassis_cmd_recv.wz = PIDCalculate(&Chassis_Follow_PID, -chassis_cmd_recv.align_angle, 0);
 
             cos_theta = arm_cos_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
             sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);

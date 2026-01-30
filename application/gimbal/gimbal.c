@@ -207,7 +207,7 @@ base_yaw_tilt_s* GetBaseYawTilt(void)
 {
     static float gimbal_yaw_pitch,gimbal_yaw_roll;
     static float gimbal_yaw_tilt_direction, gimbal_yaw_tilt_alpha;
-    gimbal_yaw_pitch            = -(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] + (pitch_motor->measure.pos - PITCH_HORIZON_POS));
+    gimbal_yaw_pitch            =  - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] - (pitch_motor->measure.pos - PITCH_HORIZON_POS);
     gimbal_yaw_roll             = gimbal_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
     gimbal_yaw_tilt_direction   = atan2f(arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch), -arm_sin_f32(gimbal_yaw_pitch));
     gimbal_yaw_tilt_alpha       = atan2f(sqrtf(arm_sin_f32(gimbal_yaw_pitch)*arm_sin_f32(gimbal_yaw_pitch) + arm_sin_f32(gimbal_yaw_roll)*arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch)*arm_cos_f32(gimbal_yaw_pitch)), arm_cos_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch));
@@ -225,7 +225,6 @@ void GimbalTask()
     big_yaw_target = big_yaw_motor->measure.pos + 1 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
     big_yaw_kp = 2 + (float)((abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)) < 250 ? 0 : 
                 (abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)-250))/ abs(YAW_LEFT_LIMIT_ECD - YAW_RIGHT_LIMIT_ECD) * 2 * 16;
-
     chassis_rotate_wz_measure =  (motor_lf->measure.speed_rpm + motor_rf->measure.speed_rpm + motor_rb->measure.speed_rpm + motor_lb->measure.speed_rpm) / 4 / 60 * 2 * PI;
     chassis_rotate_sum +=  chassis_rotate_wz_measure;
     chassis_rotate_count++;
