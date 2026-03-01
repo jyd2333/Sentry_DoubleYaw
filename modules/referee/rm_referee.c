@@ -67,6 +67,9 @@ static void JudgeReadData(uint8_t *buff)
                     case ID_Referee_Warning: // 0x0104
                         memcpy(&referee_info.RefereeWarning, (buff + DATA_Offset), LEN_referee_warning_t);
                         break;
+                    case ID_Dart_Info:  //0x0105
+                        memcpy(&referee_info.RefereeWarning, (buff + DATA_Offset), LEN_dart_info_t);
+                        break;
                     case ID_game_robot_state: // 0x0201
                         memcpy(&referee_info.GameRobotStatus, (buff + DATA_Offset), LEN_game_robot_state);
                         break;
@@ -78,9 +81,6 @@ static void JudgeReadData(uint8_t *buff)
                         break;
                     case ID_buff_musk: // 0x0204
                         memcpy(&referee_info.BuffMusk, (buff + DATA_Offset), LEN_buff_musk);
-                        break;
-                    case ID_aerial_robot_energy: // 0x0205
-                        memcpy(&referee_info.AerialRobotEnergy, (buff + DATA_Offset), LEN_aerial_robot_energy);
                         break;
                     case ID_robot_hurt: // 0x0206
                         memcpy(&referee_info.RobotHurt, (buff + DATA_Offset), LEN_robot_hurt);
@@ -106,8 +106,11 @@ static void JudgeReadData(uint8_t *buff)
                     case ID_Sentry_Info: // 0x020D
                         memcpy(&referee_info.SentryInfo, (buff + DATA_Offset), LEN_sentry_info);
                         break;
+                    case ID_Radar_Info: // 0x020E
+                        memcpy(&referee_info.RadarInfo, (buff + DATA_Offset), LEN_radar_info);
+                        break;
                     case ID_student_interactive: // 0x0301   syhtodo接收代码未测试
-                        memcpy(&referee_info.ReceiveData, (buff + DATA_Offset), LEN_receive_data);
+                        memcpy(&referee_info.ReceiveData,    (buff + DATA_Offset), LEN_receive_data);
                         break;
                     case ID_Map_Command: // 0x0303
                         memcpy(&referee_info.MapCommand, (buff + DATA_Offset), LEN_map_command);

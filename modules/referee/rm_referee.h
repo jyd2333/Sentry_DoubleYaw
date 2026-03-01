@@ -47,11 +47,11 @@ typedef struct
     ext_game_robot_HP_t GameRobotHP;                       // 0x0003
     ext_event_data_t EventData;                            // 0x0101
     ext_referee_warning_t RefereeWarning;                 // 0x0104
+    ext_dart_info_t DartInfo;                              // 0x105
     ext_game_robot_status_t GameRobotStatus;                 // 0x0201
     ext_power_heat_data_t PowerHeatData;                   // 0x0202
     ext_game_robot_pos_t GameRobotPos;                     // 0x0203
     ext_buff_t BuffMusk;                              // 0x0204
-    ext_aerial_robot_energy_t AerialRobotEnergy;               // 0x0205
     ext_hurt_data_t RobotHurt;                            // 0x0206
     ext_shoot_data_t ShootData;                            // 0x0207
     ext_projectile_allowance_t ProjectileAllowance;            // 0x0208

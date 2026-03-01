@@ -121,24 +121,36 @@ extern NUC_cmd_t NUC_cmd;
 #pragma pack(1) // 压缩结构体,取消字节对齐
 typedef struct
 {
-	uint8_t head;//0
-	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
-	uint8_t game_progress;
+	uint8_t head;
+	uint8_t len;
+	uint8_t id;
+	uint8_t head_check_sum;
+}header_frame_t;
+
+typedef struct
+{
+	uint8_t robot_id;
 	uint8_t robot_level;
-	uint32_t Rfid_Status;
 	uint16_t current_hp;
-	uint16_t maximum_hp;
+
+}robot_status_t;
+
+typedef struct
+{
+	header_frame_t Header_Frame;
+	float DWT_stamp;
+
+	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
 	float pitch;
 	float yaw;
-	float bullet_speed;
-	uint16_t stage_remain_time;
-	uint8_t armor_id;
-	uint8_t hurt_type;
 	float Yaw_diff;
-	uint8_t reserve[29];
+	float bullet_speed;
+
+	uint8_t reserve[36];
 	uint16_t check_sum;
 	uint8_t end;
 }vision_send_t;
+
 typedef struct
 {
 	uint8_t head;
@@ -166,16 +178,49 @@ typedef struct
 
 typedef struct
 {
-	uint8_t head;
-	uint8_t reserve[60];
+	header_frame_t Header_Frame;
+	float DWT_stamp;
+
+	uint8_t game_progress;
+  	uint16_t stage_remain_time;
+	uint32_t event_data;
+	uint16_t current_hp;
+  	uint16_t maximum_hp;
+  	uint8_t armor_id;
+  	uint8_t hp_deduction_reason;
+  	uint8_t disengaged_state;
+  	uint8_t current_state;
+  	uint8_t ally_power_rune_state; 
+	uint32_t rfid_status;
+
+	uint8_t reserve[33];
 	uint16_t check_sum;
 	uint8_t end;
 }situation_alpha_t;
 
 typedef struct
 {
-	uint8_t head;
-	uint8_t reserve[60];
+	header_frame_t Header_Frame;
+	float DWT_stamp;
+
+	float init_sentry_position_x;
+  	float init_sentry_position_y;
+  	float hero_x;
+  	float hero_y;
+  	float engineer_x;
+  	float engineer_y;
+  	float standard_3_x;
+  	float standard_3_y;
+  	float standard_4_x;
+  	float standard_4_y;
+	uint16_t ally_1_robot_HP;
+    uint16_t ally_2_robot_HP;
+    uint16_t ally_3_robot_HP;
+    uint16_t ally_4_robot_HP;
+	uint16_t ally_outpost_HP;
+    uint16_t ally_base_HP;
+
+	uint8_t reserve[1];
 	uint16_t check_sum;
 	uint8_t end;
 }situation_beta_t;

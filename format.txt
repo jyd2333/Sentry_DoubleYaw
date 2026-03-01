@@ -1,0 +1,184 @@
+/********************************************************/
+/* Receive data                                         */
+/********************************************************/
+
+// 串口调试数据包
+struct ReceiveDebugData
+{
+  HeaderFrame frame_header;
+  float time_stamp;
+  struct
+  {
+    uint8_t name[DEBUG_PACKAGE_NAME_LEN];
+    uint8_t type;
+    float data;
+  } __attribute__((packed)) packages[DEBUG_PACKAGE_NUM];
+
+  uint16_t checksum;
+} __attribute__((packed));
+
+// 比赛信息数据包
+struct GameStatusData
+{
+  uint8_t game_progress;
+  uint16_t stage_remain_time;
+} __attribute__((packed));
+
+// 己方机器人血量信息数据包
+struct AllyRobotHpData
+{
+  uint16_t ally_1_robot_hp;
+  uint16_t ally_2_robot_hp;
+  uint16_t ally_3_robot_hp;
+  uint16_t ally_4_robot_hp;
+  uint16_t ally_outpost_hp;
+  uint16_t ally_base_hp;
+} __attribute__((packed));
+
+// 事件数据包
+struct EventData
+{
+  uint32_t ally_supply_zone_non_exchange : 1;
+  uint32_t ally_supply_zone_exchange : 1;
+  uint32_t ally_supply_zone : 1;
+
+  uint32_t ally_small_power_rune : 2;
+  uint32_t ally_big_power_rune : 2;
+
+  uint32_t central_highland : 2;
+  uint32_t trapezoidal_highland : 2;
+
+  uint32_t reserved1 : 12;
+
+  uint32_t center_gain_zone : 2;
+  uint32_t ally_fortress_gain_point : 2;
+  uint32_t ally_outpost_gain_point : 2;
+  uint32_t base_gain_point : 1;
+
+  uint32_t reserved2 : 2;
+} __attribute__((packed));
+
+// 机器人状态数据包
+struct RobotStatusData
+{
+  uint16_t current_hp;
+  uint16_t maximum_hp;
+
+  uint8_t armor_id;
+  uint8_t hp_deduction_reason;
+
+  bool disengaged_state;
+  uint8_t current_state;
+  bool ally_power_rune_state; 
+} __attribute__((packed));
+
+// RFID 状态数据包
+struct RfidStatus
+{
+  uint32_t ally_base_gain_point : 1;
+  uint32_t ally_central_highland_gain_point : 1;
+  uint32_t enemy_central_highland_gain_point : 1;
+
+  uint32_t reserved1 : 14;
+
+  uint32_t ally_fortress_gain_point : 1;
+  uint32_t ally_outpost_gain_point : 1;
+  uint32_t ally_supply_point_non_exchange : 1;
+  uint32_t ally_supply_point_exchange : 1;
+
+  uint32_t reserved2 : 2;
+
+  uint32_t center_gain_point : 1;
+  uint32_t enemy_fortress_gain_point : 1;
+  uint32_t enemy_outpost_gain_point : 1;
+
+  uint32_t reserved3 : 6;
+} __attribute__((packed));
+
+// 己方机器人位置数据包
+struct AllyRobotPosition
+{
+  float init_sentry_position_x;
+  float init_sentry_position_y;
+
+  float hero_x;
+  float hero_y;
+
+  float engineer_x;
+  float engineer_y;
+
+  float standard_3_x;
+  float standard_3_y;
+
+  float standard_4_x;
+  float standard_4_y;
+} __attribute__((packed));
+
+// PID调参数据包
+struct ReceivePidData
+{
+  float fdb;
+  float ref;
+  float pid_out;
+} __attribute__((packed));
+
+// 视觉数据包
+struct ReceiveVisionData
+{
+  HeaderFrame frame_header;
+  float time_stamp;
+
+  struct
+  {
+    uint8_t enemy_color;
+
+    float pitch;
+    float yaw;
+    float yaw_diff;
+
+    float bullet_speed;
+  } __attribute__((packed)) data;
+
+  uint8_t reserve[46];
+
+  uint16_t checksum;
+  uint8_t frame_tail;
+} __attribute__((packed));
+
+// 裁判系统数据包1
+struct ReceiveRefreeData1
+{
+  HeaderFrame frame_header;
+  float time_stamp;
+
+  struct
+  {
+    GameStatusData game_status;
+    EventData event_data;
+    RobotStatusData robot_status;
+    RfidStatus rfid_status;
+  } __attribute__((packed)) data;
+
+  uint8_t reserve[33];
+
+  uint16_t check_sum;
+  uint8_t frame_tail;
+} __attribute__((packed));
+
+// 裁判系统数据包2
+struct ReceiveRefreeData2
+{
+  HeaderFrame frame_header;
+  float time_stamp;
+
+  struct
+  {
+    AllyRobotPosition ally_robot_position;
+    AllayRobotHpData ally_robot_hp_data;
+  } __attribute__((packed)) data;
+
+  uint8_t reserve[1];
+
+  uint16_t check_sum;
+  uint8_t frame_tail;
+} __attribute__((packed));

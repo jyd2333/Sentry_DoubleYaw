@@ -290,9 +290,9 @@ static void HeatControl()
         rate_coef = 0.6;
     else if (heat_coef < 0.6)
         rate_coef = 0.4;
-    heat_coef = ((referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit - referee_data->PowerHeatData.shooter_17mm_heat0 + rate_coef * referee_data->GameRobotStatus.shooter_id1_17mm_cooling_rate) * 1.0f) / (1.0f * referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit);
+    heat_coef = ((referee_data->GameRobotStatus.shooter_barrel_heat_limit - referee_data->PowerHeatData.shooter_17mm_barrel_heat + rate_coef * referee_data->GameRobotStatus.shooter_barrel_cooling_value) * 1.0f) / (1.0f * referee_data->GameRobotStatus.shooter_barrel_heat_limit);
     // 新热量管理
-    if (referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit - 40 + 30 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
+    if (referee_data->GameRobotStatus.shooter_barrel_cooling_value - 40 + 30 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
     {
         // shoot_cmd_send.load_mode = LOAD_STOP;
     }
@@ -600,7 +600,7 @@ void RobotCMDTask()
     // 推送消息,双板通信,视觉通信等
     // 其他应用所需的控制数据在remotecontrolsetmode和mousekeysetmode中完成设置
     // chassis
-    memcpy(&chassis_cmd_send.chassis_power, &referee_data->PowerHeatData.chassis_power, sizeof(float));
+    // memcpy(&chassis_cmd_send.chassis_power, &referee_data->PowerHeatData.chassis_power, sizeof(float));
     memcpy(&chassis_cmd_send.power_buffer, &referee_data->PowerHeatData.chassis_power_buffer, sizeof(uint16_t));
     memcpy(&chassis_cmd_send.level, &referee_data->GameRobotStatus.robot_level, sizeof(uint8_t));
     memcpy(&chassis_cmd_send.power_limit, &referee_data->GameRobotStatus.chassis_power_limit, sizeof(uint16_t));
@@ -608,9 +608,9 @@ void RobotCMDTask()
     // memcpy
 
     // shoot
-    memcpy(&shoot_cmd_send.shooter_heat_cooling_rate, &referee_data->GameRobotStatus.shooter_id1_17mm_cooling_rate, sizeof(uint16_t));
-    memcpy(&shoot_cmd_send.shooter_referee_heat, &referee_data->PowerHeatData.shooter_17mm_heat0, sizeof(uint16_t));
-    memcpy(&shoot_cmd_send.shooter_cooling_limit, &referee_data->GameRobotStatus.shooter_id1_17mm_cooling_limit, sizeof(uint16_t));
+    memcpy(&shoot_cmd_send.shooter_heat_cooling_rate, &referee_data->GameRobotStatus.shooter_barrel_cooling_value, sizeof(uint16_t));
+    memcpy(&shoot_cmd_send.shooter_referee_heat, &referee_data->PowerHeatData.shooter_17mm_barrel_heat, sizeof(uint16_t));
+    memcpy(&shoot_cmd_send.shooter_cooling_limit, &referee_data->GameRobotStatus.shooter_barrel_heat_limit, sizeof(uint16_t));
     memcpy(&shoot_cmd_send.bullet_speed, &referee_data->ShootData.bullet_speed, sizeof(float));
 
     // UI
