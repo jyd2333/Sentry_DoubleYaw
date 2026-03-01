@@ -38,6 +38,8 @@ USART_Init_Config_s NUC_Init_Config;
 uint16_t daemon_reload=1000; //允许的串口离线时间
 decision_state_t Decision_State={};
 vision_send_t Vision_Send;
+situation_alpha_t Situation_Alpha;
+situation_beta_t Situation_Beta;
 vision_receive_t Vision_Receive;
 navigation_receive_t Navigation_Receive;
 
@@ -120,6 +122,7 @@ void NUC_init(void)
 }
 
 extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
+uint8_t NUC_send_count = 0;
 
 /**
  *@Function:	NUC_Send_Data()
@@ -146,10 +149,38 @@ void NUC_Send_Data(){
 	Vision_Send.check_sum = Check_Sum(&Vision_Send.head,sizeof(vision_send_t)-3);
 	Vision_Send.end = FRAME_END;
 
+	Situation_Alpha.head = FRAME_HEADER;
+	Situation_Alpha.check_sum = Check_Sum(&Situation_Alpha.head,sizeof(situation_alpha_t)-3);
+	Situation_Alpha.end = FRAME_END;
+
+	Situation_Beta.head = FRAME_HEADER;
+	Situation_Beta.check_sum = Check_Sum(&Situation_Beta.head,sizeof(situation_beta_t)-3);
+	Situation_Beta.end = FRAME_END;
+
 	memcpy(NUC_tx_buff,&Vision_Send ,sizeof(Vision_Send));
 	// HAL_UART_Transmit_IT(&huart1,NUC_tx_buff,sizeof(NUC_tx_buff));
 	USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
 	// DMA_Cmd(DMA_Stream_NUC_TX, ENABLE);
+	switch(NUC_send_count)
+	{
+		case 0:
+		case 2:
+			// memcpy(NUC_tx_buff,&Vision_Send ,sizeof(Vision_Send));
+			// USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
+			break;
+		case 1:
+			// memcpy(NUC_tx_buff,&Situation_Alpha ,sizeof(Situation_Alpha));
+			// USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
+			break;
+		case 3:
+			// memcpy(NUC_tx_buff,&Situation_Beta ,sizeof(Situation_Beta));
+			// USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
+			break;
+		default:
+			break;
+	}
+	NUC_send_count++;
+	if(NUC_send_count > 3) NUC_send_count = 0;
 }
 
 uint16_t Check_Sum(uint8_t* Data ,uint8_t Count)

@@ -26,6 +26,8 @@
 #define NUC_TX_BUFF_SIZE  SEND_DATA_SIZE
 #define SEND_DATA_SIZE    sizeof(vision_send_t)
 #define RECEIVE_DATA_SIZE sizeof(vision_receive_t)
+#define SITUATION_ALPHA_SIZE sizeof(situation_alpha_t)
+#define SITUATION_BETA_SIZE sizeof(situation_beta_t)
 
 #define FRAME_HEADER    0X5A
 #define FRAME_END		0X55
@@ -161,6 +163,22 @@ typedef struct
 	uint16_t check_sum;
 	uint8_t end;
 }vision_receive_t;
+
+typedef struct
+{
+	uint8_t head;
+	uint8_t reserve[60];
+	uint16_t check_sum;
+	uint8_t end;
+}situation_alpha_t;
+
+typedef struct
+{
+	uint8_t head;
+	uint8_t reserve[60];
+	uint16_t check_sum;
+	uint8_t end;
+}situation_beta_t;
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 
 typedef struct
