@@ -17,12 +17,14 @@
 #include "daemon.h"
 #include "bsp_log.h"
 #include "cmsis_os.h"
+#include "robot_test.h"
 
 #define RE_RX_BUFFER_SIZE 255u // 裁判系统接收缓冲区大小
 
 static USARTInstance *referee_usart_instance; // 裁判系统串口实例
 static DaemonInstance *referee_daemon;        // 裁判系统守护进程
 referee_info_t referee_info;           // 裁判系统数据
+extern uint8_t NUC_tx_buff[NUC_TX_BUFF_SIZE];
 
 /**
  * @brief  读取裁判数据,中断中读取保证速度
@@ -49,6 +51,12 @@ static void JudgeReadData(uint8_t *buff)
             if (Verify_CRC16_Check_Sum(buff, judge_length) == TRUE) {
                 // 2个8位拼成16位int
                 referee_info.CmdID = (buff[6] << 8 | buff[5]);
+
+                //哨兵裁判系统信息转发
+                memset(NUC_tx_buff, 0, 64);
+                memcpy(NUC_tx_buff,buff,judge_length);
+                USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
+
                 // 解析数据命令码,将数据拷贝到相应结构体中(注意拷贝数据的长度)
                 // 第8个字节开始才是数据 data=7
                 switch (referee_info.CmdID) {

@@ -122,8 +122,8 @@ extern NUC_cmd_t NUC_cmd;
 typedef struct
 {
 	uint8_t head;
-	uint8_t len;
-	uint8_t id;
+	uint16_t len;
+	uint8_t count;
 	uint8_t head_check_sum;
 }header_frame_t;
 
@@ -138,6 +138,7 @@ typedef struct
 typedef struct
 {
 	header_frame_t Header_Frame;
+	uint16_t cmdid;
 	float DWT_stamp;
 
 	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
@@ -145,9 +146,8 @@ typedef struct
 	float yaw;
 	float Yaw_diff;
 	float bullet_speed;
-
-	uint8_t reserve[36];
 	uint16_t check_sum;
+	uint8_t reserve[33];
 	uint8_t end;
 }vision_send_t;
 
