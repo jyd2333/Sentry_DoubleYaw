@@ -110,7 +110,7 @@ void GimbalInit()
         .motor_type = DM_Motor,
         .controller_param_init_config ={
             .angle_PID = {
-                .Kp = 110,
+                .Kp = 80,
                 .Ki = 100,
                 .Kd = 0.01,
                 .DeadBand = 0,
@@ -119,13 +119,13 @@ void GimbalInit()
                 .MaxOut = 30,
             },
             .speed_PID = {
-                .Kp = 1,
+                .Kp = 0.8,
                 .Ki = 1,
                 .Kd = 0,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
                 .IntegralLimit = 1,
-                .MaxOut = 5,
+                .MaxOut = 3,
             },
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
