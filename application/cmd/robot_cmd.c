@@ -221,7 +221,7 @@ static void CalcOffsetAngle()
     if(angle < 0) angle += 360;
     chassis_cmd_send.offset_angle = angle;
 
-    if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
+    // if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
     for(check_count = 0; check_count < 10; check_count++)//防止阻塞
     {
         if(angle <= 45 && angle >= -45) break;

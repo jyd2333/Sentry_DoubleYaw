@@ -15,8 +15,8 @@
 #include "arm_math.h"
 
 static INS_Instance *gimbal_IMU_data; // 云台IMU数据
-DJIMotorInstance *yaw_motor;
-DMMotorInstance *pitch_motor, *big_yaw_motor;
+DJIMotorInstance *yaw_motor, *pitch_motor;
+DMMotorInstance  *big_yaw_motor;
 extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 
 static Publisher_t *gimbal_pub;                   // 云台应用消息发布者(云台反馈给cmd)
@@ -71,7 +71,7 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 0.5,//12, // 0.24, // 0.31, // 0.45
+                .Kp            = 0.4,//12, // 0.24, // 0.31, // 0.45
                 .Ki            = 0.01,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
@@ -80,9 +80,9 @@ void GimbalInit()
                 .MaxOut = 1000,
             },
             .speed_PID = {
-                .Kp            = 3000,//6000,//10000, //11000,
+                .Kp            = 2000,//6000,//10000, //11000,
                 .Ki            = 0,    // 0
-                .Kd            = 8,//5, // 30
+                .Kd            = 3,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 3000,
                 .MaxOut        = 20000, // 20000
@@ -100,54 +100,45 @@ void GimbalInit()
         },
         .motor_type = GM6020};
     yaw_motor   = DJIMotorInit(&yaw_config);
-
-    Motor_Init_Config_s pitch_motor_config = {//DM4310
+    //Pitch
+    Motor_Init_Config_s pitch_config = {
         .can_init_config = {
             .can_handle = &hcan2,
-            .tx_id = 0x02,
-            .rx_id = 0x12,
+            .tx_id      = 2,
         },
-        .motor_type = DM_Motor,
-        .controller_param_init_config ={
+        .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 80,
-                .Ki = 100,
-                .Kd = 0.01,
-                .DeadBand = 0,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
-                .IntegralLimit = 3,
-                .MaxOut = 30,
+                .Kp            = 30,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 10,
+                .Kd            = 0,//0.02,//0.01,
+                .DeadBand      = 0.0f,
+                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
+                .IntegralLimit = 20, 
+                .MaxOut = 50,
             },
             .speed_PID = {
-                .Kp = 0.8,
-                .Ki = 1,
-                .Kd = 0,
-                .DeadBand = 0,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
-                .IntegralLimit = 1,
-                .MaxOut = 3,
+                .Kp            = 2000
+                ,//6000,//10000, //11000,
+                .Ki            = 0,    // 0
+                .Kd            = 0,//5, // 30
+                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
+                .IntegralLimit = 3000,
+                .MaxOut        = 10000, // 20000
             },
-             .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
+            .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // yaw反馈角度值
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
             .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_PITCH_ADDRESS_OFFSET],
-            .current_feedforward_ptr = &pitch_tor_feedforward,
         },
         .controller_setting_init_config = {
             .angle_feedback_source = OTHER_FEED,
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type       = ANGLE_LOOP,
-            .close_loop_type       = SPEED_LOOP | ANGLE_LOOP,
+            .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
-            .feedback_reverse_flag = FEEDBACK_DIRECTION_REVERSE,
-            .feedforward_flag      = CURRENT_FEEDFORWARD,
-            .control_range = {
-                .P_max = 12.5,
-                .V_max = 30,
-                .T_max = 10,
-            },
         },
-    };
-    pitch_motor = DMMotorInit(&pitch_motor_config);
+        .motor_type = GM6020};
+    pitch_motor   = DJIMotorInit(&pitch_config);
+    
 
     Motor_Init_Config_s big_yaw_motor_config = {//DM6006
         .can_init_config = {
@@ -203,18 +194,18 @@ float big_yaw_fetch_angle;
 int32_t big_yaw_fetch_angle_single;
 base_yaw_tilt_s base_yaw_tilt;
 
-base_yaw_tilt_s* GetBaseYawTilt(void)
-{
-    static float gimbal_yaw_pitch,gimbal_yaw_roll;
-    static float gimbal_yaw_tilt_direction, gimbal_yaw_tilt_alpha;
-    gimbal_yaw_pitch            =  - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] - (pitch_motor->measure.pos - PITCH_HORIZON_POS);
-    gimbal_yaw_roll             = gimbal_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
-    gimbal_yaw_tilt_direction   = atan2f(arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch), -arm_sin_f32(gimbal_yaw_pitch));
-    gimbal_yaw_tilt_alpha       = atan2f(sqrtf(arm_sin_f32(gimbal_yaw_pitch)*arm_sin_f32(gimbal_yaw_pitch) + arm_sin_f32(gimbal_yaw_roll)*arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch)*arm_cos_f32(gimbal_yaw_pitch)), arm_cos_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch));
-    base_yaw_tilt.direction     = RAD_2_DEGREE * (gimbal_yaw_tilt_direction - (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192);
-    base_yaw_tilt.alpha         = gimbal_yaw_tilt_alpha;
-    return &base_yaw_tilt;
-}
+// base_yaw_tilt_s* GetBaseYawTilt(void)
+// {
+//     static float gimbal_yaw_pitch,gimbal_yaw_roll;
+//     static float gimbal_yaw_tilt_direction, gimbal_yaw_tilt_alpha;
+//     gimbal_yaw_pitch            =  - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] - (pitch_motor->measure.pos - PITCH_HORIZON_POS);
+//     gimbal_yaw_roll             = gimbal_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
+//     gimbal_yaw_tilt_direction   = atan2f(arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch), -arm_sin_f32(gimbal_yaw_pitch));
+//     gimbal_yaw_tilt_alpha       = atan2f(sqrtf(arm_sin_f32(gimbal_yaw_pitch)*arm_sin_f32(gimbal_yaw_pitch) + arm_sin_f32(gimbal_yaw_roll)*arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch)*arm_cos_f32(gimbal_yaw_pitch)), arm_cos_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch));
+//     base_yaw_tilt.direction     = RAD_2_DEGREE * (gimbal_yaw_tilt_direction - (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192);
+//     base_yaw_tilt.alpha         = gimbal_yaw_tilt_alpha;
+//     return &base_yaw_tilt;
+// }
 
 /* 机器人云台控制核心任务,后续考虑只保留IMU控制,不再需要电机的反馈 */
 void GimbalTask()
@@ -241,7 +232,9 @@ void GimbalTask()
         // 停止
         case GIMBAL_ZERO_FORCE:
             DJIMotorStop(yaw_motor);
-            DMMotorStop(pitch_motor);
+            DJIMotorStop(pitch_motor);
+            // DMMotorStop(pitch_motor);
+
             DMMotorStop(big_yaw_motor);
             big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
             yaw_motor->motor_controller.angle_PID.Iout      = 0;
@@ -251,11 +244,12 @@ void GimbalTask()
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
         case GIMBAL_GYRO_MODE: // 后续只保留此模式
             DJIMotorEnable(yaw_motor);
-           //DJIMotorStop(yaw_motor);
-            DMMotorEnable1(pitch_motor);
+            DJIMotorEnable(pitch_motor);
+            //DJIMotorStop(yaw_motor);
+            // DMMotorEnable1(pitch_motor);
             DMMotorEnable1(big_yaw_motor);
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
-            // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
+            DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             // pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
             // pitch_target = 1.086f;
 
@@ -265,7 +259,7 @@ void GimbalTask()
             // if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
             // if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
             // pitch_motor->ctrl.pos_set = pitch_target;
-            pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
+            // pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
             // big_yaw_motor->ctrl.kp_set = 5;
             // big_yaw_motor->ctrl.kd_set = 1;
             // big_yaw_motor->ctrl.pos_set = big_yaw_target;
@@ -288,7 +282,7 @@ void GimbalTask()
     if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;
     gimbal_feedback_data.yaw_motor_single_round_angle = (uint16_t)big_yaw_fetch_angle_single; // 推送消息
     gimbal_feedback_data.yaw_ecd                      = yaw_motor->measure.ecd;
-    gimbal_feedback_data.base_yaw_tilt                = GetBaseYawTilt();
+    // gimbal_feedback_data.base_yaw_tilt                = GetBaseYawTilt();
 
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);

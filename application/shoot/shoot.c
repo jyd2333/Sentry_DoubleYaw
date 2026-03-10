@@ -44,7 +44,7 @@ void ShootInit()
                 .Kd            = 0,
                 .Improve       = PID_Integral_Limit,
                 .IntegralLimit = 10000,
-                .MaxOut        = 20000,
+                .MaxOut        = 50000,
             },
         },
         .controller_setting_init_config = {
@@ -106,7 +106,7 @@ void ShootInit()
 
     shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
-    ramp_init(&fric_on_ramp, 300);
+    ramp_init(&fric_on_ramp, 2000);
 
     DJIMotorStop(friction_l);
     DJIMotorStop(friction_r);
@@ -331,7 +331,7 @@ void ShootTask()
     if (shoot_cmd_recv.friction_mode == FRICTION_ON) {
         // 根据收到的弹速设置设定摩擦轮电机参考值,需实测后填入
         fric_speed = (shoot_speed + (target_fric_speed - shoot_speed) * ramp_calc(&fric_on_ramp));
-        ramp_init(&fric_off_ramp, 300);
+        ramp_init(&fric_off_ramp, 2000);
     } else if (shoot_cmd_recv.friction_mode == FRICTION_OFF) {
         fric_speed = (shoot_speed + (0 - shoot_speed) * ramp_calc(&fric_off_ramp));
         // ramp_init(&fric_on_ramp, 300);
