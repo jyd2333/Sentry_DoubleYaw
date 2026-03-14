@@ -111,7 +111,7 @@ void GimbalInit()
         .controller_param_init_config ={
             .angle_PID = {
                 .Kp = 80,
-                .Ki = 100,
+                .Ki = 80,
                 .Kd = 0.01,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,

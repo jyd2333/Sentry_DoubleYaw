@@ -347,7 +347,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 16;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 8;   // 射频默认30Hz
 
     // if (rc_data[TEMP].rc.dial > 400) {
     //     SuperCap_flag_from_user = SUPER_USER_OPEN;

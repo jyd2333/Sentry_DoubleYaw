@@ -98,9 +98,9 @@ typedef struct
 typedef struct 
 {
     /* data */
-    int vx;
-    int vy;
-    int wz;
+    float vx;
+    float vy;
+    float wz;
 	float pitch;
 	float yaw;
 	int shot;
