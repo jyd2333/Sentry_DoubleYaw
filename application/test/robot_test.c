@@ -91,8 +91,8 @@ void USB_Decode(void)
 	memcpy(&Vision_Receive,UserRxBufferFS,sizeof(Vision_Receive));
 	if(Vision_Receive.head == FRAME_HEADER && Vision_Receive.end == FRAME_END && Vision_Receive.check_sum == Check_Sum_16(&Vision_Receive.head,sizeof(vision_receive_t)-3))
 	{
-		NUC_cmd.vx = Vision_Receive.vx;
-		NUC_cmd.vy = -Vision_Receive.vy;
+		NUC_cmd.vx = 2 * Vision_Receive.vx;
+		NUC_cmd.vy = -2 * Vision_Receive.vy;
 		NUC_cmd.rotateMode = Vision_Receive.chassis_status;
 		NUC_cmd.second = Vision_Receive.second;
 		NUC_cmd.nano_second = Vision_Receive.nano_second;
