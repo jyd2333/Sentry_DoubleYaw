@@ -320,7 +320,7 @@ void ShootTask()
             DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             break;
         case LOAD_REVERSE:
-            DJIMotorSetRef(loader, (load_count - 1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
+            DJIMotorSetRef(loader,loader->measure.total_angle - LOADER_ANGLE_PER_BULLET );
             break;
         default:
             while (1); // 未知模式,停止运行,检查指针越界,内存溢出等问题
