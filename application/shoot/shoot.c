@@ -277,6 +277,9 @@ void ShootTask()
         return;
 
     Load_Reverse();
+    if(((load_count-1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
+        - loader->measure.total_angle)>1000)
+        load_count -- ;
     // 若不在休眠状态,根据robotCMD传来的控制模式进行拨盘电机参考值设定和模式切换
     switch (shoot_cmd_recv.load_mode) {
         // 停止拨盘
