@@ -91,8 +91,8 @@ void USB_Decode(void)
 	memcpy(&Vision_Receive,UserRxBufferFS,sizeof(Vision_Receive));
 	if(Vision_Receive.head == FRAME_HEADER && Vision_Receive.end == FRAME_END && Vision_Receive.check_sum == Check_Sum_16(&Vision_Receive.head,sizeof(vision_receive_t)-3))
 	{
-		NUC_cmd.vx = 2 * Vision_Receive.vx;
-		NUC_cmd.vy = -2 * Vision_Receive.vy;
+		NUC_cmd.vx = Vision_Receive.vx;
+		NUC_cmd.vy = -Vision_Receive.vy;
 		NUC_cmd.rotateMode = Vision_Receive.chassis_status;
 		NUC_cmd.second = Vision_Receive.second;
 		NUC_cmd.nano_second = Vision_Receive.nano_second;
@@ -124,7 +124,7 @@ void NUC_init(void)
 	USB_rx_buff = USBInit(USB_conf);
 
 	Vision_Send.Header_Frame.head 				= FRAME_HEADER;
-	Vision_Send.Header_Frame.len				= 21;
+	Vision_Send.Header_Frame.len				= 55;
 	Vision_Send.Header_Frame.count 				= NUC_send_count;
 	Vision_Send.Header_Frame.head_check_sum 	= Check_Sum_8(&Vision_Send.Header_Frame.head,sizeof(header_frame_t)-1);
 
@@ -163,7 +163,17 @@ void NUC_Send_Data(){
 	Vision_Send.yaw 			= INS->output.INS_angle[2];
 	Vision_Send.Yaw_diff 		= GetYawDiff();
 	Vision_Send.bullet_speed 	= referee_info.ShootData.bullet_speed;
-	Vision_Send.check_sum 		= Check_Sum_16(&Vision_Send.Header_Frame.head,28);
+
+	Vision_Send.game_progress	= referee_info.GameState.game_progress;
+	Vision_Send.stage_remain_time 	= referee_info.GameState.stage_remain_time;
+	Vision_Send.event_data 			= referee_info.EventData.event_type;
+	Vision_Send.current_hp 			= referee_info.GameRobotStatus.remain_HP;
+	Vision_Send.maximum_hp 			= referee_info.GameRobotStatus.max_HP;
+	Vision_Send.armor_id			= referee_info.RobotHurt.armor_id;
+	Vision_Send.hp_deduction_reason	= referee_info.RobotHurt.hurt_type;
+	Vision_Send.rfid_status			= referee_info.Rfid_Status.rfid_status;
+
+	Vision_Send.check_sum 		= Check_Sum_16(&Vision_Send.Header_Frame.head,sizeof(vision_send_t)-2);
 	Vision_Send.end 			= FRAME_END;
 
 	// Situation_Alpha.DWT_stamp 			= DWT_GetTimeline_ms();

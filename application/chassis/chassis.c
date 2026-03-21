@@ -197,7 +197,7 @@ static float Power_Output;
     // chassis_cmd_recv.power_buffer = 60;
     //修改内容
     Plimit = 0;
-    chassis_cmd_recv.power_limit = 80;
+    chassis_cmd_recv.power_limit = 60;
      Power_Output = chassis_cmd_recv.power_limit - 10 + 20 * Plimit;
      PowerControlupdate(Power_Output, 1.0f / REDUCTION_RATIO_WHEEL);
 
@@ -337,7 +337,7 @@ void ChassisTask()
            //  if (cap->cap_msg_s.SuperCap_open_flag_from_real == SUPERCAP_PMOS_OPEN) {
            //      vw_set = 7000;
            //  } else {
-                vw_set = 4000;
+                vw_set = 4000 * ((float)chassis_cmd_recv.chassis_rotate_speed / 255.0f);
             // }
             // if(vw_set<=3000) chassis_flag=1;
             // if(vw_set>=6500) chassis_flag=-1;

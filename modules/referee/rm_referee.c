@@ -53,9 +53,9 @@ static void JudgeReadData(uint8_t *buff)
                 referee_info.CmdID = (buff[6] << 8 | buff[5]);
 
                 //哨兵裁判系统信息转发
-                memset(NUC_tx_buff, 0, 64);
-                memcpy(NUC_tx_buff,buff,judge_length);
-                USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
+                // memset(NUC_tx_buff, 0, 64);
+                // memcpy(NUC_tx_buff,buff,judge_length);
+                // USBTransmit(NUC_tx_buff, sizeof(NUC_tx_buff));
 
                 // 解析数据命令码,将数据拷贝到相应结构体中(注意拷贝数据的长度)
                 // 第8个字节开始才是数据 data=7

@@ -135,6 +135,22 @@ typedef struct
 
 }robot_status_t;
 
+// typedef struct
+// {
+// 	header_frame_t Header_Frame;
+// 	uint16_t cmdid;
+// 	float DWT_stamp;
+
+// 	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
+// 	float pitch;
+// 	float yaw;
+// 	float Yaw_diff;
+// 	float bullet_speed;
+// 	uint16_t check_sum;
+// 	uint8_t reserve[33];
+// 	uint8_t end;
+// }vision_send_t;
+
 typedef struct
 {
 	header_frame_t Header_Frame;
@@ -146,9 +162,19 @@ typedef struct
 	float yaw;
 	float Yaw_diff;
 	float bullet_speed;
-	uint16_t check_sum;
-	uint8_t reserve[33];
+
+	uint8_t game_progress;
+  	uint16_t stage_remain_time;
+	uint32_t event_data;
+	uint16_t current_hp;
+  	uint16_t maximum_hp;
+  	uint8_t armor_id;
+  	uint8_t hp_deduction_reason;
+	uint32_t rfid_status;
+
+	uint8_t reserve[16];
 	uint8_t end;
+	uint16_t check_sum;
 }vision_send_t;
 
 typedef struct
@@ -246,6 +272,6 @@ void NUC_Send_Data();
 void NUC_init(void);
 // void daemon_NUC();
 void NUC_offline();
-void Decision_Tree();
+// void Decision_Tree();
 void USB_Decode(void);
 #endif

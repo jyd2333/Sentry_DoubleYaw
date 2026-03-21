@@ -185,6 +185,7 @@ typedef struct
     float align_angle;
     float gimbal_error_angle;        // 云台当前位置与目标（归中）位置的夹角
     chassis_mode_e chassis_mode;
+    uint8_t chassis_rotate_speed;
     // UI部分
     //  ...
 

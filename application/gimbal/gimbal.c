@@ -71,7 +71,7 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 0.5,//12, // 0.24, // 0.31, // 0.45
+                .Kp            = 0.7,//12, // 0.24, // 0.31, // 0.45
                 .Ki            = 0.01,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
@@ -80,7 +80,7 @@ void GimbalInit()
                 .MaxOut = 1000,
             },
             .speed_PID = {
-                .Kp            = 3000,//6000,//10000, //11000,
+                .Kp            = 6000,//6000,//10000, //11000,
                 .Ki            = 0,    // 0
                 .Kd            = 8,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
@@ -110,8 +110,8 @@ void GimbalInit()
         .motor_type = DM_Motor,
         .controller_param_init_config ={
             .angle_PID = {
-                .Kp = 50,
-                .Ki = 30,
+                .Kp = 80,
+                .Ki = 120,
                 .Kd = 0.01,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
@@ -119,13 +119,13 @@ void GimbalInit()
                 .MaxOut = 30,
             },
             .speed_PID = {
-                .Kp = 0.5,
-                .Ki = 0.7,
+                .Kp = 0.7,
+                .Ki = 0.6,
                 .Kd = 0,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
                 .IntegralLimit = 1,
-                .MaxOut = 2,
+                .MaxOut = 4,
             },
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明

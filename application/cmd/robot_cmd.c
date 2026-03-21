@@ -470,11 +470,17 @@ static void RemoteControlSet()
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
                 chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
-                if(NUC_cmd.rotateMode == 1)
+                if(NUC_cmd.rotateMode == 0)
+                {
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
+                    chassis_cmd_send.chassis_rotate_speed = 0;
+                }
                 else
-                    chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
+                {
+                    chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+                    chassis_cmd_send.chassis_rotate_speed = NUC_cmd.rotateMode;
                 // chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
+                }
                 yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_;//+(float) NUC_cmd.odomYaw  * 0.001;
                 pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
                 break;

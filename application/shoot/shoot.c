@@ -230,7 +230,7 @@ loader_mode_e last_load_mode = LOAD_STOP;
 loader_state_e loader_state = LOAD_UNINIT;
 float loader_initial_offset = 0;
 float loader_pitch_offset = 0;
-float loader_offset = 1000;
+float loader_offset = 2500;
 int32_t load_count = 0;
 float cool_down_time = 0;
 float load_time_ms = 0;
@@ -277,9 +277,7 @@ void ShootTask()
         return;
 
     Load_Reverse();
-    if(((load_count-1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
-        - loader->measure.total_angle)>1000)
-        load_count -- ;
+    
     // 若不在休眠状态,根据robotCMD传来的控制模式进行拨盘电机参考值设定和模式切换
     switch (shoot_cmd_recv.load_mode) {
         // 停止拨盘
@@ -309,7 +307,10 @@ void ShootTask()
             // }
             if(last_load_mode == LOAD_STOP)
             {
-                load_count++;
+                if(((load_count-2) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
+                - loader->measure.total_angle)<0)
+                    load_count++ ;
+                // load_count++;
             }
             DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             break;
@@ -317,7 +318,10 @@ void ShootTask()
         case LOAD_BURSTFIRE:
             if((DWT_GetTimeline_ms() - load_time_ms) > cool_down_time)
             {
-                load_count++;
+                if(((load_count-2) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
+                - loader->measure.total_angle)<0)
+                    load_count++ ;
+                // load_count++;
                 load_time_ms = DWT_GetTimeline_ms();
             }
             DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
