@@ -166,7 +166,7 @@ static void Load_Reverse()
     }
 }
 
-int heat_control    = 25; // 热量控制
+int heat_control    = 0; // 热量控制
 float local_heat    = 0;  // 本地热量
 int One_bullet_heat = 10; // 打一发消耗热量
 int32_t shoot_count;      // 已发弹量
@@ -225,7 +225,7 @@ static int one_bullet;
 // static ramp_t fric_off_ramp;
 float fric_speed = 0; // 摩擦轮转速参考值
 uint32_t shoot_heat_count[2];
-static float target_fric_speed = 40000;
+static float target_fric_speed = 37000;
 loader_mode_e last_load_mode = LOAD_STOP;
 loader_state_e loader_state = LOAD_UNINIT;
 float loader_initial_offset = 0;
@@ -354,7 +354,7 @@ void ShootTask()
 
     PubPushMessage(shoot_pub, (void *)&shoot_feedback_data);
 }
-
+volatile static uint32_t cool_cnt = 0;
 /**
  * @brief  Period elapsed callback in non blocking mode
  * @note   This function is called  when TIM14 interrupt took place, inside
@@ -374,6 +374,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     /* USER CODE BEGIN Callback 1 */
     if (htim->Instance == TIM6) {
         /*-------------------------------------------热量控制部分---------------------------------------------*/
+        cool_cnt++;
         local_heat -= (shoot_cmd_recv.shooter_heat_cooling_rate / 1000.0f); // 1000Hz冷却
         if (local_heat < 0) {
             local_heat = 0;

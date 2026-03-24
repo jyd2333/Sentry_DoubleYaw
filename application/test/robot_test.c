@@ -172,9 +172,10 @@ void NUC_Send_Data(){
 	Vision_Send.armor_id			= referee_info.RobotHurt.armor_id;
 	Vision_Send.hp_deduction_reason	= referee_info.RobotHurt.hurt_type;
 	Vision_Send.rfid_status			= referee_info.Rfid_Status.rfid_status;
+	Vision_Send.end 			= FRAME_END;
 
 	Vision_Send.check_sum 		= Check_Sum_16(&Vision_Send.Header_Frame.head,sizeof(vision_send_t)-2);
-	Vision_Send.end 			= FRAME_END;
+	
 
 	// Situation_Alpha.DWT_stamp 			= DWT_GetTimeline_ms();
 	// Situation_Alpha.game_progress 		= referee_info.GameState.game_progress;

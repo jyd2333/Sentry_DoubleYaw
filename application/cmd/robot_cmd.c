@@ -282,7 +282,7 @@ static void HeatControl()
         shoot_cmd_send.load_mode = LOAD_STOP;
     }
     static float rate_coef;
-    if (heat_coef == 1)
+    if (heat_coef >= 1)
         rate_coef = 1;
     else if (heat_coef >= 0.8 && heat_coef < 1)
         rate_coef = 0.8;
@@ -290,11 +290,11 @@ static void HeatControl()
         rate_coef = 0.6;
     else if (heat_coef < 0.6)
         rate_coef = 0.4;
-    heat_coef = ((referee_data->GameRobotStatus.shooter_barrel_heat_limit - referee_data->PowerHeatData.shooter_17mm_barrel_heat + rate_coef * referee_data->GameRobotStatus.shooter_barrel_cooling_value) * 1.0f) / (1.0f * referee_data->GameRobotStatus.shooter_barrel_heat_limit);
+    heat_coef = ((referee_data->GameRobotStatus.shooter_barrel_heat_limit - referee_data->PowerHeatData.shooter_17mm_barrel_heat + rate_coef * referee_data->GameRobotStatus.shooter_barrel_cooling_value) * 1.5f) / (1.0f * referee_data->GameRobotStatus.shooter_barrel_heat_limit);
     // 新热量管理
-    if (referee_data->GameRobotStatus.shooter_barrel_cooling_value - 40 + 30 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
+    if (referee_data->GameRobotStatus.shooter_barrel_cooling_value + 100 + 100 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
     {
-        // shoot_cmd_send.load_mode = LOAD_STOP;
+        shoot_cmd_send.load_mode = LOAD_STOP;
     }
 }
 
@@ -378,7 +378,18 @@ static void RemoteControlSet()
             
         chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
         chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
-        chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
+        // chassis_cmd_send.chassis_mode = NUC_cmd.rotate
+        if(NUC_cmd.rotateMode == 0)
+                {
+                    chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
+                    chassis_cmd_send.chassis_rotate_speed = 0;
+                }
+                else
+                {
+                    chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+                    chassis_cmd_send.chassis_rotate_speed = NUC_cmd.rotateMode;
+                // chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
+                }
         if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
         {
             if(NUC_cmd.detect)
@@ -404,11 +415,11 @@ static void RemoteControlSet()
         pitch_control+=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
         if(NUC_cmd.detect == 0 && gimbal_fetch_data.gimbal_online)
         {
-            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.15;
-            pitch_control += pitch_search_flag*0.002+PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-            if(pitch_control>0.25)
+            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.3;
+            pitch_control += pitch_search_flag * 0.0015f + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
+            if(pitch_control > -0.15f)
                 pitch_search_flag=-1;
-            if(pitch_control<-0.15)
+            if(pitch_control < -0.4f)
                 pitch_search_flag=1;
         }
     }
@@ -428,7 +439,7 @@ static void RemoteControlSet()
                 break;
             case SWITCH_UP:
                 shoot_cmd_send.friction_mode = FRICTION_ON;
-                shoot_cmd_send.load_mode = LOAD_1_BULLET;
+                shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
                 break;
             default:
                 break;
@@ -538,7 +549,7 @@ static void RemoteControlSet()
         }
     }
 
-    if(pitch_control<-0.30) pitch_control=-0.30;
+    if(pitch_control<-0.45) pitch_control=-0.45;
     if(pitch_control>0.3) pitch_control=0.3;
     rc_daemon_instance->temp_count--;
     if(rc_daemon_instance->temp_count<=0)
@@ -547,7 +558,7 @@ static void RemoteControlSet()
     }
     // 云台参数
     YawControlProcess();
-    // HeatControl();
+    HeatControl();
     // if(yaw_control > 100) yaw_control = 100;
     // if(yaw_control < -100) yaw_control = -100;
     // yaw_test_count--;
@@ -600,7 +611,7 @@ void RobotCMDTask()
     } else {
         RemoteControlSet();
     }
-    HeatControl();
+    // HeatControl();
     // 设置视觉发送数据,还需增加加速度和角速度数据
 
     // 推送消息,双板通信,视觉通信等
