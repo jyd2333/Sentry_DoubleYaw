@@ -39,7 +39,7 @@ void ShootInit()
         },
         .controller_param_init_config = {
             .speed_PID = {
-                .Kp            = 0.5,
+                .Kp            = 1,
                 .Ki            = 0,
                 .Kd            = 0,
                 .Improve       = PID_Integral_Limit,
@@ -307,7 +307,7 @@ void ShootTask()
             // }
             if(last_load_mode == LOAD_STOP)
             {
-                if(((load_count-2) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
+                if(((load_count-1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
                 - loader->measure.total_angle)<0)
                     load_count++ ;
                 // load_count++;
@@ -318,7 +318,7 @@ void ShootTask()
         case LOAD_BURSTFIRE:
             if((DWT_GetTimeline_ms() - load_time_ms) > cool_down_time)
             {
-                if(((load_count-2) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
+                if(((load_count-1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
                 - loader->measure.total_angle)<0)
                     load_count++ ;
                 // load_count++;

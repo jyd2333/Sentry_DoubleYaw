@@ -347,7 +347,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 8;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 12;   // 射频默认30Hz
 
     // if (rc_data[TEMP].rc.dial > 400) {
     //     SuperCap_flag_from_user = SUPER_USER_OPEN;
@@ -454,6 +454,7 @@ static void RemoteControlSet()
                 break;
             case SWITCH_UP:
                 chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+                chassis_cmd_send.chassis_rotate_speed = 255;
                 break;
             default:
                 break;
@@ -490,6 +491,7 @@ static void RemoteControlSet()
                 {
                     chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
                     chassis_cmd_send.chassis_rotate_speed = NUC_cmd.rotateMode;
+
                 // chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
                 }
                 yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_;//+(float) NUC_cmd.odomYaw  * 0.001;
