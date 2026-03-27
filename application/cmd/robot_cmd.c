@@ -290,9 +290,9 @@ static void HeatControl()
         rate_coef = 0.6;
     else if (heat_coef < 0.6)
         rate_coef = 0.4;
-    heat_coef = ((referee_data->GameRobotStatus.shooter_barrel_heat_limit - referee_data->PowerHeatData.shooter_17mm_barrel_heat + rate_coef * referee_data->GameRobotStatus.shooter_barrel_cooling_value) * 1.5f) / (1.0f * referee_data->GameRobotStatus.shooter_barrel_heat_limit);
+    heat_coef = ((referee_data->GameRobotStatus.shooter_barrel_heat_limit - referee_data->PowerHeatData.shooter_17mm_barrel_heat + rate_coef * referee_data->GameRobotStatus.shooter_barrel_cooling_value) * 1.7f) / (1.0f * referee_data->GameRobotStatus.shooter_barrel_heat_limit);
     // 新热量管理
-    if (referee_data->GameRobotStatus.shooter_barrel_cooling_value + 100 + 100 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
+    if (referee_data->GameRobotStatus.shooter_barrel_cooling_value + 130 + 100 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
     {
         shoot_cmd_send.load_mode = LOAD_STOP;
     }

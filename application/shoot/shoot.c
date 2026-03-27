@@ -206,7 +206,7 @@ static void Shoot_Fric_data_process(void)
         derivative = moving_average[1] - moving_average[0];
         d_watch    = derivative;
         /*导数比较*/
-        if (derivative < -300) {
+        if (derivative < -200) {
             bullet_waiting_confirm = true;
         } else if (derivative > 30) {
             if (bullet_waiting_confirm == true) {
