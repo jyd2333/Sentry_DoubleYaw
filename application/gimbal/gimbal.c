@@ -6,6 +6,7 @@
 #include "ins_task.h"
 #include "message_center.h"
 #include "general_def.h"
+#include "robot_test.h"
 
 #include "bmi088.h"
 #include "referee_UI.h"
@@ -29,6 +30,7 @@ float chassis_rotate_avg = 0;
 uint32_t chassis_rotate_count = 0;
 float pitch_tor_feedforward = 0;
 float pitch_tor_feedforward_ori = 0;
+extern  NUC_cmd_t NUC_cmd;
 void GimbalInit()
 {
     BMI088_Init_Config_s config = {
@@ -202,7 +204,7 @@ float big_yaw_kp = 5;
 float big_yaw_fetch_angle;
 int32_t big_yaw_fetch_angle_single;
 base_yaw_tilt_s base_yaw_tilt;
-
+uint8_t last_NUC_detect = 0;
 base_yaw_tilt_s* GetBaseYawTilt(void)
 {
     static float gimbal_yaw_pitch,gimbal_yaw_roll;
@@ -235,6 +237,11 @@ void GimbalTask()
         chassis_rotate_sum = 0;
     }
     pitch_tor_feedforward = 0.584 * tan(0.82 - abs(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]));
+    if(NUC_cmd.detect != 0 && last_NUC_detect == 0)
+    {
+        yaw_motor->motor_controller.angle_PID.Iout = 0;
+        yaw_motor->motor_controller.speed_PID.Iout = 0;
+    }
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {
@@ -278,7 +285,7 @@ void GimbalTask()
     // 在合适的地方添加pitch重力补偿前馈力矩
     // 根据IMU姿态/pitch电机角度反馈计算出当前配重下的重力矩
     // ...
-
+    last_NUC_detect = NUC_cmd.detect;
     // 设置反馈数据,主要是imu和yaw的ecd
     if(yaw_motor->dt < 0.1) gimbal_feedback_data.gimbal_online = 1;
     else gimbal_feedback_data.gimbal_online = 0;

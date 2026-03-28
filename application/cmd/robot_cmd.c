@@ -51,7 +51,7 @@ static Subscriber_t *chassis_feed_sub; // 底盘反馈信息订阅者
 
 // static Subscriber_t *NUC_cmd_sub;   //整车信息订阅者 //=SubRegister("NUC_cmd",sizeof(NUC_cmd_t));
 // static  NUC_cmd_t NUC_cmd_use;  //speed
-// extern  NUC_cmd_t NUC_cmd;
+extern  NUC_cmd_t NUC_cmd;
 
 #endif                                 // ONE_BOARD
 Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
@@ -379,17 +379,18 @@ static void RemoteControlSet()
         chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
         chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
         // chassis_cmd_send.chassis_mode = NUC_cmd.rotate
+        // chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+        // chassis_cmd_send.chassis_rotate_speed = 200;
         if(NUC_cmd.rotateMode == 0)
-                {
-                    chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
-                    chassis_cmd_send.chassis_rotate_speed = 0;
-                }
-                else
-                {
-                    chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
-                    chassis_cmd_send.chassis_rotate_speed = NUC_cmd.rotateMode;
-                // chassis_cmd_send.chassis_mode = NUC_cmd.rotateMode;
-                }
+        {
+            chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
+            chassis_cmd_send.chassis_rotate_speed = 0;
+        }
+        else
+        {
+            chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
+            chassis_cmd_send.chassis_rotate_speed = NUC_cmd.rotateMode;
+        }
         if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
         {
             if(NUC_cmd.detect)
@@ -499,6 +500,7 @@ static void RemoteControlSet()
                 break;
             case SWITCH_UP://Vision
                 chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
+                // chassis_cmd_send.chassis_rotate_speed = 255;
                 switch(WFLY_data[TEMP].state_SB)
                 {
                     case SWITCH_DOWN:

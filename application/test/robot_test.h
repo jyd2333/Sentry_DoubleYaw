@@ -116,8 +116,6 @@ typedef struct
 	float odomYaw;
 }NUC_cmd_t;
 
-extern NUC_cmd_t NUC_cmd;
-
 #pragma pack(1) // 压缩结构体,取消字节对齐
 typedef struct
 {
