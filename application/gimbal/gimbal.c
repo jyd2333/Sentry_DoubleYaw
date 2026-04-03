@@ -30,6 +30,8 @@ float chassis_rotate_avg = 0;
 uint32_t chassis_rotate_count = 0;
 float pitch_tor_feedforward = 0;
 float pitch_tor_feedforward_ori = 0;
+float pitch_vel_feedforward = 0;
+float yaw_vel_feedforward = 0;
 extern  NUC_cmd_t NUC_cmd;
 void GimbalInit()
 {
@@ -92,6 +94,7 @@ void GimbalInit()
             .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET], // yaw反馈角度值
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
             .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_YAW_ADDRESS_OFFSET],
+            .speed_feedforward_ptr = &yaw_vel_feedforward,
         },
         .controller_setting_init_config = {
             .angle_feedback_source = OTHER_FEED,
@@ -99,6 +102,7 @@ void GimbalInit()
             .outer_loop_type       = ANGLE_LOOP,
             .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
+            .feedforward_flag      = SPEED_FEEDFORWARD,
         },
         .motor_type = GM6020};
     yaw_motor   = DJIMotorInit(&yaw_config);
@@ -132,7 +136,9 @@ void GimbalInit()
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
             .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_PITCH_ADDRESS_OFFSET],
+            .speed_feedforward_ptr = &pitch_vel_feedforward,
             .current_feedforward_ptr = &pitch_tor_feedforward,
+
         },
         .controller_setting_init_config = {
             .angle_feedback_source = OTHER_FEED,
@@ -141,7 +147,7 @@ void GimbalInit()
             .close_loop_type       = SPEED_LOOP | ANGLE_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
             .feedback_reverse_flag = FEEDBACK_DIRECTION_REVERSE,
-            .feedforward_flag      = CURRENT_FEEDFORWARD,
+            .feedforward_flag      = CURRENT_AND_SPEED_FEEDFORWARD,
             .control_range = {
                 .P_max = 12.5,
                 .V_max = 30,
@@ -237,6 +243,16 @@ void GimbalTask()
         chassis_rotate_sum = 0;
     }
     pitch_tor_feedforward = 0.584 * tan(0.82 - abs(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]));
+    if(gimbal_cmd_recv.control_type == NUC_CONTROL)
+    {
+        pitch_vel_feedforward   = NUC_cmd.pitch_vel;
+        yaw_vel_feedforward     = NUC_cmd.yaw_vel;
+    }
+    else
+    {
+        pitch_vel_feedforward   = 0;
+        yaw_vel_feedforward     = 0;
+    }
     if(NUC_cmd.detect != 0 && last_NUC_detect == 0)
     {
         yaw_motor->motor_controller.angle_PID.Iout = 0;

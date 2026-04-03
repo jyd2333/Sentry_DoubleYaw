@@ -102,7 +102,11 @@ typedef struct
     float vy;
     float wz;
 	float pitch;
+	float pitch_vel;
+	float pitch_acc;
 	float yaw;
+	float yaw_vel;
+	float yaw_acc;
 	int shot;
 	uint8_t detect;
 	int16_t delay;
@@ -151,26 +155,21 @@ typedef struct
 
 typedef struct
 {
-	header_frame_t Header_Frame;
-	uint16_t cmdid;
+	uint8_t head;
+	uint8_t cmdid;
 	float DWT_stamp;
 
 	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
+	float quat[4];
 	float pitch;
+	float pitch_gyro;
 	float yaw;
+	float yaw_gyro;
 	float Yaw_diff;
 	float bullet_speed;
+	uint16_t load_count;
 
-	uint8_t game_progress;
-  	uint16_t stage_remain_time;
-	uint32_t event_data;
-	uint16_t current_hp;
-  	uint16_t maximum_hp;
-  	uint8_t armor_id;
-  	uint8_t hp_deduction_reason;
-	uint32_t rfid_status;
-
-	uint8_t reserve[16];
+	uint8_t reserve[12];
 	uint8_t end;
 	uint16_t check_sum;
 }vision_send_t;
@@ -182,27 +181,24 @@ typedef struct
 	uint8_t major_number;
 	uint8_t chassis_status;
 	float pitch;
+	float pitch_vel;
+	float pitch_acc;
 	float yaw;
+	float yaw_vel;
+	float yaw_acc;
 	uint32_t second;
 	uint32_t nano_second;
 	float vx;
 	float vy;
-	float detect_x1;
-	float detect_y1;
-	float detect_z1;
-	uint8_t detect_number1;
-	float detect_x2;
-	float detect_y2;
-	float detect_z2;
-	uint8_t detect_number2;
-	uint8_t reserve[7];
+	uint8_t reserve[17];
 	uint16_t check_sum;
 	uint8_t end;
 }vision_receive_t;
 
 typedef struct
 {
-	header_frame_t Header_Frame;
+	uint8_t head;
+	uint8_t cmdid;
 	float DWT_stamp;
 
 	uint8_t game_progress;
@@ -217,14 +213,15 @@ typedef struct
   	uint8_t ally_power_rune_state; 
 	uint32_t rfid_status;
 
-	uint8_t reserve[33];
-	uint16_t check_sum;
+	uint8_t reserve[35];
 	uint8_t end;
+	uint16_t check_sum;
 }situation_alpha_t;
 
 typedef struct
 {
-	header_frame_t Header_Frame;
+	uint8_t head;
+	uint8_t cmdid;
 	float DWT_stamp;
 
 	float init_sentry_position_x;
@@ -244,9 +241,9 @@ typedef struct
 	uint16_t ally_outpost_HP;
     uint16_t ally_base_HP;
 
-	uint8_t reserve[1];
-	uint16_t check_sum;
+	uint8_t reserve[3];
 	uint8_t end;
+	uint16_t check_sum;
 }situation_beta_t;
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 

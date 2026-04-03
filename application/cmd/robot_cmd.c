@@ -395,6 +395,7 @@ static void RemoteControlSet()
         {
             if(NUC_cmd.detect)
             {
+                gimbal_cmd_send.control_type = NUC_CONTROL;
                 yaw_control = NUC_cmd.yaw ;
                 pitch_control = NUC_cmd.pitch ;
                 if(NUC_cmd.shot==1&&shoot_cmd_send.friction_mode== FRICTION_ON) 
@@ -407,6 +408,8 @@ static void RemoteControlSet()
                     shoot_cmd_send.load_mode = LOAD_STOP;
                 }
             }
+            else
+                gimbal_cmd_send.control_type = NUC_NORMAL;
         }
         if(shoot_wait>0) shoot_wait--;
         if(shoot_wait<=0) shoot_cmd_send.load_mode = LOAD_STOP;
@@ -460,6 +463,7 @@ static void RemoteControlSet()
             default:
                 break;
         }
+        gimbal_cmd_send.control_type = NUC_NORMAL;
         chassis_cmd_send.vx = 40.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
         chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
         yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
@@ -473,6 +477,7 @@ static void RemoteControlSet()
                 chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;
                 shoot_cmd_send.friction_mode = FRICTION_OFF;
                 shoot_cmd_send.load_mode = LOAD_STOP;
+                gimbal_cmd_send.control_type = NUC_NORMAL;
                 chassis_cmd_send.vx = 40.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
                 chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
                 yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
@@ -481,6 +486,7 @@ static void RemoteControlSet()
             case SWITCH_MIDDLE://Guide
                 shoot_cmd_send.friction_mode = FRICTION_OFF;
                 shoot_cmd_send.load_mode = LOAD_STOP;
+                gimbal_cmd_send.control_type = NUC_NORMAL;
                 chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
                 chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
                 if(NUC_cmd.rotateMode == 0)
@@ -533,9 +539,12 @@ static void RemoteControlSet()
                 {
                     if(NUC_cmd.detect)
                     {
+                        gimbal_cmd_send.control_type = NUC_CONTROL;
                         yaw_control = NUC_cmd.yaw ;
                         pitch_control = NUC_cmd.pitch ;
                     }
+                    else
+                        gimbal_cmd_send.control_type = NUC_NORMAL;
                 }
                 if(shoot_wait>0) shoot_wait--;
                 if(shoot_wait<=0)

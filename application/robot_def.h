@@ -87,10 +87,10 @@
 // 设置陀螺仪数据相较于云台的yaw,pitch,roll的方向
 #define BMI088_BOARD_INSTALL_SPIN_MATRIX \
     {0.0f, -1.0f, 0.0f},                 \
-        {1.0f, 0.0f, 0.0f},              \
-    {                                    \
-        0.0f, 0.0f, 1.0f                 \
-    }
+    {1.0f, 0.0f, 0.0f},                  \
+    {0.0f, 0.0f, 1.0f }                  \
+
+    
 
 #define INS_YAW_ADDRESS_OFFSET   2 // 陀螺仪数据相较于云台的yaw的方向
 #define INS_PITCH_ADDRESS_OFFSET 1 // 陀螺仪数据相较于云台的pitch的方向
@@ -140,6 +140,10 @@ typedef enum {
     GIMBAL_ZERO_FORCE = 0, // 电流零输入
     GIMBAL_GYRO_MODE,      // 云台陀螺仪反馈模式,反馈值为陀螺仪pitch,total_yaw_angle,底盘可以为小陀螺和跟随模式
 } gimbal_mode_e;
+typedef enum {
+    NUC_NORMAL = 0,
+    NUC_CONTROL,
+} gimbal_NUC_mode_e;
 
 // 发射模式设置
 typedef enum {
@@ -196,8 +200,9 @@ typedef struct
 { // 云台角度控制
     float yaw;
     float pitch;
-
     gimbal_mode_e gimbal_mode;
+    gimbal_NUC_mode_e control_type;
+
 } Gimbal_Ctrl_Cmd_s;
 
 // cmd发布的发射控制数据,由shoot订阅
