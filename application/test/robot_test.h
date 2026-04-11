@@ -26,6 +26,7 @@
 #define NUC_TX_BUFF_SIZE  SEND_DATA_SIZE
 #define SEND_DATA_SIZE    sizeof(vision_send_t)
 #define RECEIVE_DATA_SIZE sizeof(vision_receive_t)
+#define NAVIGATION_RECEIVE_DATA_SIZE sizeof(navigation_receive_t)
 #define SITUATION_ALPHA_SIZE sizeof(situation_alpha_t)
 #define SITUATION_BETA_SIZE sizeof(situation_beta_t)
 
@@ -35,17 +36,6 @@
 // #define NUC_RX_BUFF_SIZE 7+RECEIVE_DATA_SIZE  //NUC通信缓存大小
 #define NUC_RX_BUFF_SIZE RECEIVE_DATA_SIZE
 #define NUC_TX_BUFF_SIZE SEND_DATA_SIZE
-
-#define SENTRY_TARGET 0
-/*
-SENTRY_TARGET:
-0:全功能模式 导航、自瞄均正常运行，积极占领中央增益点
-暂无1:保守模式 导航、自瞄均正常运行，仅导航到增益点外视野开阔处
-暂无2:自瞄+磁力计模式 导航故障，自瞄能正常运行，依靠磁力计驶出补给区，不具备返回能力
-暂无3:自瞄+小陀螺模式 导航故障，自瞄能正常运行，原地小陀螺，靠其他兵种推动，不具备自主行驶能力
-暂无4:自保模式 导航、自瞄均故障，最高转速原地小陀螺
-暂无5:调试模式
-*/
 
 
 typedef enum
@@ -65,36 +55,6 @@ typedef enum
 	
 }chassis_state_e;
 
-typedef enum
-{
-	NO_TARGET,//0
-	RECHARGE_AREA,//1
-	CENTRAL_RETRY,//2
-	CENTRAL_AREA,//3
-	RECHARGE_RETRY//4
-}navigation_mode_e;
-
-typedef enum
-{
-	NAVI_PENDING,//0:目标已提交，但尚未被处理(等待中)。
-	NAVI_ACTIVE,//1:目标当前正在被处理(导航中)。
-	NAVI_PREEMPTED,//2:目标被新的目标抢占(例如，发送了新的目标点)。
-	NAVI_SUCCEEDED,//3:目标成功完成(机器人到达目标点)。
-	NAVI_ABORTED,//4:目标因某种原因失败(例如，路径规划失败或机器人卡住)。
-	NAVI_REJECT,//5:目标被拒绝(例如，目标点不可达)。
-	NAVI_PREEMPTING,//6:目标正在被抢占(例如，正在取消当前目标以处理新目标)。
-	NAVI_RECALLING,//7:目标正在被召回(例如，用户请求取消目标)。
-	NAVI_RECALLED//8:目标已被召回(取消成功)。
-}navigation_feed_e;
-
-typedef struct
-{
-	behaviour_state_e Behaviour_State;
-	chassis_state_e Chassis_State;
-	navigation_mode_e Navigation_Mode;
-	uint32_t Navigation_Wait;
-}decision_state_t;
-
 typedef struct 
 {
     /* data */
@@ -107,17 +67,12 @@ typedef struct
 	float yaw;
 	float yaw_vel;
 	float yaw_acc;
-	int shot;
-	uint8_t detect;
+	int shoot;
 	int16_t delay;
-	uint32_t second;
-	uint32_t nano_second;
-	// uint8_t vision_breath;
-	// uint8_t vision_breath_last;
-	navigation_feed_e Navigation_Feed;
-	uint8_t scanMode;
+	uint64_t time_stamp;
+	uint8_t scanMode;		//0：对装甲板 1：对前哨战 2：对能量机关 3：对基地（）
 	uint8_t rotateMode;
-	float odomYaw;
+	float base_yaw;
 }NUC_cmd_t;
 
 #pragma pack(1) // 压缩结构体,取消字节对齐
@@ -177,23 +132,36 @@ typedef struct
 typedef struct
 {
 	uint8_t head;
-	uint8_t fireadvise;//0：不开火 1：开火
-	uint8_t major_number;
-	uint8_t chassis_status;
+	uint8_t cmd_id;
+	uint64_t time_stamp;
+	uint8_t fireadvise;//0：未识别到 1：识别到、不开火 2：开火
 	float pitch;
 	float pitch_vel;
 	float pitch_acc;
 	float yaw;
 	float yaw_vel;
 	float yaw_acc;
-	uint32_t second;
-	uint32_t nano_second;
-	float vx;
-	float vy;
-	uint8_t reserve[17];
+	uint8_t reserve[26];
 	uint16_t check_sum;
 	uint8_t end;
 }vision_receive_t;
+
+typedef struct
+{
+	uint8_t head;
+	uint8_t cmd_id;
+	uint64_t time_stamp;
+	uint8_t chassis_status;
+	uint8_t sentry_status;
+	uint8_t mode;//保留
+	float vx;
+	float vy;
+	float base_yaw;
+	// uint16_t 
+	uint8_t reserve[36];
+	uint16_t check_sum;
+	uint8_t end;
+}navigation_receive_t;
 
 typedef struct
 {
@@ -246,20 +214,6 @@ typedef struct
 	uint16_t check_sum;
 }situation_beta_t;
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
-
-typedef struct
-{
-	uint8_t head;//0
-	uint8_t reserve;//1
-	uint8_t spin;
-	uint8_t reserve1[13];
-	float vx;
-	float vy;
-	float odomYaw;
-	uint8_t reserve2[2];
-	uint8_t buffer_type;//0x02
-	uint8_t end;
-}navigation_receive_t;
 
 
 void NUC_Send_Data();

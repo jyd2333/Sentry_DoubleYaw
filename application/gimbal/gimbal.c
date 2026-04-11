@@ -253,7 +253,7 @@ void GimbalTask()
         pitch_vel_feedforward   = 0;
         yaw_vel_feedforward     = 0;
     }
-    if(NUC_cmd.detect != 0 && last_NUC_detect == 0)
+    if(NUC_cmd.shoot != 0 && last_NUC_detect == 0)
     {
         yaw_motor->motor_controller.angle_PID.Iout = 0;
         yaw_motor->motor_controller.speed_PID.Iout = 0;
@@ -301,7 +301,7 @@ void GimbalTask()
     // 在合适的地方添加pitch重力补偿前馈力矩
     // 根据IMU姿态/pitch电机角度反馈计算出当前配重下的重力矩
     // ...
-    last_NUC_detect = NUC_cmd.detect;
+    last_NUC_detect = NUC_cmd.shoot;
     // 设置反馈数据,主要是imu和yaw的ecd
     if(yaw_motor->dt < 0.1) gimbal_feedback_data.gimbal_online = 1;
     else gimbal_feedback_data.gimbal_online = 0;

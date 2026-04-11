@@ -101,6 +101,8 @@ targets:
     excludeList:
       - application/UI
       - modules/master_machine/seasky_protocol.c
+    settings:
+      debugger: cortex-debug
     toolchain: GCC
     toolchainConfigMap:
       GCC:
@@ -164,6 +166,8 @@ targets:
         - Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
       libList: []
     excludeList: []
+    settings:
+      debugger: cortex-debug
     toolchain: GCC
     toolchainConfigMap:
       GCC:

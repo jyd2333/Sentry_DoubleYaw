@@ -328,13 +328,12 @@ static void EmergencyHandler()
 float speed_k=1;
 float32_t nuc_yaw=-0.08;//0.003;
 float32_t nuc_pitch=0.3;
-uint32_t last_second,last_nano_second;
+uint64_t last_time_stamp;
 int32_t shoot_wait=0;
 // uint16_t shoot_delay=0,fire_flag=0;
 uint16_t vision_wait=0;
 int8_t pitch_search_flag=1;//pitch上升下降
 int8_t yaw_search_flag=1;
-extern decision_state_t Decision_State;
 extern INS_Instance *INS;
 int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 30;
 int16_t pitch_test_count = 1000,pitch_test_state = 1;
@@ -391,14 +390,14 @@ static void RemoteControlSet()
             chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
             chassis_cmd_send.chassis_rotate_speed = NUC_cmd.rotateMode;
         }
-        if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
+        if(NUC_cmd.time_stamp != last_time_stamp)
         {
-            if(NUC_cmd.detect)
+            if(NUC_cmd.shoot)
             {
                 gimbal_cmd_send.control_type = NUC_CONTROL;
                 yaw_control = NUC_cmd.yaw ;
                 pitch_control = NUC_cmd.pitch ;
-                if(NUC_cmd.shot==1&&shoot_cmd_send.friction_mode== FRICTION_ON) 
+                if(NUC_cmd.shoot==2&&shoot_cmd_send.friction_mode== FRICTION_ON) 
                 {
                     shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
                     shoot_wait = 100;
@@ -413,11 +412,10 @@ static void RemoteControlSet()
         }
         if(shoot_wait>0) shoot_wait--;
         if(shoot_wait<=0) shoot_cmd_send.load_mode = LOAD_STOP;
-        last_second=NUC_cmd.second;
-        last_nano_second=NUC_cmd.nano_second;
+        last_time_stamp = NUC_cmd.time_stamp;
         yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
         pitch_control+=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-        if(NUC_cmd.detect == 0 && gimbal_fetch_data.gimbal_online)
+        if(NUC_cmd.shoot == 0 && gimbal_fetch_data.gimbal_online)
         {
             yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.3;
             pitch_control += pitch_search_flag * 0.0015f + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
@@ -519,9 +517,9 @@ static void RemoteControlSet()
                         break;
                     case SWITCH_UP:
                         shoot_cmd_send.friction_mode = FRICTION_ON;
-                        if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
+                        if(NUC_cmd.time_stamp != last_time_stamp)
                         {
-                            if(NUC_cmd.shot==1) 
+                            if(NUC_cmd.shoot==1) 
                             {
                                 shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
                                 shoot_wait = 100;
@@ -535,9 +533,9 @@ static void RemoteControlSet()
                 }
                 chassis_cmd_send.vx = 40.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
                 chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
-                if(NUC_cmd.second!=last_second||NUC_cmd.nano_second!=last_nano_second)
+                if(NUC_cmd.time_stamp != last_time_stamp)
                 {
-                    if(NUC_cmd.detect)
+                    if(NUC_cmd.shoot)
                     {
                         gimbal_cmd_send.control_type = NUC_CONTROL;
                         yaw_control = NUC_cmd.yaw ;
@@ -552,8 +550,7 @@ static void RemoteControlSet()
                     shoot_cmd_send.load_mode = LOAD_STOP;
                     shoot_wait = 0;
                 }
-                last_second=NUC_cmd.second;
-                last_nano_second=NUC_cmd.nano_second;
+                last_time_stamp = NUC_cmd.time_stamp;
                 yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
                 pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
                 break;

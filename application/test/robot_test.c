@@ -38,12 +38,11 @@ float GetYawDiff(void);
 extern INS_Instance *INS;
 USART_Init_Config_s NUC_Init_Config;
 uint16_t daemon_reload=1000; //允许的串口离线时间
-decision_state_t Decision_State={};
 vision_send_t Vision_Send = {};
-situation_alpha_t Situation_Alpha;
+situation_alpha_t Situation_Alpha = {};
 situation_beta_t Situation_Beta = {};
 vision_receive_t Vision_Receive = {};
-navigation_receive_t Navigation_Receive;
+navigation_receive_t Navigation_Receive = {};
 
 float vision_pitch = 0; //输出控制量 pitch绝对角度 弧度
 float vision_yaw = 0;   //输出控制量 yaw绝对角度 弧度
@@ -60,7 +59,7 @@ void NUC_offline()   //离线处理
             NUC_cmd.vy = 0;
             NUC_cmd.wz = 0;
             NUC_cmd.pitch = 0;
-            NUC_cmd.shot = 0;
+            NUC_cmd.shoot = 0;
             NUC_cmd.yaw = 0;
 			// HAL_UART_Init(&huart1);
 			__HAL_UART_DISABLE_IT(&huart1,UART_IT_RXNE);
@@ -91,34 +90,40 @@ void USB_Decode(void)
 	// {
 	// 	NUC_cmd.delay=1000;
 	// }
-	memcpy(&Vision_Receive,UserRxBufferFS,sizeof(Vision_Receive));
-	if(Vision_Receive.head == FRAME_HEADER && Vision_Receive.end == FRAME_END && Vision_Receive.check_sum == Check_Sum_16(&Vision_Receive.head,sizeof(vision_receive_t)-3))
+	switch(UserRxBufferFS[2])
 	{
-		NUC_cmd.vx 			= Vision_Receive.vx;
-		NUC_cmd.vy 			= -Vision_Receive.vy;
-		NUC_cmd.rotateMode 	= Vision_Receive.chassis_status;
-		NUC_cmd.second 		= Vision_Receive.second;
-		NUC_cmd.nano_second = Vision_Receive.nano_second;
-		NUC_cmd.detect 		= Vision_Receive.major_number;
-		vision_pitch 		= -Vision_Receive.pitch;
-		vision_yaw 			= -RAD_2_DEGREE * Vision_Receive.yaw;
-		if(Vision_Receive.major_number)
-		{
-			NUC_cmd.pitch = vision_pitch;
-			NUC_cmd.yaw = vision_yaw;
-			NUC_cmd.shot = Vision_Receive.fireadvise;
-		}
-		else
-		{
-			NUC_cmd.pitch = 0;
-			NUC_cmd.yaw = 0;
-			NUC_cmd.shot = 0;
-		}
-		NUC_cmd.pitch_vel 	= -Vision_Receive.pitch_vel;
-		NUC_cmd.pitch_acc 	= -Vision_Receive.pitch_acc;
-		NUC_cmd.yaw_vel 	= -Vision_Receive.yaw_vel;
-		NUC_cmd.yaw_acc 	= -Vision_Receive.yaw_acc;
+		case 0x01:
+			memcpy(&Vision_Receive, UserRxBufferFS, sizeof(Vision_Receive));
+			if(Vision_Receive.head == FRAME_HEADER && Vision_Receive.end == FRAME_END && Vision_Receive.check_sum == Check_Sum_16(&Vision_Receive.head,sizeof(vision_receive_t)-3))
+			{
+				NUC_cmd.time_stamp 	= Vision_Receive.time_stamp;
+				vision_pitch 		= -Vision_Receive.pitch;
+				vision_yaw 			= -RAD_2_DEGREE * Vision_Receive.yaw;
+				NUC_cmd.pitch 		= vision_pitch;
+				NUC_cmd.yaw 		= vision_yaw;
+				NUC_cmd.shoot 		= Vision_Receive.fireadvise;
+				NUC_cmd.pitch_vel 	= -Vision_Receive.pitch_vel;
+				NUC_cmd.pitch_acc 	= -Vision_Receive.pitch_acc;
+				NUC_cmd.yaw_vel 	= -Vision_Receive.yaw_vel;
+				NUC_cmd.yaw_acc 	= -Vision_Receive.yaw_acc;
+			}
+			break;
+		case 0x02:
+			memcpy(&Navigation_Receive, UserRxBufferFS, sizeof(Navigation_Receive));
+			if(Navigation_Receive.head == FRAME_HEADER && Navigation_Receive.end == FRAME_END && Navigation_Receive.check_sum == Check_Sum_16(&Navigation_Receive.head,sizeof(navigation_receive_t)-3))
+			{
+				NUC_cmd.time_stamp	= Navigation_Receive.time_stamp;
+				NUC_cmd.vx 			= Navigation_Receive.vx;
+				NUC_cmd.vy 			= Navigation_Receive.vy;
+				NUC_cmd.base_yaw	= Navigation_Receive.base_yaw;
+				NUC_cmd.scanMode	= Navigation_Receive.mode;
+				NUC_cmd.rotateMode	= Navigation_Receive.chassis_status;
+			}
+			break;
+		default:
+			break;
 	}
+	
 	return;
 }
 uint8_t NUC_send_count = 0;
