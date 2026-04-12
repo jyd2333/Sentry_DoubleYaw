@@ -1,10 +1,10 @@
 CompileFlags:
     Add:
-        - -Id:\program files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\arm-none-eabi\include\c++\12.3.1
-        - -Id:\program files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\arm-none-eabi\include\c++\12.3.1\arm-none-eabi
-        - -Id:\program files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\arm-none-eabi\include\c++\12.3.1\backward
-        - -Id:\program files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\lib\gcc\arm-none-eabi\12.3.1\include
-        - -Id:\program files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\lib\gcc\arm-none-eabi\12.3.1\include-fixed
-        - -Id:\program files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\arm-none-eabi\include
+        - -IC:\Users\靳雨东\.eide\tools\gcc_arm\arm-none-eabi\include\c++\10.2.1
+        - -IC:\Users\靳雨东\.eide\tools\gcc_arm\arm-none-eabi\include\c++\10.2.1\arm-none-eabi
+        - -IC:\Users\靳雨东\.eide\tools\gcc_arm\arm-none-eabi\include\c++\10.2.1\backward
+        - -IC:\Users\靳雨东\.eide\tools\gcc_arm\lib\gcc\arm-none-eabi\10.2.1\include
+        - -IC:\Users\靳雨东\.eide\tools\gcc_arm\lib\gcc\arm-none-eabi\10.2.1\include-fixed
+        - -IC:\Users\靳雨东\.eide\tools\gcc_arm\arm-none-eabi\include
     CompilationDatabase: ./build/Debug
-    Compiler: D:\Program Files\arm-gnu-toolchain-12.3.rel1-mingw-w64-i686-arm-none-eabi\bin\arm-none-eabi-gcc.exe
+    Compiler: C:\Users\靳雨东\.eide\tools\gcc_arm\bin\arm-none-eabi-gcc.exe
