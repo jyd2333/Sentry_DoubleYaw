@@ -53,7 +53,8 @@ static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数�
 SuperCapInstance *cap;                                              // 超级电容
 //修改内容
 DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
-
+DJIMotorInstance *steering_lf, *steering_rf, *steering_rb, *steering_lb;
+steering_wheelset_t wheelset_lf, wheelset_rf, wheelset_rb, wheelset_lb;
 // 为了方便调试加入的量
 static uint8_t center_gimbal_offset_x = CENTER_GIMBAL_OFFSET_X; // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
@@ -83,7 +84,6 @@ void ChassisInit()
 {
     // 四个轮子的参数一样,改tx_id和反转标志位即可
     Motor_Init_Config_s chassis_motor_config = {
-        .can_init_config.can_handle   = &hcan1,
         .controller_param_init_config = {
             .speed_PID = {
                 .Kp            = 1.0, // 4.5
@@ -102,23 +102,58 @@ void ChassisInit()
         },
         .motor_type = M3508,
     };
+    Motor_Init_Config_s steering_config = {
+        .controller_param_init_config = {
+            .angle_PID = {
+                .Kp            = 0.7,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 0.01,
+                .Kd            = 0,//0.02,//0.01,
+                .DeadBand      = 0.0f,
+                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
+                .IntegralLimit = 20, 
+                .MaxOut = 1000,
+            },
+            .speed_PID = {
+                .Kp            = 6000,//6000,//10000, //11000,
+                .Ki            = 0,    // 0
+                .Kd            = 8,//5, // 30
+                .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
+                .IntegralLimit = 3000,
+                .MaxOut        = 20000, // 20000
+            },
+        },
+        .controller_setting_init_config = {
+            .angle_feedback_source = MOTOR_FEED,
+            .speed_feedback_source = MOTOR_FEED,
+            .outer_loop_type       = ANGLE_LOOP,
+            .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
+            .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
+        },
+        .motor_type = GM6020
+    };
+    steering_config.can_init_config.can_handle                              = &hcan1;
+    steering_config.can_init_config.tx_id                                   = 1;
+    steering_lf                                                             = DJIMotorInit(&steering_config);
     //  @todo: 当前还没有设置电机的正反转,仍然需要手动添加reference的正负号,需要电机module的支持,待修改.
-    //修改内容
-    chassis_motor_config.can_init_config.tx_id                             = 1;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
-    motor_lf                                                               = DJIMotorInit(&chassis_motor_config);
+    chassis_motor_config.can_init_config.can_handle                         = &hcan1;
+    chassis_motor_config.can_init_config.tx_id                              = 1;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    motor_lf                                                                = DJIMotorInit(&chassis_motor_config);
 
-    chassis_motor_config.can_init_config.tx_id                             = 2;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
-    motor_rf                                                               = DJIMotorInit(&chassis_motor_config);
+    chassis_motor_config.can_init_config.can_handle                         = &hcan1;
+    chassis_motor_config.can_init_config.tx_id                              = 2;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    motor_rf                                                                = DJIMotorInit(&chassis_motor_config);
 
-    chassis_motor_config.can_init_config.tx_id                             = 3;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
-    motor_rb                                                               = DJIMotorInit(&chassis_motor_config);
+    chassis_motor_config.can_init_config.can_handle                         = &hcan1;
+    chassis_motor_config.can_init_config.tx_id                              = 3;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    motor_rb                                                                = DJIMotorInit(&chassis_motor_config);
 
-    chassis_motor_config.can_init_config.tx_id                             = 4;
-    chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
-    motor_lb                                                               = DJIMotorInit(&chassis_motor_config);
+    chassis_motor_config.can_init_config.can_handle                         = &hcan1;
+    chassis_motor_config.can_init_config.tx_id                              = 4;
+    chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    motor_lb                                                                = DJIMotorInit(&chassis_motor_config);
 
     // SuperCap_Init_Config_s cap_conf = {
     //     .can_config = {
@@ -167,6 +202,13 @@ static void MecanumCalculate()
     vt_rb = chassis_vx + chassis_vy - chassis_cmd_recv.wz * RB_CENTER;
 }
 
+static void SteeringCalculate(void)
+{
+    wheelset_lf.measure_angle   = ((float)steering_lf->measure.ecd - STEERING_LF_ECD) * ECD_ANGLE_COEF_DJI;
+    wheelset_lf.speed_angle     = atan2f(chassis_vy, chassis_vx);
+    wheelset_lf.vt              = 
+    
+}
 static ramp_t super_ramp;
 static float Power_Output;
 /**
@@ -291,12 +333,13 @@ void ChassisTask()
         DJIMotorStop(motor_rf);
         DJIMotorStop(motor_lb);
         DJIMotorStop(motor_rb);
+        DJIMotorStop(steering_lf);
     } else { // 正常工作
         DJIMotorEnable(motor_lf);
         DJIMotorEnable(motor_rf);
         DJIMotorEnable(motor_lb);
         DJIMotorEnable(motor_rb);
-
+        // DJIMotorEnable(Steering_lf);
     }
     static float offset_angle;
     static float sin_theta, cos_theta;
