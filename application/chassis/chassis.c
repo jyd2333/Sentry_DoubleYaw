@@ -1,8 +1,8 @@
 /**
  * @file chassis.c
  * @author NeoZeng neozng1@hnu.edu.cn
- * @brief 底盘应用,负责接收robot_cmd的控制命令并根据命令进行运动学解算,得到输出
- *        注意底盘采取右手系,对于平面视图,底盘纵向运动的正前方为x正方向;横向运动的右侧为y正方向
+ * @brief 底盘应用,负责接收robot_cmd的控制命令并根据命令进行运动学解�?得到输出
+ *        注意底盘采取右手�?对于平面视图,底盘纵向运动的正前方为x正方�?横向运动的右侧为y正方�?
  *
  * @version 0.1
  * @date 2022-12-04
@@ -26,9 +26,9 @@
 #include "power_calc.h"
 #include "tool.h"
 
-/* 根据robot_def.h中的macro自动计算的参数 */
-#define HALF_WHEEL_BASE  (WHEEL_BASE / 2.0f)     // 半轴距
-#define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)    // 半轮距
+/* 根据robot_def.h中的macro自动计算的参�?*/
+#define HALF_WHEEL_BASE  (WHEEL_BASE / 2.0f)     // 半轴�?
+#define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)    // 半轮�?
 #define PERIMETER_WHEEL  (RADIUS_WHEEL * 2 * PI) // 轮子周长
 
 #define LF               0
@@ -36,7 +36,7 @@
 #define RB               2
 #define LB               3
 
-/* 底盘应用包含的模块和信息存储,底盘是单例模式,因此不需要为底盘建立单独的结构体 */
+/* 底盘应用包含的模块和信息存储,底盘是单例模�?因此不需要为底盘建立单独的结构体 */
 #ifdef CHASSIS_BOARD // 如果是底盘板,使用板载IMU获取底盘转动角速度
 #include "can_comm.h"
 #include "ins_task.h"
@@ -44,11 +44,11 @@ static CANCommInstance *chasiss_can_comm; // 双板通信CAN comm
 attitude_t *Chassis_IMU_data;
 #endif // CHASSIS_BOARD
 #ifdef ONE_BOARD
-static Publisher_t *chassis_pub;                    // 用于发布底盘的数据
-static Subscriber_t *chassis_sub;                   // 用于订阅底盘的控制命令
+static Publisher_t *chassis_pub;                    // 用于发布底盘的数�?
+static Subscriber_t *chassis_sub;                   // 用于订阅底盘的控制命�?
 #endif                                              // !ONE_BOARD
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制命令
-static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
+static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数�?
 
 SuperCapInstance *cap;                                              // 超级电容
 //修改内容
@@ -60,7 +60,7 @@ static uint8_t center_gimbal_offset_x = CENTER_GIMBAL_OFFSET_X; // 云台旋转�
 static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
 
 // 跟随模式底盘的pid
-// 目前没有设置单位，有些不规范，之后有需要再改
+// 目前没有设置单位，有些不规范，之后有需要再�?
 static PIDInstance Chassis_Follow_PID = {
     .Kp            = 50,   // 25,//25, // 50,//70, // 4.5
     .Ki            = 0,    // 0
@@ -76,13 +76,13 @@ static PIDInstance Chassis_Follow_PID = {
 /* 用于自旋变速策略的时间变量 */
 // static float t;
 
-/* 私有函数计算的中介变量,设为静态避免参数传递的开销 */
-static float chassis_vx, chassis_vy, chassis_vw; // 将云台系的速度投影到底盘
-static float vt_lf, vt_rf, vt_lb, vt_rb;         // 底盘速度解算后的临时输出,待进行限幅
+/* 私有函数计算的中介变�?设为静态避免参数传递的开销 */
+static float chassis_vx, chassis_vy, chassis_vw; // 将云台系的速度投影到底�?
+static float vt_lf, vt_rf, vt_lb, vt_rb;         // 底盘速度解算后的临时输出,待进行限�?
 static ramp_t rotate_ramp;
 void ChassisInit()
 {
-    // 四个轮子的参数一样,改tx_id和反转标志位即可
+    // 四个轮子的参数一�?改tx_id和反转标志位即可
     Motor_Init_Config_s chassis_motor_config = {
         .controller_param_init_config = {
             .speed_PID = {
@@ -134,7 +134,7 @@ void ChassisInit()
     steering_config.can_init_config.can_handle                              = &hcan1;
     steering_config.can_init_config.tx_id                                   = 1;
     steering_lf                                                             = DJIMotorInit(&steering_config);
-    //  @todo: 当前还没有设置电机的正反转,仍然需要手动添加reference的正负号,需要电机module的支持,待修改.
+    //  @todo: 当前还没有设置电机的正反�?仍然需要手动添加reference的正负号,需要电机module的支�?待修�?
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 1;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
@@ -159,14 +159,14 @@ void ChassisInit()
     //     .can_config = {
     //         .can_handle = &hcan1,
     //         .tx_id      = 0X427, // 超级电容默认接收id
-    //         .rx_id      = 0x300, // 超级电容默认发送id,注意tx和rx在其他人看来是反的
+    //         .rx_id      = 0x300, // 超级电容默认发送id,注意tx和rx在其他人看来是反�?
     //     }};
-    // cap = SuperCapInit(&cap_conf); // 超级电容初始化
+    // cap = SuperCapInit(&cap_conf); // 超级电容初始�?
     ramp_init(&rotate_ramp, 1000);
-    // 发布订阅初始化,如果为双板,则需要can comm来传递消息
+    // 发布订阅初始�?如果为双�?则需要can comm来传递消�?
 #ifdef CHASSIS_BOARD
 
-    Chassis_IMU_data = INS_Init(); // 底盘IMU初始化
+    Chassis_IMU_data = INS_Init(); // 底盘IMU初始�?
 
     CANComm_Init_Config_s comm_conf = {
         .can_config = {
@@ -177,10 +177,10 @@ void ChassisInit()
         .recv_data_len = sizeof(Chassis_Ctrl_Cmd_s),
         .send_data_len = sizeof(Chassis_Upload_Data_s),
     };
-    chasiss_can_comm = CANCommInit(&comm_conf); // can comm初始化
+    chasiss_can_comm = CANCommInit(&comm_conf); // can comm初始�?
 #endif                                          // CHASSIS_BOARD
 
-#ifdef ONE_BOARD // 单板控制整车,则通过pubsub来传递消息
+#ifdef ONE_BOARD // 单板控制整车,则通过pubsub来传递消�?
     chassis_sub = SubRegister("chassis_cmd", sizeof(Chassis_Ctrl_Cmd_s));
     chassis_pub = PubRegister("chassis_feed", sizeof(Chassis_Upload_Data_s));
 #endif // ONE_BOARD
@@ -191,8 +191,8 @@ void ChassisInit()
 #define LB_CENTER ((HALF_TRACK_WIDTH + center_gimbal_offset_x + HALF_WHEEL_BASE + center_gimbal_offset_y) * DEGREE_2_RAD)
 #define RB_CENTER ((HALF_TRACK_WIDTH - center_gimbal_offset_x + HALF_WHEEL_BASE + center_gimbal_offset_y) * DEGREE_2_RAD)
 /**
- * @brief 计算每个轮毂电机的输出,正运动学解算
- *        用宏进行预替换减小开销,运动解算具体过程参考教程
+ * @brief 计算每个轮毂电机的输�?正运动学解算
+ *        用宏进行预替换减小开销,运动解算具体过程参考教�?
  */
 static void MecanumCalculate()
 {
@@ -204,15 +204,32 @@ static void MecanumCalculate()
 
 static void SteeringCalculate(void)
 {
-    wheelset_lf.measure_angle   = ((float)steering_lf->measure.ecd - STEERING_LF_ECD) * ECD_ANGLE_COEF_DJI;
-    wheelset_lf.speed_angle     = atan2f(chassis_vy, chassis_vx);
-    wheelset_lf.vt              = 
+    wheelset_lf.angle_measure   = ((float)steering_lf->measure.ecd - STEERING_LF_ECD) * ECD_ANGLE_COEF_DJI;
+    wheelset_lf.angle_speed     = atan2f(chassis_vy, chassis_vx);
+    wheelset_lf.rotate_range    = wheelset_lf.angle_speed * RAD_2_DEGREE - wheelset_lf.angle_measure;
+    if (wheelset_lf.rotate_range > 180.0f)
+        wheelset_lf.rotate_range -= 360.0f;
+    if (wheelset_lf.rotate_range < -180.0f)
+        wheelset_lf.rotate_range += 360.0f;
+    wheelset_lf.reverse_flag = 0;
+    if (fabsf(wheelset_lf.rotate_range) > 90.0f) {
+        wheelset_lf.reverse_flag = 1;
+        if (wheelset_lf.rotate_range > 0.0f) {
+            wheelset_lf.angle_target = wheelset_lf.angle_measure + wheelset_lf.rotate_range - 180.0f;
+        } else {
+            wheelset_lf.angle_target = wheelset_lf.angle_measure + wheelset_lf.rotate_range + 180.0f;
+        }
+    } else {
+        wheelset_lf.angle_target = wheelset_lf.angle_measure + wheelset_lf.rotate_range;
+    }
+    wheelset_lf.angle_diff      = wheelset_lf.angle_target - wheelset_lf.angle_measure;
+    wheelset_lf.vt              = arm_cos_f32(DEGREE_2_RAD * wheelset_lf.angle_diff) * sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
     
 }
 static ramp_t super_ramp;
 static float Power_Output;
 /**
- * @brief 根据裁判系统和电容剩余容量对输出进行限制并设置电机参考值
+ * @brief 根据裁判系统和电容剩余容量对输出进行限制并设置电机参考�?
  * @param
  * @param
  *
@@ -292,7 +309,7 @@ static float Power_Output;
 //         // none
 //     }
 
-//     // User允许开启电容 且 电压充足
+//     // User允许开启电�?�?电压充足
 //     if (chassis_cmd_recv.SuperCap_flag_from_user == SUPER_USER_OPEN) {
 //         cap->cap_msg_g.enabled = SUPER_CMD_OPEN;
 //         SuperLimitOutput();
@@ -301,7 +318,7 @@ static float Power_Output;
          LimitChassisOutput();
 //     }
 
-     // 设定速度参考值
+     // 设定速度参考�?
      DJIMotorSetRef(motor_lf, vt_lf);
      DJIMotorSetRef(motor_rf, vt_rf);
      DJIMotorSetRef(motor_lb, vt_lb);
@@ -317,10 +334,10 @@ static float Power_Output;
 // float offset_angle_watch;
 uint8_t chassis_rate=100;
 int8_t chassis_flag=1;
-/* 机器人底盘控制核心任务 */
+/* 机器人底盘控制核心任�?*/
 void ChassisTask()
 {
-    // 后续增加没收到消息的处理(双板的情况)
+    // 后续增加没收到消息的处理(双板的情�?
     // 获取新的控制信息
 #ifdef ONE_BOARD
     SubGetMessage(chassis_sub, &chassis_cmd_recv);
@@ -328,7 +345,7 @@ void ChassisTask()
 #ifdef CHASSIS_BOARD
     chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chasiss_can_comm);
 #endif                                                         // CHASSIS_BOARD
-    if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) { // 如果出现重要模块离线或遥控器设置为急停,让电机停止
+    if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) { // 如果出现重要模块离线或遥控器设置为急停,让电机停�?
         DJIMotorStop(motor_lf);
         DJIMotorStop(motor_rf);
         DJIMotorStop(motor_lb);
@@ -352,7 +369,7 @@ void ChassisTask()
     // 根据控制模式设定旋转速度
     switch (chassis_cmd_recv.chassis_mode) {
         case CHASSIS_NO_FOLLOW:
-            // 底盘不旋转,但维持全向机动,一般用于调整云台姿态
+            // 底盘不旋�?但维持全向机�?一般用于调整云台姿�?
             //修改内容
             //chassis_cmd_recv.wz = 0;
 
@@ -376,7 +393,7 @@ void ChassisTask()
             ramp_init(&rotate_ramp, 250);
             break;
             //修改部分
-        case CHASSIS_ROTATE: // 自旋,同时保持全向机动;当前wz维持定值,后续增加不规则的变速策略
+        case CHASSIS_ROTATE: // 自旋,同时保持全向机动;当前wz维持定�?后续增加不规则的变速策�?
            //  if (cap->cap_msg_s.SuperCap_open_flag_from_real == SUPERCAP_PMOS_OPEN) {
            //      vw_set = 7000;
            //  } else {
@@ -391,7 +408,7 @@ void ChassisTask()
             
 
             chassis_cmd_recv.wz = chassis_vw;
-            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD); // 矫正小陀螺偏心
+            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD); // 矫正小陀螺偏�?
             sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD);
             chassis_cmd_recv.vx *= 0.6;
             chassis_cmd_recv.vy *= 0.6;
@@ -399,30 +416,31 @@ void ChassisTask()
             
         case CHASSIS_REVERSE_ROTATE:
             chassis_cmd_recv.wz = -2500;
-            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD); // 矫正小陀螺偏心
+            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD); // 矫正小陀螺偏�?
             sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD);
         default:
             break;
     }
 
-    // 根据云台和底盘的角度offset将控制量映射到底盘坐标系上
-    // 底盘逆时针旋转为角度正方向;云台命令的方向以云台指向的方向为x,采用右手系(x指向正北时y在正东)
+    // 根据云台和底盘的角度offset将控制量映射到底盘坐标系�?
+    // 底盘逆时针旋转为角度正方�?云台命令的方向以云台指向的方向为x,采用右手�?x指向正北时y在正�?
     chassis_vx = chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta;
     chassis_vy = chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta;
 
     // 根据控制模式进行正运动学解算,计算底盘输出
-    MecanumCalculate();
+    SteeringCalculate();
+    DJIMotorSetRef(steering_lf, wheelset_lf.angle_target * ANGLE_ECD_COEF_DJI);
 
-    // 根据裁判系统的反馈数据和电容数据对输出限幅并设定闭环参考值
+    // 根据裁判系统的反馈数据和电容数据对输出限幅并设定闭环参考�?
     Super_Cap_control();
 
     // 获得给电容传输的电容吸取功率等级
     Power_get();
 
-    // 给电容传输数据
+    // 给电容传输数�?
     //SuperCapSend(cap, (uint8_t *)&cap->cap_msg_g);
 
-    // 推送反馈消息
+    // 推送反馈消�?
     //memcpy(&chassis_feedback_data.CapFlag_open_from_real, &cap->cap_msg_s.SuperCap_open_flag_from_real, sizeof(uint8_t));
     //memcpy(&chassis_feedback_data.cap_voltage, &cap->cap_msg_s.CapVot, sizeof(float));
    // memcpy(&chassis_feedback_data.chassis_power_output, &Power_Output, sizeof(float));
@@ -435,3 +453,4 @@ void ChassisTask()
     CANCommSend(chasiss_can_comm, (void *)&chassis_feedback_data);
 #endif // CHASSIS_BOARD
 }
+
