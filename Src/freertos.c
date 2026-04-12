@@ -206,7 +206,8 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
+  //转移到main.c进行
+  // MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
     UNUSED(argument);
     osThreadTerminate(defaultTaskHandle); // 避免空置和切换占用cpu

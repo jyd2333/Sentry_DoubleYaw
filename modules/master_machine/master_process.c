@@ -29,7 +29,7 @@ static void HostOfflineCallback(void *instance)
             break;
         case HOST_VCP:
             LOGWARNING("[vision] vision offline, restart communication.");
-            USBRefresh();
+            // USBRefresh();
             break;
     }
 }
