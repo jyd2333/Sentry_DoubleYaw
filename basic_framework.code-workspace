@@ -6,6 +6,18 @@
     ],
     "settings": {
         "stm32-for-vscode.openOCDPath": false,
+        "C_Cpp.default.compilerPath": "${env:USERPROFILE}/.eide/tools/gcc_arm/bin/arm-none-eabi-gcc.exe",
+        "C_Cpp.default.intelliSenseMode": "gcc-arm",
+        "C_Cpp.default.includePath": [
+            "${workspaceFolder}/**",
+            "${env:USERPROFILE}/.eide/tools/gcc_arm/arm-none-eabi/include",
+            "${env:USERPROFILE}/.eide/tools/gcc_arm/lib/gcc/arm-none-eabi/10.2.1/include",
+            "${env:USERPROFILE}/.eide/tools/gcc_arm/lib/gcc/arm-none-eabi/10.2.1/include-fixed"
+        ],
+        "clangd.arguments": [
+            "--compile-commands-dir=${workspaceFolder}/build/Debug",
+            "--query-driver=${env:USERPROFILE}/.eide/tools/gcc_arm/bin/arm-none-eabi-gcc.exe"
+        ],
         "files.associations": {
             "robot_test.h": "c",
             "message_center.h": "c",
