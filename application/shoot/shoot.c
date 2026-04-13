@@ -59,11 +59,11 @@ void ShootInit()
     friction_config.can_init_config.tx_id                             = 1; // 左摩擦轮,改txid和方向就行
     friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
 
-    friction_l = DJIMotorInit(&friction_config);
+    // friction_l = DJIMotorInit(&friction_config);
 
     friction_config.can_init_config.tx_id                             = 3; // 右摩擦轮,改txid和方向就行
     friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
-    friction_r                                                        = DJIMotorInit(&friction_config);
+    // friction_r                                                        = DJIMotorInit(&friction_config);
 
     // 拨盘电机
     Motor_Init_Config_s loader_config = 
@@ -100,7 +100,7 @@ void ShootInit()
         },
         .motor_type = M2006 // 英雄使用m3508
     };
-    loader = DJIMotorInit(&loader_config);
+    // loader = DJIMotorInit(&loader_config);
 
     shoot_cmd_recv.shoot_mode = SHOOT_ON; // 初始化后摩擦轮进入准备模式,也可将右拨杆拨至上一次来手动开启
 
@@ -108,9 +108,15 @@ void ShootInit()
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
     ramp_init(&fric_on_ramp, 300);
 
-    DJIMotorStop(friction_l);
-    DJIMotorStop(friction_r);
-    DJIMotorStop(loader);
+    if (friction_l != NULL) {
+        DJIMotorStop(friction_l);
+    }
+    if (friction_r != NULL) {
+        DJIMotorStop(friction_r);
+    }
+    if (loader != NULL) {
+        DJIMotorStop(loader);
+    }
 
     lastInfraredSensor = HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_11);
 
@@ -238,6 +244,10 @@ float load_time_ms = 0;
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
 {
+    if (friction_l == NULL || friction_r == NULL || loader == NULL) {
+        return;
+    }
+
     static float shoot_speed;
     infraredSensor = HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_11);
 
@@ -383,7 +393,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         {
             local_heat = shoot_cmd_recv.shooter_referee_heat;
         }
-        Shoot_Fric_data_process();
+        if (friction_l != NULL) {
+            Shoot_Fric_data_process();
+        }
     }
     /* USER CODE END Callback 1 */
 }

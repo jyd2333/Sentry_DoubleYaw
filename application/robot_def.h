@@ -183,6 +183,7 @@ typedef struct {
     uint8_t reverse_flag;
     float rotate_range;
     float angle_target;
+    float angle_ref;
     float angle_diff;
     
 } steering_wheelset_t;

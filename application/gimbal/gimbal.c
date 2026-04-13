@@ -105,7 +105,7 @@ void GimbalInit()
             .feedforward_flag      = SPEED_FEEDFORWARD,
         },
         .motor_type = GM6020};
-    yaw_motor   = DJIMotorInit(&yaw_config);
+    // yaw_motor   = DJIMotorInit(&yaw_config);
 
     Motor_Init_Config_s pitch_motor_config = {//DM4310
         .can_init_config = {
@@ -155,7 +155,7 @@ void GimbalInit()
             },
         },
     };
-    pitch_motor = DMMotorInit(&pitch_motor_config);
+    // pitch_motor = DMMotorInit(&pitch_motor_config);
 
     Motor_Init_Config_s big_yaw_motor_config = {//DM6006
         .can_init_config = {
@@ -227,6 +227,10 @@ base_yaw_tilt_s* GetBaseYawTilt(void)
 /* 机器人云台控制核心任务,后续考虑只保留IMU控制,不再需要电机的反馈 */
 void GimbalTask()
 {
+    if (yaw_motor == NULL || pitch_motor == NULL || big_yaw_motor == NULL) {
+        return;
+    }
+
     // 获取云台控制数据
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);

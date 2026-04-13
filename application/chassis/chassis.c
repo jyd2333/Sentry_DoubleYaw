@@ -105,21 +105,21 @@ void ChassisInit()
     Motor_Init_Config_s steering_config = {
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 0.7,//12, // 0.24, // 0.31, // 0.45
-                .Ki            = 0.01,
+                .Kp            = 1,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 0,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
                 .IntegralLimit = 20, 
-                .MaxOut = 1000,
+                .MaxOut = 0,
             },
             .speed_PID = {
-                .Kp            = 6000,//6000,//10000, //11000,
+                .Kp            = 1,//6000,//10000, //11000,
                 .Ki            = 0,    // 0
-                .Kd            = 8,//5, // 30
+                .Kd            = 0,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 3000,
-                .MaxOut        = 20000, // 20000
+                .MaxOut        = 1000 // 20000
             },
         },
         .controller_setting_init_config = {
@@ -138,22 +138,22 @@ void ChassisInit()
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 1;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
-    motor_lf                                                                = DJIMotorInit(&chassis_motor_config);
+    // motor_lf                                                                = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 2;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
-    motor_rf                                                                = DJIMotorInit(&chassis_motor_config);
+    // motor_rf                                                                = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 3;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
-    motor_rb                                                                = DJIMotorInit(&chassis_motor_config);
+    // motor_rb                                                                = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 4;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
-    motor_lb                                                                = DJIMotorInit(&chassis_motor_config);
+    // motor_lb                                                                = DJIMotorInit(&chassis_motor_config);
 
     // SuperCap_Init_Config_s cap_conf = {
     //     .can_config = {
@@ -216,11 +216,14 @@ static void SteeringCalculate(void)
         wheelset_lf.reverse_flag = 1;
         if (wheelset_lf.rotate_range > 0.0f) {
             wheelset_lf.angle_target = wheelset_lf.angle_measure + wheelset_lf.rotate_range - 180.0f;
+            wheelset_lf.angle_ref = steering_lf->measure.total_angle + wheelset_lf.rotate_range - 180.0f;
         } else {
             wheelset_lf.angle_target = wheelset_lf.angle_measure + wheelset_lf.rotate_range + 180.0f;
+            wheelset_lf.angle_ref = steering_lf->measure.total_angle + wheelset_lf.rotate_range + 180.0f;
         }
     } else {
         wheelset_lf.angle_target = wheelset_lf.angle_measure + wheelset_lf.rotate_range;
+        wheelset_lf.angle_ref = steering_lf->measure.total_angle + wheelset_lf.rotate_range;
     }
     wheelset_lf.angle_diff      = wheelset_lf.angle_target - wheelset_lf.angle_measure;
     wheelset_lf.vt              = arm_cos_f32(DEGREE_2_RAD * wheelset_lf.angle_diff) * sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
@@ -356,7 +359,7 @@ void ChassisTask()
         DJIMotorEnable(motor_rf);
         DJIMotorEnable(motor_lb);
         DJIMotorEnable(motor_rb);
-        // DJIMotorEnable(Steering_lf);
+        DJIMotorEnable(steering_lf);
     }
     static float offset_angle;
     static float sin_theta, cos_theta;
@@ -429,8 +432,8 @@ void ChassisTask()
 
     // 根据控制模式进行正运动学解算,计算底盘输出
     SteeringCalculate();
-    DJIMotorSetRef(steering_lf, wheelset_lf.angle_target * ANGLE_ECD_COEF_DJI);
-
+    // DJIMotorSetRef(steering_lf, wheelset_lf.angle_ref);
+    DJIMotorSetRef(steering_lf, 0);
     // 根据裁判系统与电容反馈对输出限幅，并设定闭环参考
     Super_Cap_control();
 
