@@ -44,10 +44,10 @@
 #define BIG_YAW_CHASSIS_ALIGN_POS   -1.584f //大Yaw与底盘对齐时单机反馈位置
 #define LOADER_ANGLE_PER_BULLET     3240.0f   // 拨出一发弹丸时拨盘转动角度（36 * 90）
 
-#define STEERING_LF_ECD             0
-#define STEERING_RF_ECD             0
-#define STEERING_RB_ECD             0
-#define STEERING_LB_ECD             0
+#define STEERING_LF_ECD             3486
+#define STEERING_RF_ECD             2414
+#define STEERING_RB_ECD             2415
+#define STEERING_LB_ECD             6716
 #define STEERING_LF_ANGLE           STEERING_LF_ECD * ECD_ANGLE_COEF_DJI
 #define STEERING_RF_ANGLE           STEERING_RF_ECD * ECD_ANGLE_COEF_DJI
 #define STEERING_RB_ANGLE           STEERING_RB_ECD * ECD_ANGLE_COEF_DJI
@@ -177,6 +177,8 @@ typedef enum {
 } loader_state_e;
 
 typedef struct {
+    float vx;
+    float vy;
     float vt;
     float angle_measure;
     float angle_speed;
@@ -185,7 +187,6 @@ typedef struct {
     float angle_target;
     float angle_ref;
     float angle_diff;
-    
 } steering_wheelset_t;
 
 /* ----------------CMD 应用发布的控制数据，应由 gimbal/chassis/shoot/UI 订阅---------------- */

@@ -200,7 +200,7 @@ void GimbalInit()
             
         },
     };
-    big_yaw_motor = DMMotorInit(&big_yaw_motor_config);
+    // big_yaw_motor = DMMotorInit(&big_yaw_motor_config);
 
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
@@ -267,21 +267,21 @@ void GimbalTask()
     switch (gimbal_cmd_recv.gimbal_mode) {
         // 停止
         case GIMBAL_ZERO_FORCE:
-            DJIMotorStop(yaw_motor);
-            DMMotorStop(pitch_motor);
-            DMMotorStop(big_yaw_motor);
-            big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
-            yaw_motor->motor_controller.angle_PID.Iout      = 0;
-            pitch_motor->motor_controller.angle_PID.Iout    = 0;
-            pitch_motor->motor_controller.speed_PID.Iout    = 0;
+            // DJIMotorStop(yaw_motor);
+            // DMMotorStop(pitch_motor);
+            // DMMotorStop(big_yaw_motor);
+            // big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
+            // yaw_motor->motor_controller.angle_PID.Iout      = 0;
+            // pitch_motor->motor_controller.angle_PID.Iout    = 0;
+            // pitch_motor->motor_controller.speed_PID.Iout    = 0;
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
         case GIMBAL_GYRO_MODE: // 后续只保留此模式
-            DJIMotorEnable(yaw_motor);
-           //DJIMotorStop(yaw_motor);
-            DMMotorEnable1(pitch_motor);
-            DMMotorEnable1(big_yaw_motor);
-            DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
+        //     DJIMotorEnable(yaw_motor);
+        //    //DJIMotorStop(yaw_motor);
+        //     DMMotorEnable1(pitch_motor);
+        //     DMMotorEnable1(big_yaw_motor);
+        //     DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
             // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             // pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
             // pitch_target = 1.086f;
@@ -292,12 +292,12 @@ void GimbalTask()
             // if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
             // if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
             // pitch_motor->ctrl.pos_set = pitch_target;
-            pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
-            // big_yaw_motor->ctrl.kp_set = 5;
-            // big_yaw_motor->ctrl.kd_set = 1;
-            // big_yaw_motor->ctrl.pos_set = big_yaw_target;
-            big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
-            big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
+            // pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
+            // // big_yaw_motor->ctrl.kp_set = 5;
+            // // big_yaw_motor->ctrl.kd_set = 1;
+            // // big_yaw_motor->ctrl.pos_set = big_yaw_target;
+            // big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
+            // big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
             break;
         default:
             break;
