@@ -10,6 +10,7 @@
 #define COMM_RX_BUF_SIZE    64
 #define COMM_TX_BUF_SIZE    64
 #define COMM_WATCHDOG_TIMEOUT_MS 100U
+#define COMM_HEADER         0xB7
 
 #define COMM_CMD_SIZE       sizeof(comm_cmd_t)
 #define COMM_UPDATA_SIZE    sizeof(comm_upload_t)
@@ -20,6 +21,17 @@
 
 typedef void (*CommRxCallback_t)(const uint8_t *buf);
 
+typedef struct
+{
+    USARTInstance *uart;
+    uint8_t rx_buf[COMM_RX_BUF_SIZE];
+    uint8_t tx_buf[COMM_TX_BUF_SIZE];
+    uint8_t rx_updated;
+    uint8_t online;
+    uint32_t last_feed_ms;
+    CommRxCallback_t rx_cb;
+} CommInstance_t;
+
 #pragma pack(1) // 压缩结构体,取消字节对齐
 typedef struct
 {
@@ -29,8 +41,8 @@ typedef struct
     chassis_mode_e chassis_mode;
     uint8_t chassis_rotate_speed;
     uint16_t yaw_diff_ECD;
+    uint8_t reserve[15];
     uint8_t referee_cmd[32];
-    uint8_t reserve[1];
     uint8_t crc8;
 } comm_cmd_t;
 
@@ -43,8 +55,8 @@ typedef struct
     float bullet_speed;
 	uint16_t load_count;
     float cap_voltage;
+    uint8_t reserve[8];
     uint8_t referee_upload[32];
-    // uint8_t reserve[1];
     uint8_t crc8;
 } comm_upload_t;
 
