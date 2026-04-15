@@ -40,11 +40,11 @@
 #endif
 
 /* cmd应用包含的模块实例指针和交互信息存储*/
-#ifdef GIMBAL_BOARD // 对双板的兼容,条件编译
-#include "can_comm.h"
-static CANCommInstance *cmd_can_comm; // 双板通信
-#endif
-#ifdef ONE_BOARD
+// #ifdef GIMBAL_BOARD // 对双板的兼容,条件编译
+// #include "can_comm.h"
+// static CANCommInstance *cmd_can_comm; // 双板通信
+// #endif
+// #ifdef ONE_BOARD
 static Publisher_t *chassis_cmd_pub;   // 底盘控制消息发布者
 // static Publisher_t *chassis_cmd_pub_2;   // 底盘控制消息发布者
 static Subscriber_t *chassis_feed_sub; // 底盘反馈信息订阅者
@@ -53,7 +53,7 @@ static Subscriber_t *chassis_feed_sub; // 底盘反馈信息订阅者
 // static  NUC_cmd_t NUC_cmd_use;  //speed
 extern  NUC_cmd_t NUC_cmd;
 
-#endif                                 // ONE_BOARD
+// #endif                                 // ONE_BOARD
 Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
 static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反馈信息信息,底盘功率枪口热量与底盘运动状态等
 
@@ -140,23 +140,23 @@ void RobotCMDInit()
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-#ifdef ONE_BOARD // 双板兼容
+// #ifdef ONE_BOARD // 双板兼容
     chassis_cmd_pub  = PubRegister("chassis_cmd", sizeof(Chassis_Ctrl_Cmd_s));
     // chassis_cmd_pub_2  = PubRegister("chassis_cmd_2", sizeof(Chassis_Ctrl_Cmd_s));
     chassis_feed_sub = SubRegister("chassis_feed", sizeof(Chassis_Upload_Data_s));
-#endif // ONE_BOARD
-#ifdef GIMBAL_BOARD
-    CANComm_Init_Config_s comm_conf = {
-        .can_config = {
-            .can_handle = &hcan2,
-            .tx_id      = 0x312,
-            .rx_id      = 0x311,
-        },
-        .recv_data_len = sizeof(Chassis_Upload_Data_s),
-        .send_data_len = sizeof(Chassis_Ctrl_Cmd_s),
-    };
-    cmd_can_comm = CANCommInit(&comm_conf);
-#endif // GIMBAL_BOARD
+// #endif // ONE_BOARD
+// #ifdef GIMBAL_BOARD
+//     CANComm_Init_Config_s comm_conf = {
+//         .can_config = {
+//             .can_handle = &hcan2,
+//             .tx_id      = 0x312,
+//             .rx_id      = 0x311,
+//         },
+//         .recv_data_len = sizeof(Chassis_Upload_Data_s),
+//         .send_data_len = sizeof(Chassis_Ctrl_Cmd_s),
+//     };
+//     cmd_can_comm = CANCommInit(&comm_conf);
+// #endif // GIMBAL_BOARD
 
 #if PITCH_FEED_TYPE
     gimbal_cmd_send.pitch = 0;
@@ -603,12 +603,12 @@ void RobotCMDTask()
 {
     DeterminRobotID();
     // 从其他应用获取回传数据
-#ifdef ONE_BOARD
+// #ifdef ONE_BOARD
     SubGetMessage(chassis_feed_sub, (void *)&chassis_fetch_data);
-#endif // ONE_BOARD
-#ifdef GIMBAL_BOARD
-    chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
-#endif // GIMBAL_BOARD
+// #endif // ONE_BOARD
+// #ifdef GIMBAL_BOARD
+//     chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
+// #endif // GIMBAL_BOARD
     SubGetMessage(shoot_feed_sub, &shoot_fetch_data);
     SubGetMessage(gimbal_feed_sub, &gimbal_fetch_data);
    // SubGetMessage(ui_feed_sub, &ui_fetch_data);
@@ -616,7 +616,7 @@ void RobotCMDTask()
     // 根据gimbal的反馈值计算云台和底盘正方向的夹角,不需要传参,通过static私有变量完成
     CalcOffsetAngle();
     // 根据遥控器SA判断是否急停
-    if (WFLY_data[TEMP].state_SA == SWITCH_DOWN) {//else if (RC_LOST || (switch_is_down(rc_data[TEMP].rc.switch_left) && switch_is_down(rc_data[TEMP].rc.switch_right))) {
+    if (WFLY_data[TEMP].state_SA == SWITCH_DOWN) {
         EmergencyHandler(); // 调试/疯车时急停
     } else {
         RemoteControlSet();
@@ -656,13 +656,13 @@ void RobotCMDTask()
     // memcpy(&ui_cmd_send.Shooter_heat, &shoot_fetch_data.shooter_local_heat, sizeof(float));
     // memcpy(&ui_cmd_send.Heat_Limit, &referee_data->GameRobotState.shooter_id1_17mm_cooling_limit, sizeof(uint16_t));
 
-#ifdef ONE_BOARD
+// #ifdef ONE_BOARD
     PubPushMessage(chassis_cmd_pub, (void *)&chassis_cmd_send);
     // PubPushMessage(chassis_cmd_pub_2, (void *)&chassis_cmd_send);
-#endif // ONE_BOARD
-#ifdef GIMBAL_BOARD
-    CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
-#endif // GIMBAL_BOARD
+// #endif // ONE_BOARD
+// #ifdef GIMBAL_BOARD
+//     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
+// #endif // GIMBAL_BOARD
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
     // PubPushMessage(ui_cmd_pub, (void *)&ui_cmd_send);

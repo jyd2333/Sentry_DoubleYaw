@@ -40,8 +40,8 @@ typedef struct
     float vy;                        // 横移方向速度
     chassis_mode_e chassis_mode;
     uint8_t chassis_rotate_speed;
-    uint16_t yaw_diff_ECD;
-    uint8_t reserve[15];
+    float yaw_diff;
+    uint8_t reserve[13];
     uint8_t referee_cmd[32];
     uint8_t crc8;
 } comm_cmd_t;
@@ -51,11 +51,13 @@ typedef struct
     uint8_t head;
     float real_vx;
     float real_vy;
-    float real_wz;
     float bullet_speed;
 	uint16_t load_count;
+    uint16_t shooter_heat_cooling_rate;
+    uint16_t shooter_referee_heat;
+    uint16_t shooter_cooling_limit;
     float cap_voltage;
-    uint8_t reserve[8];
+    uint8_t reserve[6];
     uint8_t referee_upload[32];
     uint8_t crc8;
 } comm_upload_t;
