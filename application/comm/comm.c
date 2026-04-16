@@ -102,6 +102,9 @@ static void CommSend(void)
     comm_cmd_data.chassis_mode = chassis_cmd_monitor.chassis_mode;
     comm_cmd_data.chassis_rotate_speed = chassis_cmd_monitor.chassis_rotate_speed;
     comm_cmd_data.yaw_diff = (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+    referee_cmd.cmdid = 0x01;
+    referee_cmd.ally_power_rune_active = 0;
+    memcpy(comm_cmd_data.referee_cmd, &referee_cmd, REFEREE_CMD_SIZE);
     Append_CRC8_Check_Sum((uint8_t *)&comm_cmd_data, COMM_CMD_SIZE);
     CommSendDMA(&comm_upload_data, COMM_UPDATA_SIZE);
 }
@@ -123,15 +126,78 @@ static void CommRecieve(const uint8_t *buf)
         }
     }
 }
-
+uint8_t commSendCount = 0;
 static void CommSend(void)
 {
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
     SubGetMessage(shoot_monitor_sub, &shoot_cmd_monitor);
-    
+
     comm_upload_data.head = COMM_HEADER;
-    // comm_upload_data.bullet_speed = ;
+    comm_upload_data.real_vx = 0.0f;
+    comm_upload_data.real_vy = 0.0f;
+    comm_upload_data.bullet_speed = shoot_cmd_monitor.bullet_speed;
+    comm_upload_data.load_count = (uint16_t)load_count;
+    comm_upload_data.shooter_heat_cooling_rate = shoot_cmd_monitor.shooter_heat_cooling_rate;
+    comm_upload_data.shooter_referee_heat = shoot_cmd_monitor.shooter_referee_heat;
+    comm_upload_data.shooter_cooling_limit = shoot_cmd_monitor.shooter_cooling_limit;
+    comm_upload_data.cap_voltage = 0.0f;
+    memset(comm_upload_data.reserve, 0, sizeof(comm_upload_data.reserve));
+
+    if (commSendCount >= 3)
+        commSendCount = 0;
+
+    switch(commSendCount)
+    {
+        case 0:
+            memset(&referee_upload_A, 0, sizeof(referee_upload_A));
+            referee_upload_A.cmdid = 0x01;
+            referee_upload_A.Robot_ID = referee_info.referee_id.Robot_ID;
+            referee_upload_A.game_progress = referee_info.GameState.game_progress;
+            referee_upload_A.stage_remain_time = referee_info.GameState.stage_remain_time;
+            referee_upload_A.event_data = referee_info.EventData.event_type;
+            referee_upload_A.current_hp = referee_info.GameRobotStatus.remain_HP;
+            referee_upload_A.maximum_hp = referee_info.GameRobotStatus.max_HP;
+            referee_upload_A.armor_id = referee_info.RobotHurt.armor_id;
+            referee_upload_A.hp_deduction_reason = referee_info.RobotHurt.hurt_type;
+            referee_upload_A.disengaged_state = (uint8_t)(referee_info.SentryInfo.sentry_info_2 & 0x01u);
+            referee_upload_A.current_state = (uint8_t)((referee_info.SentryInfo.sentry_info_2 >> 12) & 0x03u);
+            referee_upload_A.ally_power_rune_state = (uint8_t)((referee_info.SentryInfo.sentry_info_2 >> 14) & 0x01u);
+            referee_upload_A.rfid_status = referee_info.Rfid_Status.rfid_status;
+            referee_upload_A.init_sentry_position_x = referee_info.GameRobotPos.x;
+            referee_upload_A.init_sentry_position_y = referee_info.GameRobotPos.y;
+            memcpy(comm_upload_data.referee_upload, &referee_upload_A, REFEREE_UPLOAD_A);
+            break;
+        case 1:
+            memset(&referee_upload_B, 0, sizeof(referee_upload_B));
+            referee_upload_B.cmdid = 0x02;
+            referee_upload_B.hero_x = referee_info.GroundRobotPosition.hero_x;
+            referee_upload_B.hero_y = referee_info.GroundRobotPosition.hero_y;
+            referee_upload_B.engineer_x = referee_info.GroundRobotPosition.engineer_x;
+            referee_upload_B.engineer_y = referee_info.GroundRobotPosition.engineer_y;
+            referee_upload_B.standard_3_x = referee_info.GroundRobotPosition.standard_3_x;
+            referee_upload_B.standard_3_y = referee_info.GroundRobotPosition.standard_3_y;
+            memcpy(comm_upload_data.referee_upload, &referee_upload_B, REFEREE_UPLOAD_B);
+            break;
+        case 2:
+        default:
+            memset(&referee_upload_C, 0, sizeof(referee_upload_C));
+            referee_upload_C.cmdid = 0x03;
+            referee_upload_C.standard_4_x = referee_info.GroundRobotPosition.standard_4_x;
+            referee_upload_C.standard_4_y = referee_info.GroundRobotPosition.standard_4_y;
+            referee_upload_C.ally_1_robot_HP = referee_info.GameRobotHP.ally_1_robot_HP;
+            referee_upload_C.ally_2_robot_HP = referee_info.GameRobotHP.ally_2_robot_HP;
+            referee_upload_C.ally_3_robot_HP = referee_info.GameRobotHP.ally_3_robot_HP;
+            referee_upload_C.ally_4_robot_HP = referee_info.GameRobotHP.ally_4_robot_HP;
+            referee_upload_C.ally_outpost_HP = referee_info.GameRobotHP.ally_outpost_HP;
+            referee_upload_C.ally_base_HP = referee_info.GameRobotHP.ally_base_HP;
+            memcpy(comm_upload_data.referee_upload, &referee_upload_C, REFEREE_UPLOAD_C);
+            break;
+    }
+    Append_CRC8_Check_Sum((uint8_t *)&comm_upload_data, COMM_UPDATA_SIZE);
+    commSendCount++;
+    if (commSendCount >= 3)
+        commSendCount = 0;
     CommSendDMA(&comm_upload_data, COMM_UPDATA_SIZE);
 }
 #endif
