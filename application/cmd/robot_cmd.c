@@ -3,6 +3,7 @@
 #include "robot_cmd.h"
 #include "omni_UI.h"
 #include "robot_test.h"
+#include "comm.h"
 // module
 #include "remote_control.h"
 #include "ins_task.h"
@@ -51,8 +52,9 @@ static Subscriber_t *chassis_feed_sub; // 底盘反馈信息订阅者
 
 // static Subscriber_t *NUC_cmd_sub;   //整车信息订阅者 //=SubRegister("NUC_cmd",sizeof(NUC_cmd_t));
 // static  NUC_cmd_t NUC_cmd_use;  //speed
-extern  NUC_cmd_t NUC_cmd;
-
+extern NUC_cmd_t NUC_cmd;
+extern comm_cmd_t comm_cmd_data;
+extern comm_upload_t comm_upload_data;
 // #endif                                 // ONE_BOARD
 Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
 static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反馈信息信息,底盘功率枪口热量与底盘运动状态等
@@ -104,26 +106,14 @@ void HOST_RECV_CALLBACK()
 void RobotCMDInit()
 {
     WFLY_data = RemoteControlInit(&huart3); // 修改为对应串口,注意如果是自研板dbus协议串口需选用添加了反相器的那个
-
+#ifdef GIMBAL_BOARD
     HostInstanceConf host_conf = {
         .callback  = HOST_RECV_CALLBACK,
         .comm_mode = HOST_VCP,
         .RECV_SIZE = 8,
     };
     host_instance = HostInit(&host_conf); // 视觉通信串口
-
-   referee_data = RefereeHardwareInit(&huart6); // 裁判系统初始化,会同时初始化UI
-
-    gimbal_cmd_pub  = PubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
-    gimbal_feed_sub = SubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
-    shoot_cmd_pub   = PubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
-    shoot_feed_sub  = SubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
-    i=1;
-    // NUC_cmd_sub=SubRegister("NUC_cmd",sizeof(NUC_cmd_t));
-    
-    // ui_cmd_pub  = PubRegister("ui_cmd", sizeof(UI_Cmd_s));
-    // ui_feed_sub = SubRegister("ui_feed", sizeof(UI_Upload_Data_s));
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
+        GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -139,25 +129,23 @@ void RobotCMDInit()
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+#endif
+    referee_data = RefereeHardwareInit(&huart6); // 裁判系统初始化,会同时初始化UI
+    gimbal_cmd_pub  = PubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
+    gimbal_feed_sub = SubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
+    shoot_cmd_pub   = PubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
+    shoot_feed_sub  = SubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
+    i=1;
+    
+    // ui_cmd_pub  = PubRegister("ui_cmd", sizeof(UI_Cmd_s));
+    // ui_feed_sub = SubRegister("ui_feed", sizeof(UI_Upload_Data_s));
 
 // #ifdef ONE_BOARD // 双板兼容
     chassis_cmd_pub  = PubRegister("chassis_cmd", sizeof(Chassis_Ctrl_Cmd_s));
-    // chassis_cmd_pub_2  = PubRegister("chassis_cmd_2", sizeof(Chassis_Ctrl_Cmd_s));
     chassis_feed_sub = SubRegister("chassis_feed", sizeof(Chassis_Upload_Data_s));
 // #endif // ONE_BOARD
-// #ifdef GIMBAL_BOARD
-//     CANComm_Init_Config_s comm_conf = {
-//         .can_config = {
-//             .can_handle = &hcan2,
-//             .tx_id      = 0x312,
-//             .rx_id      = 0x311,
-//         },
-//         .recv_data_len = sizeof(Chassis_Upload_Data_s),
-//         .send_data_len = sizeof(Chassis_Ctrl_Cmd_s),
-//     };
-//     cmd_can_comm = CANCommInit(&comm_conf);
-// #endif // GIMBAL_BOARD
 
+    CommInit();
 #if PITCH_FEED_TYPE
     gimbal_cmd_send.pitch = 0;
 #else
@@ -202,26 +190,14 @@ static void CalcOffsetAngle()
     static float gimbal_yaw_current_angle;                                                // 云台yaw轴当前角度
     static float gimbal_yaw_set_angle;                                                    // 云台yaw轴目标角度
     angle                               = gimbal_fetch_data.yaw_motor_single_round_angle - (big_yaw_offset * RAD_2_DEGREE); // 从云台获取的当前yaw电机单圈角度
-    gimbal_yaw_current_angle            = gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET];
+    // gimbal_yaw_current_angle            = gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET];
     gimbal_yaw_set_angle                = yaw_control;
-    chassis_cmd_send.gimbal_error_angle = gimbal_yaw_set_angle - gimbal_yaw_current_angle; // 云台误差角
+    // chassis_cmd_send.gimbal_error_angle = gimbal_yaw_set_angle - gimbal_yaw_current_angle; // 云台误差角
 
-// #if YAW_ECD_GREATER_THAN_4096 // 如果大于180度
-//     if (angle < 180.0f + YAW_ALIGN_ANGLE && angle >= YAW_ALIGN_ANGLE - 180.0f)
-//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-//     else
-//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE + 360.0f;
-// #else // 小于180度
-//     if (angle >= YAW_ALIGN_ANGLE - 180.0f && angle <= YAW_ALIGN_ANGLE + 180.0f) {
-//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-//     } else {
-//         chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE - 360.0f;
-//     }
-// #endif
     if(angle < 0) angle += 360;
     chassis_cmd_send.offset_angle = angle;
 
-    if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
+    // if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
     for(check_count = 0; check_count < 10; check_count++)//防止阻塞
     {
         if(angle <= 45 && angle >= -45) break;
@@ -601,29 +577,39 @@ extern referee_info_t *referee_data_for_ui;
 /* 机器人核心控制任务,200Hz频率运行(必须高于视觉发送频率) */
 void RobotCMDTask()
 {
-    DeterminRobotID();
     // 从其他应用获取回传数据
-// #ifdef ONE_BOARD
+
     SubGetMessage(chassis_feed_sub, (void *)&chassis_fetch_data);
-// #endif // ONE_BOARD
-// #ifdef GIMBAL_BOARD
-//     chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
-// #endif // GIMBAL_BOARD
     SubGetMessage(shoot_feed_sub, &shoot_fetch_data);
     SubGetMessage(gimbal_feed_sub, &gimbal_fetch_data);
-   // SubGetMessage(ui_feed_sub, &ui_fetch_data);
-
-    // 根据gimbal的反馈值计算云台和底盘正方向的夹角,不需要传参,通过static私有变量完成
-    CalcOffsetAngle();
+    // SubGetMessage(ui_feed_sub, &ui_fetch_data);
+    DeterminRobotID();
+#ifdef GIMBAL_BOARD
     // 根据遥控器SA判断是否急停
     if (WFLY_data[TEMP].state_SA == SWITCH_DOWN) {
         EmergencyHandler(); // 调试/疯车时急停
     } else {
         RemoteControlSet();
     }
-    // HeatControl();
-    // 设置视觉发送数据,还需增加加速度和角速度数据
-
+    NUC_Send_Data();
+    CommIsOnline();
+#endif
+#ifdef CHASSIS_BOARD
+// 根据gimbal的反馈值计算云台和底盘正方向的夹角,不需要传参,通过static私有变量完成
+    CalcOffsetAngle();
+    if(CommIsOnline())
+    {
+        chassis_cmd_send.chassis_mode           = comm_cmd_data.chassis_mode;
+        chassis_cmd_send.vx                     = comm_cmd_data.vx;
+        chassis_cmd_send.vy                     = comm_cmd_data.vy;
+        chassis_cmd_send.chassis_rotate_speed   = comm_cmd_data.chassis_rotate_speed;
+        gimbal_cmd_send.gimbal_mode             = comm_cmd_data.gimbal_mode;
+    }
+    else
+    {
+        EmergencyHandler(); //通信离线急停
+    }
+#endif
     // 推送消息,双板通信,视觉通信等
     // 其他应用所需的控制数据在remotecontrolsetmode和mousekeysetmode中完成设置
     // chassis
@@ -656,16 +642,10 @@ void RobotCMDTask()
     // memcpy(&ui_cmd_send.Shooter_heat, &shoot_fetch_data.shooter_local_heat, sizeof(float));
     // memcpy(&ui_cmd_send.Heat_Limit, &referee_data->GameRobotState.shooter_id1_17mm_cooling_limit, sizeof(uint16_t));
 
-// #ifdef ONE_BOARD
+
     PubPushMessage(chassis_cmd_pub, (void *)&chassis_cmd_send);
-    // PubPushMessage(chassis_cmd_pub_2, (void *)&chassis_cmd_send);
-// #endif // ONE_BOARD
-// #ifdef GIMBAL_BOARD
-//     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
-// #endif // GIMBAL_BOARD
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
     // PubPushMessage(ui_cmd_pub, (void *)&ui_cmd_send);
-
-     NUC_Send_Data();
+    CommSend();
 }

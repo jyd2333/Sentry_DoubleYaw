@@ -7,7 +7,7 @@
 #include "message_center.h"
 #include "general_def.h"
 #include "robot_test.h"
-
+#include "comm.h"
 #include "bmi088.h"
 #include "referee_UI.h"
 
@@ -19,6 +19,8 @@ static INS_Instance *gimbal_IMU_data; // 云台IMU数据
 DJIMotorInstance *yaw_motor;
 DMMotorInstance *pitch_motor, *big_yaw_motor;
 extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
+extern comm_cmd_t comm_cmd_data;
+extern comm_upload_t comm_upload_data;
 
 static Publisher_t *gimbal_pub;                   // 云台应用消息发布者(云台反馈给cmd)
 static Subscriber_t *gimbal_sub;                  // cmd控制消息订阅者
@@ -35,6 +37,7 @@ float yaw_vel_feedforward = 0;
 extern  NUC_cmd_t NUC_cmd;
 void GimbalInit()
 {
+#ifdef GIMBAL_BOARD
     BMI088_Init_Config_s config = {
         .acc_int_config  = {.GPIOx = GPIOC, .GPIO_Pin = GPIO_PIN_4},
         .gyro_int_config = {.GPIOx = GPIOC, .GPIO_Pin = GPIO_PIN_5},
@@ -105,7 +108,7 @@ void GimbalInit()
             .feedforward_flag      = SPEED_FEEDFORWARD,
         },
         .motor_type = GM6020};
-    // yaw_motor   = DJIMotorInit(&yaw_config);
+    yaw_motor   = DJIMotorInit(&yaw_config);
 
     Motor_Init_Config_s pitch_motor_config = {//DM4310
         .can_init_config = {
@@ -155,8 +158,9 @@ void GimbalInit()
             },
         },
     };
-    // pitch_motor = DMMotorInit(&pitch_motor_config);
-
+    pitch_motor = DMMotorInit(&pitch_motor_config);
+#endif
+#ifdef CHASSIS_BOARD
     Motor_Init_Config_s big_yaw_motor_config = {//DM6006
         .can_init_config = {
             .can_handle = &hcan1,
@@ -183,7 +187,7 @@ void GimbalInit()
                 .IntegralLimit = 0,
                 .MaxOut = 10,
             },
-            .speed_feedforward_ptr = &chassis_rotate_avg,
+            // .speed_feedforward_ptr = &chassis_rotate_avg,
         },
         .controller_setting_init_config ={
             .angle_feedback_source = MOTOR_FEED,
@@ -191,7 +195,7 @@ void GimbalInit()
             .outer_loop_type       = ANGLE_LOOP,
             .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
-            .feedforward_flag = SPEED_FEEDFORWARD,
+            // .feedforward_flag = SPEED_FEEDFORWARD,
             .control_range = {
                 .P_max = 12.5663704,
                 .V_max = 45,
@@ -200,8 +204,8 @@ void GimbalInit()
             
         },
     };
-    // big_yaw_motor = DMMotorInit(&big_yaw_motor_config);
-
+    big_yaw_motor = DMMotorInit(&big_yaw_motor_config);
+#endif
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
 }
@@ -209,43 +213,33 @@ float pitch_target,big_yaw_target;
 float big_yaw_kp = 5;
 float big_yaw_fetch_angle;
 int32_t big_yaw_fetch_angle_single;
-base_yaw_tilt_s base_yaw_tilt;
+// base_yaw_tilt_s base_yaw_tilt;
 uint8_t last_NUC_detect = 0;
-base_yaw_tilt_s* GetBaseYawTilt(void)
-{
-    static float gimbal_yaw_pitch,gimbal_yaw_roll;
-    static float gimbal_yaw_tilt_direction, gimbal_yaw_tilt_alpha;
-    gimbal_yaw_pitch            =  - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] - (pitch_motor->measure.pos - PITCH_HORIZON_POS);
-    gimbal_yaw_roll             = gimbal_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
-    gimbal_yaw_tilt_direction   = atan2f(arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch), -arm_sin_f32(gimbal_yaw_pitch));
-    gimbal_yaw_tilt_alpha       = atan2f(sqrtf(arm_sin_f32(gimbal_yaw_pitch)*arm_sin_f32(gimbal_yaw_pitch) + arm_sin_f32(gimbal_yaw_roll)*arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch)*arm_cos_f32(gimbal_yaw_pitch)), arm_cos_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch));
-    base_yaw_tilt.direction     = RAD_2_DEGREE * (gimbal_yaw_tilt_direction - (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192);
-    base_yaw_tilt.alpha         = gimbal_yaw_tilt_alpha;
-    return &base_yaw_tilt;
-}
+// base_yaw_tilt_s* GetBaseYawTilt(void)
+// {
+//     static float gimbal_yaw_pitch,gimbal_yaw_roll;
+//     static float gimbal_yaw_tilt_direction, gimbal_yaw_tilt_alpha;
+//     gimbal_yaw_pitch            =  - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET] - (pitch_motor->measure.pos - PITCH_HORIZON_POS);
+//     gimbal_yaw_roll             = gimbal_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
+//     gimbal_yaw_tilt_direction   = atan2f(arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch), -arm_sin_f32(gimbal_yaw_pitch));
+//     gimbal_yaw_tilt_alpha       = atan2f(sqrtf(arm_sin_f32(gimbal_yaw_pitch)*arm_sin_f32(gimbal_yaw_pitch) + arm_sin_f32(gimbal_yaw_roll)*arm_sin_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch)*arm_cos_f32(gimbal_yaw_pitch)), arm_cos_f32(gimbal_yaw_roll)*arm_cos_f32(gimbal_yaw_pitch));
+//     base_yaw_tilt.direction     = RAD_2_DEGREE * (gimbal_yaw_tilt_direction - (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192);
+//     base_yaw_tilt.alpha         = gimbal_yaw_tilt_alpha;
+//     return &base_yaw_tilt;
+// }
 
 /* 机器人云台控制核心任务,后续考虑只保留IMU控制,不再需要电机的反馈 */
 void GimbalTask()
 {
-    if (yaw_motor == NULL || pitch_motor == NULL || big_yaw_motor == NULL) {
-        return;
-    }
+    // if (yaw_motor == NULL || pitch_motor == NULL || big_yaw_motor == NULL) {
+    //     return;
+    // }
 
     // 获取云台控制数据
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
-    big_yaw_target = big_yaw_motor->measure.pos + 1 * (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
-    big_yaw_kp = 2 + (float)((abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)) < 250 ? 0 : 
-                (abs(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD)-250))/ abs(YAW_LEFT_LIMIT_ECD - YAW_RIGHT_LIMIT_ECD) * 2 * 16;
-    chassis_rotate_wz_measure =  (motor_lf->measure.speed_rpm + motor_rf->measure.speed_rpm + motor_rb->measure.speed_rpm + motor_lb->measure.speed_rpm) / 4 / 60 * 2 * PI;
-    chassis_rotate_sum +=  chassis_rotate_wz_measure;
-    chassis_rotate_count++;
-    if(chassis_rotate_count >= 99)
-    {
-        chassis_rotate_avg = -1.1 * chassis_rotate_sum / 100 / 50;
-        chassis_rotate_count = 0;
-        chassis_rotate_sum = 0;
-    }
+
+#ifdef GIMBAL_BOARD
     pitch_tor_feedforward = 0.584 * tan(0.82 - abs(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]));
     if(gimbal_cmd_recv.control_type == NUC_CONTROL)
     {
@@ -262,42 +256,71 @@ void GimbalTask()
         yaw_motor->motor_controller.angle_PID.Iout = 0;
         yaw_motor->motor_controller.speed_PID.Iout = 0;
     }
+    switch (gimbal_cmd_recv.gimbal_mode) {
+        // 停止
+        case GIMBAL_ZERO_FORCE:
+            DJIMotorStop(yaw_motor);
+            DMMotorStop(pitch_motor);
+            // DMMotorStop(big_yaw_motor);
+            // big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
+            yaw_motor->motor_controller.angle_PID.Iout      = 0;
+            pitch_motor->motor_controller.angle_PID.Iout    = 0;
+            pitch_motor->motor_controller.speed_PID.Iout    = 0;
+            break;
+        //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
+        case GIMBAL_GYRO_MODE: // 后续只保留此模式
+            DJIMotorEnable(yaw_motor);
+            DMMotorEnable1(pitch_motor);
+            // DMMotorEnable1(big_yaw_motor);
+            DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
+            DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
+            pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET];
+
+            pitch_motor->ctrl.kp_set = 80;
+            pitch_motor->ctrl.kd_set = 2;
+            pitch_motor->ctrl.tor_set = -0.584 * tan(0.82 + gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
+            if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
+            if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
+            pitch_motor->ctrl.pos_set = pitch_target;
+            pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
+            break;
+        default:
+            break;
+    }
+    last_NUC_detect = NUC_cmd.shoot;
+    if(yaw_motor->dt < 0.1) gimbal_feedback_data.gimbal_online = 1;
+    else gimbal_feedback_data.gimbal_online = 0;
+    gimbal_feedback_data.gimbal_imu_data              = gimbal_IMU_data;
+    gimbal_feedback_data.yaw_ecd                      = yaw_motor->measure.ecd;
+#endif
+
+#ifdef CHASSIS_BOARD
+
+    big_yaw_target = big_yaw_motor->measure.pos + 1 * comm_cmd_data.yaw_diff;
+    big_yaw_kp = 3.0f + (fabsf(comm_cmd_data.yaw_diff) > PI / 3.0f ? PI / 3.0f : fabsf(comm_cmd_data.yaw_diff)) / (PI / 3.0f) * 12.0f;
+    // chassis_rotate_wz_measure =  (motor_lf->measure.speed_rpm + motor_rf->measure.speed_rpm + motor_rb->measure.speed_rpm + motor_lb->measure.speed_rpm) / 4 / 60 * 2 * PI;
+    // chassis_rotate_sum +=  chassis_rotate_wz_measure;
+    // chassis_rotate_count++;
+    // if(chassis_rotate_count >= 99)
+    // {
+    //     chassis_rotate_avg = -1.1 * chassis_rotate_sum / 100 / 50;
+    //     chassis_rotate_count = 0;
+    //     chassis_rotate_sum = 0;
+    // }
+    
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {
         // 停止
         case GIMBAL_ZERO_FORCE:
-            // DJIMotorStop(yaw_motor);
-            // DMMotorStop(pitch_motor);
-            // DMMotorStop(big_yaw_motor);
-            // big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
-            // yaw_motor->motor_controller.angle_PID.Iout      = 0;
-            // pitch_motor->motor_controller.angle_PID.Iout    = 0;
-            // pitch_motor->motor_controller.speed_PID.Iout    = 0;
+            DMMotorStop(big_yaw_motor);
+            big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
         case GIMBAL_GYRO_MODE: // 后续只保留此模式
-        //     DJIMotorEnable(yaw_motor);
-        //    //DJIMotorStop(yaw_motor);
-        //     DMMotorEnable1(pitch_motor);
-        //     DMMotorEnable1(big_yaw_motor);
-        //     DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
-            // DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
-            // pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
-            // pitch_target = 1.086f;
-
-            // pitch_motor->ctrl.kp_set = 80;
-            // pitch_motor->ctrl.kd_set = 2;
-            // pitch_motor->ctrl.tor_set = -0.584 * tan(0.82 + gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
-            // if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
-            // if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
-            // pitch_motor->ctrl.pos_set = pitch_target;
-            // pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
-            // // big_yaw_motor->ctrl.kp_set = 5;
-            // // big_yaw_motor->ctrl.kd_set = 1;
-            // // big_yaw_motor->ctrl.pos_set = big_yaw_target;
-            // big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
-            // big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
+            DMMotorEnable1(big_yaw_motor);
+            big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
+            big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
             break;
         default:
             break;
@@ -305,18 +328,16 @@ void GimbalTask()
     // 在合适的地方添加pitch重力补偿前馈力矩
     // 根据IMU姿态/pitch电机角度反馈计算出当前配重下的重力矩
     // ...
-    last_NUC_detect = NUC_cmd.shoot;
+    
     // 设置反馈数据,主要是imu和yaw的ecd
-    if(yaw_motor->dt < 0.1) gimbal_feedback_data.gimbal_online = 1;
-    else gimbal_feedback_data.gimbal_online = 0;
-    gimbal_feedback_data.gimbal_imu_data              = gimbal_IMU_data;
+    
     big_yaw_fetch_angle = big_yaw_motor->measure.pos * RAD_2_DEGREE;
     big_yaw_fetch_angle_single = ((int32_t)big_yaw_fetch_angle + 180) % 360;
     if(big_yaw_fetch_angle_single < 0) big_yaw_fetch_angle_single += 360;
     gimbal_feedback_data.yaw_motor_single_round_angle = (uint16_t)big_yaw_fetch_angle_single; // 推送消息
-    gimbal_feedback_data.yaw_ecd                      = yaw_motor->measure.ecd;
-    gimbal_feedback_data.base_yaw_tilt                = GetBaseYawTilt();
-
+    
+    // gimbal_feedback_data.base_yaw_tilt                = GetBaseYawTilt();
+#endif
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);
 }

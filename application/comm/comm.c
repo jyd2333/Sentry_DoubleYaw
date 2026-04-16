@@ -24,7 +24,6 @@ static referee_upload_C_t referee_upload_C = {};
 static referee_cmd_t referee_cmd = {};
 
 extern referee_info_t referee_info;           // 裁判系统数据
-extern int32_t load_count;
 extern DJIMotorInstance *yaw_motor;
 
 static CommInstance_t comm_instance;
@@ -42,7 +41,6 @@ static void CommRecieve(const uint8_t *buf)
         referee_info.GameRobotStatus.shooter_barrel_cooling_value   = comm_upload_data.shooter_heat_cooling_rate;
         referee_info.PowerHeatData.shooter_17mm_barrel_heat         = comm_upload_data.shooter_referee_heat;
         referee_info.GameRobotStatus.shooter_barrel_heat_limit      = comm_upload_data.shooter_cooling_limit;
-        load_count = comm_upload_data.load_count;
         switch (comm_upload_data.referee_upload[0])
         {
             case 0x01:
@@ -90,7 +88,7 @@ static void CommRecieve(const uint8_t *buf)
     }
 }
 
-static void CommSend(void)
+void CommSend(void)
 {
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
@@ -101,12 +99,13 @@ static void CommSend(void)
     comm_cmd_data.vy = chassis_cmd_monitor.vy;
     comm_cmd_data.chassis_mode = chassis_cmd_monitor.chassis_mode;
     comm_cmd_data.chassis_rotate_speed = chassis_cmd_monitor.chassis_rotate_speed;
+    comm_cmd_data.gimbal_mode = gimbal_cmd_monitor.gimbal_mode;
     comm_cmd_data.yaw_diff = (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
     referee_cmd.cmdid = 0x01;
     referee_cmd.ally_power_rune_active = 0;
     memcpy(comm_cmd_data.referee_cmd, &referee_cmd, REFEREE_CMD_SIZE);
     Append_CRC8_Check_Sum((uint8_t *)&comm_cmd_data, COMM_CMD_SIZE);
-    CommSendDMA(&comm_upload_data, COMM_UPDATA_SIZE);
+    CommSendDMA(&comm_cmd_data, COMM_CMD_SIZE);
 }
 #endif
 
@@ -127,7 +126,7 @@ static void CommRecieve(const uint8_t *buf)
     }
 }
 uint8_t commSendCount = 0;
-static void CommSend(void)
+void CommSend(void)
 {
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
@@ -137,7 +136,6 @@ static void CommSend(void)
     comm_upload_data.real_vx = 0.0f;
     comm_upload_data.real_vy = 0.0f;
     comm_upload_data.bullet_speed = shoot_cmd_monitor.bullet_speed;
-    comm_upload_data.load_count = (uint16_t)load_count;
     comm_upload_data.shooter_heat_cooling_rate = shoot_cmd_monitor.shooter_heat_cooling_rate;
     comm_upload_data.shooter_referee_heat = shoot_cmd_monitor.shooter_referee_heat;
     comm_upload_data.shooter_cooling_limit = shoot_cmd_monitor.shooter_cooling_limit;

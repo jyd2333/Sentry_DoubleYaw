@@ -37,13 +37,7 @@
 #define LB               3
 
 /* 底盘应用包含的模块和信息存储，底盘为单例模式，因此不需要单独结构体 */
-// #ifdef CHASSIS_BOARD // 如果是底盘板,使用板载IMU获取底盘转动角速度
-// #include "can_comm.h"
-// #include "ins_task.h"
-// static CANCommInstance *chasiss_can_comm; // 双板通信CAN comm
-// attitude_t *Chassis_IMU_data;
-// #endif // CHASSIS_BOARD
-// #ifdef ONE_BOARD
+static INS_Instance *chassis_IMU_data; // 底盘IMU数据
 static Publisher_t *chassis_pub;                    // 用于发布底盘数据
 static Subscriber_t *chassis_sub;                   // 用于订阅底盘控制命令
 // #endif                                              // !ONE_BOARD
@@ -82,6 +76,39 @@ static float vt_lf, vt_rf, vt_lb, vt_rb;         // 底盘速度解算后的临�
 static ramp_t rotate_ramp;
 void ChassisInit()
 {
+#ifdef CHASSIS_BOARD
+    BMI088_Init_Config_s config = {
+        .acc_int_config  = {.GPIOx = GPIOC, .GPIO_Pin = GPIO_PIN_4},
+        .gyro_int_config = {.GPIOx = GPIOC, .GPIO_Pin = GPIO_PIN_5},
+        .heat_pid_config = {
+            .Kp            = 0.32f,
+            .Ki            = 0.0004f,
+            .Kd            = 0,
+            .Improve       = PID_IMPROVE_NONE,
+            .IntegralLimit = 0.90f,
+            .MaxOut        = 0.95f,
+        },
+        .heat_pwm_config = {
+            .htim      = &htim10,
+            .channel   = TIM_CHANNEL_1,
+            .dutyratio = 0,
+            .period    = 5000 - 1,
+        },
+        .spi_acc_config = {
+            .GPIOx      = GPIOA,
+            .cs_pin     = GPIO_PIN_4,
+            .spi_handle = &hspi1,
+        },
+        .spi_gyro_config = {
+            .GPIOx      = GPIOB,
+            .cs_pin     = GPIO_PIN_0,
+            .spi_handle = &hspi1,
+        },
+        .cali_mode = BMI088_LOAD_PRE_CALI_MODE,
+        .work_mode = BMI088_BLOCK_PERIODIC_MODE,
+
+    };
+    chassis_IMU_data = INS_Init(BMI088Register(&config)); // IMU先初始化,获取姿态数据指针赋给yaw电机的其他数据来源
     // 四个轮子的参数一致，只需修改 tx_id 和反转标志位
     Motor_Init_Config_s chassis_motor_config = {
         .controller_param_init_config = {
@@ -176,27 +203,10 @@ void ChassisInit()
     //     }};
     // cap = SuperCapInit(&cap_conf); // 超级电容初始化
     ramp_init(&rotate_ramp, 1000);
+#endif
     // 发布订阅初始化；如果为双板则需要 CAN Comm 传递消息
-#ifdef CHASSIS_BOARD
-
-    // Chassis_IMU_data = INS_Init(); // 底盘 IMU 初始化
-
-    // CANComm_Init_Config_s comm_conf = {
-    //     .can_config = {
-    //         .can_handle = &hcan2,
-    //         .tx_id      = 0x311,
-    //         .rx_id      = 0x312,
-    //     },
-    //     .recv_data_len = sizeof(Chassis_Ctrl_Cmd_s),
-    //     .send_data_len = sizeof(Chassis_Upload_Data_s),
-    // };
-    // chasiss_can_comm = CANCommInit(&comm_conf); // CAN Comm 初始化
-#endif                                          // CHASSIS_BOARD
-
-// #ifdef ONE_BOARD // 单板控制整车，通过 pub/sub 传递消息
     chassis_sub = SubRegister("chassis_cmd", sizeof(Chassis_Ctrl_Cmd_s));
     chassis_pub = PubRegister("chassis_feed", sizeof(Chassis_Upload_Data_s));
-// #endif // ONE_BOARD
 }
 
 #define LF_CENTER ((HALF_TRACK_WIDTH + center_gimbal_offset_x + HALF_WHEEL_BASE - center_gimbal_offset_y) * DEGREE_2_RAD)
@@ -434,12 +444,11 @@ void ChassisTask()
 {
     // 后续可增加“未收到消息”时的处理（双板场景）
     // 获取新的控制信息
-// #ifdef ONE_BOARD
+
     SubGetMessage(chassis_sub, &chassis_cmd_recv);
-// #endif
-// #ifdef CHASSIS_BOARD
-//     chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chasiss_can_comm);
-// #endif                                                         // CHASSIS_BOARD
+
+#ifdef CHASSIS_BOARD
+
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) { // 如果出现关键模块离线或遥控器急停，则关闭电机输出
         // DJIMotorStop(motor_lf);
         // DJIMotorStop(motor_rf);
@@ -549,12 +558,7 @@ void ChassisTask()
     //memcpy(&chassis_feedback_data.cap_voltage, &cap->cap_msg_s.CapVot, sizeof(float));
    // memcpy(&chassis_feedback_data.chassis_power_output, &Power_Output, sizeof(float));
    // memcpy(&chassis_feedback_data.chassis_voltage, &cap->cap_msg_s.chassis_voltage_from_cap, sizeof(float));
-
-// #ifdef ONE_BOARD
+#endif
     PubPushMessage(chassis_pub, (void *)&chassis_feedback_data);
-// #endif
-// #ifdef CHASSIS_BOARD
-//     CANCommSend(chasiss_can_comm, (void *)&chassis_feedback_data);
-// #endif // CHASSIS_BOARD
 }
 

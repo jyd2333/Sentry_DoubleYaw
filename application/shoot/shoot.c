@@ -27,6 +27,7 @@ float d_watch;
 uint8_t infraredSensor = 0,lastInfraredSensor = 0;
 void ShootInit()
 {
+    #ifdef GIMBAL_BOARD
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = GPIO_PIN_11;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -56,14 +57,14 @@ void ShootInit()
             .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
         },
         .motor_type = M3508};
-    friction_config.can_init_config.tx_id                             = 1; // 左摩擦轮,改txid和方向就行
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+    friction_config.can_init_config.tx_id                               = 1; // 左摩擦轮,改txid和方向就行
+    friction_config.controller_setting_init_config.motor_reverse_flag   = MOTOR_DIRECTION_NORMAL;
 
-    // friction_l = DJIMotorInit(&friction_config);
+    friction_l                                                          = DJIMotorInit(&friction_config);
 
-    friction_config.can_init_config.tx_id                             = 3; // 右摩擦轮,改txid和方向就行
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
-    // friction_r                                                        = DJIMotorInit(&friction_config);
+    friction_config.can_init_config.tx_id                               = 3; // 右摩擦轮,改txid和方向就行
+    friction_config.controller_setting_init_config.motor_reverse_flag   = MOTOR_DIRECTION_REVERSE;
+    friction_r                                                          = DJIMotorInit(&friction_config);
 
     // 拨盘电机
     Motor_Init_Config_s loader_config = 
@@ -100,26 +101,27 @@ void ShootInit()
         },
         .motor_type = M2006 // 英雄使用m3508
     };
-    // loader = DJIMotorInit(&loader_config);
+    loader = DJIMotorInit(&loader_config);
 
     shoot_cmd_recv.shoot_mode = SHOOT_ON; // 初始化后摩擦轮进入准备模式,也可将右拨杆拨至上一次来手动开启
 
-    shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
-    shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
+    
     ramp_init(&fric_on_ramp, 300);
 
-    if (friction_l != NULL) {
-        DJIMotorStop(friction_l);
-    }
-    if (friction_r != NULL) {
-        DJIMotorStop(friction_r);
-    }
-    if (loader != NULL) {
-        DJIMotorStop(loader);
-    }
+    // if (friction_l != NULL) {
+    //     DJIMotorStop(friction_l);
+    // }
+    // if (friction_r != NULL) {
+    //     DJIMotorStop(friction_r);
+    // }
+    // if (loader != NULL) {
+    //     DJIMotorStop(loader);
+    // }
 
     lastInfraredSensor = HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_11);
-
+    #endif
+    shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
+    shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
 }
 
 float Block_Time;        // 堵转时间
@@ -244,11 +246,12 @@ float load_time_ms = 0;
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
 {
-    if (friction_l == NULL || friction_r == NULL || loader == NULL) {
-        return;
-    }
+    // if (friction_l == NULL || friction_r == NULL || loader == NULL) {
+    //     return;
+    // }
 
     static float shoot_speed;
+#ifdef GIMBAL_BOARD
     infraredSensor = HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_11);
 
     if(loader_state == LOAD_UNINIT && loader->measure.ecd != 0) //确认已连接到拨盘
@@ -303,24 +306,11 @@ void ShootTask()
             hibernate_time      = DWT_GetTimeline_ms(); // 记录触发指令的时间
             dead_time           = 150;
             shoot_heat_count[1] = shoot_count;
-            // if (shoot_heat_count[1] - shoot_heat_count[0] >= 1) {
-            //     one_bullet = 1;
-            // }
-            // switch (one_bullet) {
-            //     case 1:
-            //         DJIMotorSetRef(loader, 0);
-            //         break;
-            //     case 0:
-            //         DJIMotorSetRef(loader, 5000);
-
-            //         break;
-            // }
             if(last_load_mode == LOAD_STOP)
             {
                 if(((load_count-1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
                 - loader->measure.total_angle)<0)
                     load_count++ ;
-                // load_count++;
             }
             DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
             break;
@@ -331,7 +321,6 @@ void ShootTask()
                 if(((load_count-1) * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset
                 - loader->measure.total_angle)<0)
                     load_count++ ;
-                // load_count++;
                 load_time_ms = DWT_GetTimeline_ms();
             }
             DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
@@ -342,7 +331,6 @@ void ShootTask()
         default:
             while (1); // 未知模式,停止运行,检查指针越界,内存溢出等问题
     }
-    // DJIMotorSetRef(loader, load_count * LOADER_ANGLE_PER_BULLET + loader_initial_offset + loader_offset + loader_pitch_offset);
     last_load_mode = shoot_cmd_recv.load_mode;
     // 确定是否开启摩擦轮,后续可能修改为键鼠模式下始终开启摩擦轮(上场时建议一直开启)
     if (shoot_cmd_recv.friction_mode == FRICTION_ON) {
@@ -361,7 +349,7 @@ void ShootTask()
     // 反馈数据
     memcpy(&shoot_feedback_data.shooter_local_heat, &local_heat, sizeof(float));
     memcpy(&shoot_feedback_data.shooter_heat_control, &heat_control, sizeof(int));
-
+#endif
     PubPushMessage(shoot_pub, (void *)&shoot_feedback_data);
 }
 volatile static uint32_t cool_cnt = 0;
@@ -383,6 +371,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     /* USER CODE BEGIN Callback 1 */
     if (htim->Instance == TIM6) {
+#ifdef GIMBAL_BOARD
         /*-------------------------------------------热量控制部分---------------------------------------------*/
         cool_cnt++;
         local_heat -= (shoot_cmd_recv.shooter_heat_cooling_rate / 1000.0f); // 1000Hz冷却
@@ -396,6 +385,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         if (friction_l != NULL) {
             Shoot_Fric_data_process();
         }
+#endif
     }
     /* USER CODE END Callback 1 */
 }
