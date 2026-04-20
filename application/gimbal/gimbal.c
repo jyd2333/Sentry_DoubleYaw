@@ -116,8 +116,8 @@ void GimbalInit()
         .motor_type = DM_Motor,
         .controller_param_init_config ={
             .angle_PID = {
-                .Kp = 50,
-                .Ki = 100,
+                .Kp = 40,
+                .Ki = 50,
                 .Kd = 0.0,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
@@ -125,8 +125,8 @@ void GimbalInit()
                 .MaxOut = 30,
             },
             .speed_PID = {
-                .Kp = 1,
-                .Ki = 0.8,
+                .Kp = 0.5,
+                .Ki = 0.4,
                 .Kd = 0.001,
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
