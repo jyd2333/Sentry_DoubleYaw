@@ -5,6 +5,126 @@
 #include "bsp_dwt.h"
 #include "bsp_log.h"
 
+#define CAN_BUS_FAIL_THRESHOLD 3U
+#define CAN_BUS_SUSPEND_MS 100.0f
+#define CAN_TX_ALL_MAILBOXES (CAN_TX_MAILBOX0 | CAN_TX_MAILBOX1 | CAN_TX_MAILBOX2)
+#define CAN_ERROR_SUSPEND_MASK (HAL_CAN_ERROR_EWG | HAL_CAN_ERROR_EPV | HAL_CAN_ERROR_BOF | HAL_CAN_ERROR_ACK | HAL_CAN_ERROR_TX_TERR0 | HAL_CAN_ERROR_TX_TERR1 | HAL_CAN_ERROR_TX_TERR2)
+
+typedef struct
+{
+    CAN_HandleTypeDef *can_handle;
+    uint8_t fail_streak;
+    float suspend_until_ms;
+    uint32_t last_error;
+    float probe_interval_ms;
+    uint32_t ack_fail_count;
+    uint32_t mailbox_timeout_count;
+    uint32_t busoff_count;
+} CANBusRuntime_s;
+
+static CANBusRuntime_s can_bus_runtime[DEVICE_CAN_CNT] = {
+    {.can_handle = &hcan1, .probe_interval_ms = 100.0f},
+    {.can_handle = &hcan2, .probe_interval_ms = 100.0f},
+};
+
+static CANBusRuntime_s *CANGetBusRuntime(CAN_HandleTypeDef *hcan)
+{
+    for (size_t i = 0; i < DEVICE_CAN_CNT; ++i) {
+        if (can_bus_runtime[i].can_handle == hcan) {
+            return &can_bus_runtime[i];
+        }
+    }
+    return NULL;
+}
+
+static uint8_t CANBusIndex(CAN_HandleTypeDef *hcan)
+{
+    if (hcan == &hcan1) {
+        return 1;
+    }
+    if (hcan == &hcan2) {
+        return 2;
+    }
+    return 0;
+}
+
+static uint8_t CANBusSuspended(CANBusRuntime_s *runtime)
+{
+    if (runtime == NULL) {
+        return 1;
+    }
+    return DWT_GetTimeline_ms() < runtime->suspend_until_ms;
+}
+
+static void CANBusMarkHealthy(CAN_HandleTypeDef *hcan)
+{
+    CANBusRuntime_s *runtime = CANGetBusRuntime(hcan);
+
+    if (runtime == NULL) {
+        return;
+    }
+
+    runtime->fail_streak = 0;
+    runtime->suspend_until_ms = 0.0f;
+    runtime->last_error = HAL_CAN_ERROR_NONE;
+    HAL_CAN_ResetError(hcan);
+}
+
+static void CANBusEnterSuspend(CAN_HandleTypeDef *hcan, uint32_t error_code)
+{
+    CANBusRuntime_s *runtime = CANGetBusRuntime(hcan);
+    uint8_t was_suspended;
+
+    if (runtime == NULL) {
+        return;
+    }
+
+    was_suspended = CANBusSuspended(runtime);
+
+    runtime->fail_streak = CAN_BUS_FAIL_THRESHOLD;
+    runtime->last_error = error_code;
+    runtime->suspend_until_ms = DWT_GetTimeline_ms() + CAN_BUS_SUSPEND_MS;
+    HAL_CAN_AbortTxRequest(hcan, CAN_TX_ALL_MAILBOXES);
+
+    if (!was_suspended) {
+        if (error_code & HAL_CAN_ERROR_BOF) {
+            runtime->busoff_count++;
+        }
+
+        LOGWARNING("[bsp_can] suspend can[%d], err[0x%x], ack_fail[%lu], mailbox_timeout[%lu], busoff[%lu]",
+                   CANBusIndex(hcan),
+                   error_code,
+                   runtime->ack_fail_count,
+                   runtime->mailbox_timeout_count,
+                   runtime->busoff_count);
+    }
+}
+
+static void CANBusRecordFailure(CAN_HandleTypeDef *hcan, uint32_t error_code)
+{
+    CANBusRuntime_s *runtime = CANGetBusRuntime(hcan);
+
+    if (runtime == NULL) {
+        return;
+    }
+
+    if (error_code == HAL_CAN_ERROR_TIMEOUT) {
+        runtime->mailbox_timeout_count++;
+    }
+    if (error_code & HAL_CAN_ERROR_ACK) {
+        runtime->ack_fail_count++;
+    }
+    runtime->last_error = error_code;
+
+    if (runtime->fail_streak < 0xFF) {
+        runtime->fail_streak++;
+    }
+
+    if (runtime->fail_streak >= CAN_BUS_FAIL_THRESHOLD) {
+        CANBusEnterSuspend(hcan, error_code);
+    }
+}
+
 /* can instance ptrs storage, used for recv callback */
 // 在CAN产生接收中断会遍历数组,选出hcan和rxid与发生中断的实例相同的那个,调用其回调函数
 // @todo: 后续为每个CAN总线单独添加一个can_instance指针数组,提高回调查找的性能
@@ -29,6 +149,7 @@ static uint8_t idx; // 全局CAN实例索引,每次有新的模块注册会自�
 static void CANAddFilter(CANInstance *_instance)
 {
     CAN_FilterTypeDef can_filter_conf;
+    memset(&can_filter_conf, 0, sizeof(can_filter_conf));
     static uint8_t can1_filter_idx = 0, can2_filter_idx = 14; // 0-13给can1用,14-27给can2用
 
     can_filter_conf.FilterMode = CAN_FILTERMODE_IDLIST;                                                       // 使用id list模式,即只有将rxid添加到过滤器中才会接收到,其他报文会被过滤
@@ -39,6 +160,10 @@ static void CANAddFilter(CANInstance *_instance)
     can_filter_conf.FilterBank = _instance->can_handle == &hcan1 ? (can1_filter_idx++) : (can2_filter_idx++); // 根据can_handle判断是CAN1还是CAN2,然后自增
     can_filter_conf.FilterActivation = CAN_FILTER_ENABLE;                                                     // 启用过滤器
 
+    can_filter_conf.FilterFIFOAssignment = (_instance->tx_id & 1U) ? CAN_RX_FIFO0 : CAN_RX_FIFO1;
+    can_filter_conf.FilterIdHigh = _instance->rx_id << 5;
+    can_filter_conf.FilterMaskIdHigh = _instance->rx_id << 5;
+    can_filter_conf.FilterMaskIdLow = _instance->rx_id << 5;
     HAL_CAN_ConfigFilter(_instance->can_handle, &can_filter_conf);
 }
 
@@ -50,12 +175,18 @@ static void CANAddFilter(CANInstance *_instance)
  */
 static void CANServiceInit()
 {
+    uint32_t notification_mask = CAN_IT_RX_FIFO0_MSG_PENDING |
+                                 CAN_IT_RX_FIFO1_MSG_PENDING |
+                                 CAN_IT_TX_MAILBOX_EMPTY |
+                                 CAN_IT_ERROR_WARNING |
+                                 CAN_IT_ERROR_PASSIVE |
+                                 CAN_IT_BUSOFF |
+                                 CAN_IT_LAST_ERROR_CODE |
+                                 CAN_IT_ERROR;
     HAL_CAN_Start(&hcan1);
-    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-    HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan1, notification_mask);
     HAL_CAN_Start(&hcan2);
-    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
-    HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
+    HAL_CAN_ActivateNotification(&hcan2, notification_mask);
 }
 
 /* ----------------------- two extern callable function -----------------------*/
@@ -105,29 +236,43 @@ CANInstance *CANRegister(CAN_Init_Config_s *config)
 /* 如果让CANinstance保存txbuff,会增加一次复制的开销 */
 uint8_t CANTransmit(CANInstance *_instance, float timeout)
 {
-    static uint32_t busy_count;
-    static volatile float wait_time __attribute__((unused)); // for cancel warning
+    CANBusRuntime_s *runtime = CANGetBusRuntime(_instance->can_handle);
     float dwt_start = DWT_GetTimeline_ms();
+    uint32_t error_code;
+
+    if (CANBusSuspended(runtime)) {
+        return 0;
+    }
     while (HAL_CAN_GetTxMailboxesFreeLevel(_instance->can_handle) == 0) // 等待邮箱空闲
     {
         if (DWT_GetTimeline_ms() - dwt_start > timeout) // 超时
         {
-            LOGWARNING("[bsp_can] CAN MAILbox full! failed to add msg to mailbox. Cnt [%lu]. Current instance hcan[%d] tx_id:[0x%x]", busy_count, _instance->can_handle == &hcan1 ? 1 : 2, _instance->txconf.StdId);
-            busy_count++;
-            // HAL_CAN_AbortTxRequest(_instance->can_handle,_instance->tx_mailbox);
+            CANBusRecordFailure(_instance->can_handle, HAL_CAN_ERROR_TIMEOUT);
             return 0;
         }
     }
-    wait_time = DWT_GetTimeline_ms() - dwt_start;
     // tx_mailbox会保存实际填入了这一帧消息的邮箱,但是知道是哪个邮箱发的似乎也没啥用
     if (HAL_CAN_AddTxMessage(_instance->can_handle, &_instance->txconf, _instance->tx_buff, &_instance->tx_mailbox))
     {
-        LOGWARNING("[bsp_can] CAN bus BUS! cnt:%lu Current instance tx_id:[0x%x]", busy_count, _instance->txconf.StdId);
-        busy_count++;
-        // HAL_CAN_AbortTxRequest(_instance->can_handle,_instance->tx_mailbox);
+        error_code = HAL_CAN_GetError(_instance->can_handle);
+        if (error_code == HAL_CAN_ERROR_NONE) {
+            error_code = HAL_CAN_ERROR_INTERNAL;
+        }
+        CANBusRecordFailure(_instance->can_handle, error_code);
         return 0;
     }
     return 1; // 发送成功
+}
+
+uint8_t CANBusIsHealthy(CAN_HandleTypeDef *hcan)
+{
+    CANBusRuntime_s *runtime = CANGetBusRuntime(hcan);
+
+    if (runtime == NULL) {
+        return 0;
+    }
+
+    return (!CANBusSuspended(runtime)) && (runtime->fail_streak == 0U);
 }
 
 void CANSetDLC(CANInstance *_instance, uint8_t length)
@@ -155,6 +300,7 @@ static void CANFIFOxCallback(CAN_HandleTypeDef *_hcan, uint32_t fifox)
     while (HAL_CAN_GetRxFifoFillLevel(_hcan, fifox)) // FIFO不为空,有可能在其他中断时有多帧数据进入
     {
         HAL_CAN_GetRxMessage(_hcan, fifox, &rxconf, can_rx_buff); // 从FIFO中获取数据
+        CANBusMarkHealthy(_hcan);
         for (size_t i = 0; i < idx; ++i)
         { // 两者相等说明这是要找的实例
             if (_hcan == can_instance[i]->can_handle && rxconf.StdId == can_instance[i]->rx_id)
@@ -196,4 +342,37 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     CANFIFOxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
+}
+
+void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+    CANBusMarkHealthy(hcan);
+}
+
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+    CANBusMarkHealthy(hcan);
+}
+
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+    CANBusMarkHealthy(hcan);
+}
+
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+{
+    uint32_t error_code = HAL_CAN_GetError(hcan);
+
+    if (error_code & HAL_CAN_ERROR_ACK) {
+        CANBusRuntime_s *runtime = CANGetBusRuntime(hcan);
+        if (runtime != NULL) {
+            runtime->ack_fail_count++;
+        }
+    }
+
+    if (error_code & CAN_ERROR_SUSPEND_MASK) {
+        CANBusEnterSuspend(hcan, error_code);
+    }
+
+    HAL_CAN_ResetError(hcan);
 }

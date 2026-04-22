@@ -519,7 +519,7 @@ static void RemoteControlSet()
                         shoot_cmd_send.friction_mode = FRICTION_ON;
                         if(NUC_cmd.time_stamp != last_time_stamp)
                         {
-                            if(NUC_cmd.shoot==1) 
+                            if(NUC_cmd.shoot==2) 
                             {
                                 shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
                                 shoot_wait = 100;

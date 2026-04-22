@@ -3,12 +3,29 @@
 #include "general_def.h"
 #include "daemon.h"
 #include "bsp_dwt.h"
+#include "bsp_log.h"
+
+#define DM_OFFLINE_TIMEOUT_MS 10.0f
+#define DM_PROBE_INTERVAL_MS 100.0f
 
 uint8_t idm                                               = 0;
 static DMMotorInstance *dmmotor_instance[DM_MOTOR_MX_CNT] = {NULL};
 void DMMotorEnableMode(DMMotorInstance *motor);
 void DMMotorErrorDetection(DMMotorInstance *motor);
 void mit_ctrl(DMMotorInstance *motor);
+
+static uint8_t DMMotorIsOnline(DMMotorInstance *motor, float now_ms)
+{
+    if (motor->last_feedback_ms <= 0.0f) {
+        return 0;
+    }
+    return (now_ms - motor->last_feedback_ms) <= DM_OFFLINE_TIMEOUT_MS;
+}
+
+static uint8_t DMMotorCANBusIndex(DMMotorInstance *motor)
+{
+    return motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2;
+}
 /**
 ************************************************************************
 * @brief:      	uint_to_float: 无符号整数转换为浮点数函数
@@ -56,10 +73,14 @@ static void DMMotorDecode(CANInstance *_instance)
     motor_fbpara_t *measure = &motor->measure;
     uint8_t *rx_buff        = _instance->rx_buff;
 
-    if (motor->measure.state == 1) {
-        DaemonReload(motor->daemon); // 喂狗
-        motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
+    if (motor->offline_log_flag) {
+        LOGWARNING("[DMMotor] Motor recovered, can bus [%d] , id [%d]",
+                   DMMotorCANBusIndex(motor),
+                   motor->motor_can_instance->tx_id);
     }
+    motor->offline_log_flag = 0;
+    motor->last_feedback_ms = DWT_GetTimeline_ms();
+    motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
     measure->last_pos = measure->pos;
 
     measure->id    = (rx_buff[0]) & 0x0F;
@@ -82,12 +103,7 @@ static void DMMotorDecode(CANInstance *_instance)
 
 void DMMotorLostCallback(void *motor_ptr)
 {
-    DMMotorInstance *motor = (DMMotorInstance *)motor_ptr;
-    DMMotorEnableMode(motor);
-    for (size_t i = 0; i < 1000; i++)
-        CANTransmit(motor->motor_can_instance, 2);
-
-    //LOGWARNING("[DMMotor] motor lost, id: %d", (motor->motor_can_instance->tx_id & (0x1f<<5)) >> 5);
+    (void)motor_ptr;
 }
 
 DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
@@ -114,10 +130,7 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     motor->motor_can_instance = CANRegister(&config->can_init_config);
 
     DMMotorEnableMode(motor); // 使能电机模式,发送使能指令
-    for (size_t i = 0; i < 100; i++) {
-
-        CANTransmit(motor->motor_can_instance, 2);
-    }
+    CANTransmit(motor->motor_can_instance, 0.0f);
     motor->ctrl.vel_set = 0;
     motor->ctrl.tor_set = 0; //   默认关闭，避免出问题
 
@@ -126,7 +139,7 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     Daemon_Init_Config_s daemon_config = {
         .callback     = DMMotorLostCallback,
         .owner_id     = motor,
-        .reload_count = 2, // 20ms
+        .reload_count = 10, // keep daemon config aligned with local watchdog
     };
     motor->daemon = DaemonRegister(&daemon_config);
 
@@ -161,6 +174,9 @@ void DMMotorSetRef(DMMotorInstance *motor, float ref)
 void DMMotorControl()
 {
     float pid_measure, pid_ref;
+    float now_ms = DWT_GetTimeline_ms();
+    uint8_t motor_online;
+    uint8_t probe_frame_sent;
 
     DMMotorInstance *motor;
     motor_fbpara_t *measure;
@@ -173,6 +189,32 @@ void DMMotorControl()
         setting          = &motor->motor_settings;
         motor_controller = &motor->motor_controller;
         pid_ref          = motor_controller->pid_ref;
+        motor_online     = DMMotorIsOnline(motor, now_ms);
+        probe_frame_sent = 0;
+
+        if (!motor_online) {
+            if (!motor->offline_log_flag) {
+                motor->offline_log_flag = 1;
+                LOGWARNING("[DMMotor] Motor offline, can bus [%d] , id [%d]",
+                           DMMotorCANBusIndex(motor),
+                           motor->motor_can_instance->tx_id);
+            }
+
+            if (now_ms >= motor->next_probe_ms) {
+                DMMotorEnableMode(motor);
+                CANTransmit(motor->motor_can_instance, 0.0f);
+                motor->next_probe_ms = now_ms + DM_PROBE_INTERVAL_MS;
+                motor->probe_send_count++;
+                probe_frame_sent = 1;
+            }
+
+            // On the probe cycle, only send the enable frame and wait for its immediate response.
+            // On other offline cycles, keep streaming MIT frames.
+            // STOP means "send zero-torque MIT frames", not "stop sending".
+            if (probe_frame_sent) {
+                continue;
+            }
+        }
 
         if ((setting->close_loop_type & ANGLE_LOOP) && setting->outer_loop_type == ANGLE_LOOP) {
             if (setting->angle_feedback_source == OTHER_FEED)
@@ -264,11 +306,6 @@ void mit_ctrl(DMMotorInstance *motor) //
 
     memset(motor->motor_can_instance->tx_buff, 0, sizeof(motor->motor_can_instance->tx_buff));
     memcpy(motor->motor_can_instance->tx_buff, &data, sizeof(data));
-}
-
-uint8_t DMMotorIsOnline(DMMotorInstance *motor)
-{
-    return DaemonIsOnline(motor->daemon);
 }
 
 // 异常检测
