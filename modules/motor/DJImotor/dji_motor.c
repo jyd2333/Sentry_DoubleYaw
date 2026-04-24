@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include "power_calc.h"
 
+#define DJI_OFFLINE_TIMEOUT_MS 10.0f
+#define DJI_PROBE_INTERVAL_MS 100.0f
+
 static uint8_t idx = 0; // register idx,是该文件的全局电机索引,在注册时使用
 /* DJI电机的实例,此处仅保存指针,内存的分配将通过电机实例初始化时通过malloc()进行 */
 static DJIMotorInstance *dji_motor_instance[DJI_MOTOR_CNT] = {NULL}; // 会在control任务中遍历该指针数组进行pid计算
@@ -37,6 +40,17 @@ static CANInstance sender_assignment[6] = {
  *        flag的初始化在 MotorSenderGrouping()中进行
  */
 static uint8_t sender_enable_flag[6] = {0};
+static uint8_t sender_registered_flag[6] = {0};
+static uint8_t group_online[6] = {0};
+static float now_ms = 0.0f;
+
+static uint8_t DJIMotorIsOnline(DJIMotorInstance *motor, float now_ms)
+{
+    if (motor->last_feedback_ms <= 0.0f) {
+        return 0;
+    }
+    return (now_ms - motor->last_feedback_ms) <= DJI_OFFLINE_TIMEOUT_MS;
+}
 
 /**
  * @brief 根据电调/拨码开关上的ID,根据说明书的默认id分配方式计算发送ID和接收ID,
@@ -63,6 +77,7 @@ static void MotorSenderGrouping(DJIMotorInstance *motor, CAN_Init_Config_s *conf
             // 计算接收id并设置分组发送id
             config->rx_id                      = 0x200 + motor_id + 1; // 把ID+1,进行分组设置
             sender_enable_flag[motor_grouping] = 1;                    // 设置发送标志位,防止发送空帧
+            sender_registered_flag[motor_grouping] = 1;
             motor->message_num                 = motor_send_num;
             motor->sender_group                = motor_grouping;
 
@@ -88,6 +103,7 @@ static void MotorSenderGrouping(DJIMotorInstance *motor, CAN_Init_Config_s *conf
 
             config->rx_id                      = 0x204 + motor_id + 1; // 把ID+1,进行分组设置
             sender_enable_flag[motor_grouping] = 1;                    // 只要有电机注册到这个分组,置为1;在发送函数中会通过此标志判断是否有电机注册
+            sender_registered_flag[motor_grouping] = 1;
             motor->message_num                 = motor_send_num;
             motor->sender_group                = motor_grouping;
 
@@ -121,7 +137,13 @@ static void DecodeDJIMotor(CANInstance *_instance)
     DJIMotorInstance *motor      = (DJIMotorInstance *)_instance->id;
     DJI_Motor_Measure_s *measure = &motor->measure; // measure要多次使用,保存指针减小访存开销
 
-    DaemonReload(motor->daemon);
+    if (motor->offline_log_flag) {
+        LOGWARNING("[dji_motor] Motor recovered, can bus [%d] , id [%d]",
+                   motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2,
+                   motor->motor_can_instance->tx_id);
+    }
+    motor->offline_log_flag = 0;
+    motor->last_feedback_ms = DWT_GetTimeline_ms();
     motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
 
     // 解析数据并对电流和速度进行滤波,电机的反馈报文具体格式见电机说明手册
@@ -145,9 +167,7 @@ static void DecodeDJIMotor(CANInstance *_instance)
 
 static void DJIMotorLostCallback(void *motor_ptr)
 {
-    DJIMotorInstance *motor = (DJIMotorInstance *)motor_ptr;
-    uint16_t can_bus        = motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2;
-    LOGWARNING("[dji_motor] Motor lost, can bus [%d] , id [%d]", can_bus, motor->motor_can_instance->tx_id);
+    (void)motor_ptr;
 }
 
 // 电机初始化,返回一个电机实例
@@ -239,11 +259,33 @@ void DJIMotorControl()
 
     // 遍历所有电机实例,进行串级PID的计算并设置发送报文的值
     for (size_t i = 0; i < idx; ++i) { // 减小访存开销,先保存指针引用
+        if (i == 0) {
+            memset(group_online, 0, sizeof(group_online));
+            now_ms = DWT_GetTimeline_ms();
+            memset(&power_data, 0, sizeof(power_data));
+            for (size_t sender_idx = 0; sender_idx < 6; ++sender_idx) {
+                memset(sender_assignment[sender_idx].tx_buff, 0, sizeof(sender_assignment[sender_idx].tx_buff));
+            }
+        }
         motor            = dji_motor_instance[i];
         motor_setting    = &motor->motor_settings;
         motor_controller = &motor->motor_controller;
         measure          = &motor->measure;
+        group            = motor->sender_group;
+        num              = motor->message_num;
+        if (DJIMotorIsOnline(motor, now_ms)) {
+            group_online[group] = 1;
+        } else if (!motor->offline_log_flag) {
+            motor->offline_log_flag = 1;
+            LOGWARNING("[dji_motor] Motor offline, can bus [%d] , id [%d]",
+                       motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2,
+                       motor->motor_can_instance->tx_id);
+        }
         pid_ref          = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在计算过程中被修改
+
+        if (!DJIMotorIsOnline(motor, now_ms) || motor->stop_flag == MOTOR_STOP) {
+            continue;
+        }
 
         // pid_ref会顺次通过被启用的闭环充当数据的载体
         // 计算位置环,只有启用位置环且外层闭环为位置时会计算速度环输出
@@ -297,23 +339,19 @@ void DJIMotorControl()
         sender_assignment[group].tx_buff[2 * num]     = (uint8_t)(set >> 8);     // 低八位
         sender_assignment[group].tx_buff[2 * num + 1] = (uint8_t)(set & 0x00ff); // 高八位
 
-        if (group == 1) {
-            power_data.input_power[power_data.count]    = PowerInputCalc(motor->measure.speed_rpm, motor->motor_controller.speed_PID.Output);
-            power_data.wheel_speed[power_data.count]    = motor->measure.speed_rpm;
-            power_data.predict_output[power_data.count] = motor->motor_controller.speed_PID.Output;
-            power_data.count++;
-            if (power_data.count > 3) {
-                power_data.count = 0;
-            }
+        if (group == 1 && num < 4) {
+            power_data.input_power[num]    = PowerInputCalc(motor->measure.speed_rpm, motor->motor_controller.speed_PID.Output);
+            power_data.wheel_speed[num]    = motor->measure.speed_rpm;
+            power_data.predict_output[num] = motor->motor_controller.speed_PID.Output;
         }
 
         // 若该电机处于停止状态,直接将buff置零
         if (motor->stop_flag == MOTOR_STOP)
-            memset(sender_assignment[group].tx_buff + 2 * num, 0, 16u);
+            memset(sender_assignment[group].tx_buff + 2 * num, 0, 2u);
     }
 
     int index = 0;
-    if (dji_motor_instance[index]->stop_flag == MOTOR_ENABLED) {
+    if (idx > 0 && dji_motor_instance[index]->stop_flag == MOTOR_ENABLED && group_online[1]) {
         power_data.total_power = TotalPowerCalc(power_data.input_power);
         for (int i = 0; i < 4; i++) {
             set                                     = CurrentOutputCalc(power_data.input_power[i], power_data.wheel_speed[i], power_data.predict_output[i]);
@@ -325,9 +363,28 @@ void DJIMotorControl()
 
     // 遍历flag,检查是否要发送这一帧报文
     for (size_t i = 0; i < 6; ++i) {
-        if (sender_enable_flag[i]) {
+        if (!sender_registered_flag[i]) {
             // TODO:测试调试
+            continue;
+        }
+
+        if (group_online[i]) {
+            // TODO:娴嬭瘯璋冭瘯
             CANTransmit(&sender_assignment[i], 1);
+            continue;
+        }
+
+        for (size_t j = 0; j < idx; ++j) {
+            if (dji_motor_instance[j]->sender_group == i && now_ms >= dji_motor_instance[j]->next_probe_ms) {
+                CANTransmit(&sender_assignment[i], 0.0f);
+                for (size_t k = 0; k < idx; ++k) {
+                    if (dji_motor_instance[k]->sender_group == i) {
+                        dji_motor_instance[k]->next_probe_ms = now_ms + DJI_PROBE_INTERVAL_MS;
+                        dji_motor_instance[k]->probe_send_count++;
+                    }
+                }
+                break;
+            }
         }
     }
 }

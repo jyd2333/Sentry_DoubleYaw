@@ -90,7 +90,7 @@ void USB_Decode(void)
 	// {
 	// 	NUC_cmd.delay=1000;
 	// }
-	switch(UserRxBufferFS[2])
+	switch(UserRxBufferFS[1])
 	{
 		case 0x01:
 			memcpy(&Vision_Receive, UserRxBufferFS, sizeof(Vision_Receive));
@@ -98,14 +98,14 @@ void USB_Decode(void)
 			{
 				NUC_cmd.time_stamp 	= Vision_Receive.time_stamp;
 				vision_pitch 		= -Vision_Receive.pitch;
-				vision_yaw 			= -RAD_2_DEGREE * Vision_Receive.yaw;
+				vision_yaw 			= RAD_2_DEGREE * Vision_Receive.yaw;
 				NUC_cmd.pitch 		= vision_pitch;
 				NUC_cmd.yaw 		= vision_yaw;
 				NUC_cmd.shoot 		= Vision_Receive.fireadvise;
-				NUC_cmd.pitch_vel 	= -Vision_Receive.pitch_vel;
-				NUC_cmd.pitch_acc 	= -Vision_Receive.pitch_acc;
-				NUC_cmd.yaw_vel 	= -Vision_Receive.yaw_vel;
-				NUC_cmd.yaw_acc 	= -Vision_Receive.yaw_acc;
+				NUC_cmd.pitch_vel 	= 0;//-Vision_Receive.pitch_vel;
+				NUC_cmd.pitch_acc 	= 0;//-Vision_Receive.pitch_acc;
+				NUC_cmd.yaw_vel 	= 0;//-Vision_Receive.yaw_vel;
+				NUC_cmd.yaw_acc 	= 0;//-Vision_Receive.yaw_acc;
 			}
 			break;
 		case 0x02:
@@ -113,8 +113,8 @@ void USB_Decode(void)
 			if(Navigation_Receive.head == FRAME_HEADER && Navigation_Receive.end == FRAME_END && Navigation_Receive.check_sum == Check_Sum_16(&Navigation_Receive.head,sizeof(navigation_receive_t)-3))
 			{
 				NUC_cmd.time_stamp	= Navigation_Receive.time_stamp;
-				NUC_cmd.vx 			= Navigation_Receive.vx;
-				NUC_cmd.vy 			= Navigation_Receive.vy;
+				NUC_cmd.vx 			= -Navigation_Receive.vy;
+				NUC_cmd.vy 			= Navigation_Receive.vx;
 				NUC_cmd.base_yaw	= Navigation_Receive.base_yaw;
 				NUC_cmd.scanMode	= Navigation_Receive.mode;
 				NUC_cmd.rotateMode	= Navigation_Receive.chassis_status;
@@ -161,7 +161,7 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 void NUC_Send_Data(){
 	Vision_Send.DWT_stamp 		= DWT_GetTimeline_ms();
 	Vision_Send.enemy_color 	= (referee_info.referee_id.Robot_ID < 10) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
-	EularAngleToQuaternion(-INS->output.INS_angle[1], -INS->output.INS_angle[2], INS->output.INS_angle[0],quat_tran);
+	EularAngleToQuaternion(INS->output.INS_angle[2], -INS->output.INS_angle[1], INS->output.INS_angle[0],quat_tran);
 	memcpy(Vision_Send.quat,quat_tran,16);
 	Vision_Send.pitch 			= INS->output.INS_angle[1];
 	Vision_Send.pitch_gyro		= INS->INS_data.INS_gyro[1];
@@ -248,7 +248,7 @@ uint16_t Check_Sum_16(uint8_t* Data ,uint8_t Count)
 
 float GetYawDiff(void)
 {
-	return (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+	return (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * -2 * PI / 8192;
 }
 
 void EularAngleToQuaternion(float Y, float P, float R, float *q)

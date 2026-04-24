@@ -64,6 +64,10 @@ typedef struct
     DaemonInstance *daemon;
     uint32_t feed_cnt;
     float dt;
+    float last_feedback_ms;
+    float next_probe_ms;
+    uint8_t offline_log_flag;
+    uint32_t probe_send_count;
 } DMMotorInstance;
 
 // 电机回传信息结构体

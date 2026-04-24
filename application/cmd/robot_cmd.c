@@ -311,7 +311,7 @@ uint16_t vision_wait=0;
 int8_t pitch_search_flag=1;//pitch上升下降
 int8_t yaw_search_flag=1;
 extern INS_Instance *INS;
-int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 30;
+int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 10;
 int16_t pitch_test_count = 1000,pitch_test_state = 1;
 float pitch_test_range = 0.05;
 /**
@@ -351,8 +351,8 @@ static void RemoteControlSet()
         // else
         // {
             
-        chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
-        chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
+        chassis_cmd_send.vx = NUC_cmd.vx; // 水平方向
+        chassis_cmd_send.vy = NUC_cmd.vy; // 竖直方向
         // chassis_cmd_send.chassis_mode = NUC_cmd.rotate
         // chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
         // chassis_cmd_send.chassis_rotate_speed = 200;
@@ -461,8 +461,8 @@ static void RemoteControlSet()
                 shoot_cmd_send.friction_mode = FRICTION_OFF;
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 gimbal_cmd_send.control_type = NUC_NORMAL;
-                chassis_cmd_send.vx = NUC_cmd.vy; // 水平方向
-                chassis_cmd_send.vy = NUC_cmd.vx; // 竖直方向
+                chassis_cmd_send.vx = NUC_cmd.vx; // 水平方向
+                chassis_cmd_send.vy = NUC_cmd.vy; // 竖直方向
                 if(NUC_cmd.rotateMode == 0)
                 {
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
@@ -495,7 +495,7 @@ static void RemoteControlSet()
                         shoot_cmd_send.friction_mode = FRICTION_ON;
                         if(NUC_cmd.time_stamp != last_time_stamp)
                         {
-                            if(NUC_cmd.shoot==1) 
+                            if(NUC_cmd.shoot==2) 
                             {
                                 shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
                                 shoot_wait = 100;

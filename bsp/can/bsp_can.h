@@ -64,4 +64,5 @@ void CANSetDLC(CANInstance *_instance, uint8_t length);
  * @param _instance* can instance owned by module
  */
 uint8_t CANTransmit(CANInstance *_instance,float timeout);
+uint8_t CANBusIsHealthy(CAN_HandleTypeDef *hcan);
 #endif
