@@ -202,7 +202,7 @@ void DMMotorControl()
 
             if (now_ms >= motor->next_probe_ms) {
                 DMMotorEnableMode(motor);
-                CANTransmit(motor->motor_can_instance, 0.0f);
+                CANTransmit(motor->motor_can_instance, 0.1f);
                 motor->next_probe_ms = now_ms + DM_PROBE_INTERVAL_MS;
                 motor->probe_send_count++;
                 probe_frame_sent = 1;
@@ -257,7 +257,10 @@ void DMMotorControl()
         //    switch (motor->ctrl.mode) // 控制模式
         //    {
         //    case 0:
-        mit_ctrl(motor);
+        if(motor->measure.state == 0)
+            DMMotorEnableMode(motor);
+        else
+            mit_ctrl(motor);
         //     break;
         //      case 1:
         //     pos_ctrl(motor);
