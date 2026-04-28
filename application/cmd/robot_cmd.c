@@ -175,7 +175,7 @@ static void DeterminRobotID()
 
 float yaw_control;   // 遥控器YAW自由度输入值
 float pitch_control; // 遥控器PITCH自由度输入值
-float big_yaw_offset = 2.574f;
+float big_yaw_offset = 0.0f;
 uint8_t check_count=0;
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
