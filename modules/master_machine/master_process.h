@@ -1,6 +1,7 @@
 #ifndef MASTER_PROCESS_H
 #define MASTER_PROCESS_H
 
+#include <stdint.h>
 #include "bsp_usart.h"
 #include "bsp_usb.h"
 #include "daemon.h"

@@ -1,37 +1,45 @@
 {
-    "folders": [
-        {
-            "path": "."
-        }
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "stm32-for-vscode.openOCDPath": false,
+    "C_Cpp.default.compilerPath": "${env:USERPROFILE}/.eide/tools/gcc_arm/bin/arm-none-eabi-gcc.exe",
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+    "C_Cpp.default.includePath": [
+      "${workspaceFolder}/**",
+      "${env:USERPROFILE}/.eide/tools/gcc_arm/arm-none-eabi/include",
+      "${env:USERPROFILE}/.eide/tools/gcc_arm/lib/gcc/arm-none-eabi/10.2.1/include",
+      "${env:USERPROFILE}/.eide/tools/gcc_arm/lib/gcc/arm-none-eabi/10.2.1/include-fixed"
     ],
-    "settings": {
-        "stm32-for-vscode.openOCDPath": false,
-        "C_Cpp.default.compilerPath": "${env:USERPROFILE}/.eide/tools/gcc_arm/bin/arm-none-eabi-gcc.exe",
-        "C_Cpp.default.intelliSenseMode": "gcc-arm",
-        "C_Cpp.default.includePath": [
-            "${workspaceFolder}/**",
-            "${env:USERPROFILE}/.eide/tools/gcc_arm/arm-none-eabi/include",
-            "${env:USERPROFILE}/.eide/tools/gcc_arm/lib/gcc/arm-none-eabi/10.2.1/include",
-            "${env:USERPROFILE}/.eide/tools/gcc_arm/lib/gcc/arm-none-eabi/10.2.1/include-fixed"
-        ],
-        "clangd.arguments": [
-            "--compile-commands-dir=${workspaceFolder}/build/Debug",
-            "--query-driver=${env:USERPROFILE}/.eide/tools/gcc_arm/bin/arm-none-eabi-gcc.exe"
-        ],
-        "files.associations": {
-            "robot_test.h": "c",
-            "message_center.h": "c",
-            "chassis.h": "c",
-            "ins_task.h": "c",
-            "dji_motor.h": "c",
-            "remote_control.h": "c",
-            "power_calc.h": "c",
-            "rm_referee.h": "c",
-            "stdio.h": "c",
-            "memory.h": "c",
-            "crc16.h": "c",
-            "crc_ref.h": "c"
-        }
+    "clangd.arguments": [
+      "--compile-commands-dir=${workspaceFolder}/build/Debug",
+      "--query-driver=${env:USERPROFILE}/.eide/tools/gcc_arm/bin/arm-none-eabi-gcc.exe"
+    ],
+    "files.associations": {
+      "robot_test.h": "c",
+      "message_center.h": "c",
+      "chassis.h": "c",
+      "ins_task.h": "c",
+      "dji_motor.h": "c",
+      "remote_control.h": "c",
+      "power_calc.h": "c",
+      "rm_referee.h": "c",
+      "stdio.h": "c",
+      "memory.h": "c",
+      "crc16.h": "c",
+      "crc_ref.h": "c"
     },
-    "extensions": {}
+    "C_Cpp.default.cStandard": "gnu11",
+    "C_Cpp.default.cppStandard": "c++11",
+    "C_Cpp.default.defines": [
+      "USE_HAL_DRIVER",
+      "STM32F407xx",
+      "ARM_MATH_CM4",
+      "DEBUG"
+    ]
+  },
+  "extensions": {}
 }

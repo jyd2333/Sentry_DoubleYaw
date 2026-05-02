@@ -95,6 +95,7 @@ targets:
         - modules/motor/step_motor
         - modules/motor/YSmotor
         - modules/motor/DMmotor
+        - application/comm
       libList:
         - modules/algorithm
         - Middlewares/ST/ARM/DSP/Lib

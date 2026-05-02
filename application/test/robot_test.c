@@ -62,9 +62,9 @@ void NUC_offline()   //离线处理
             NUC_cmd.shoot = 0;
             NUC_cmd.yaw = 0;
 			// HAL_UART_Init(&huart1);
-			__HAL_UART_DISABLE_IT(&huart1,UART_IT_RXNE);
+			// __HAL_UART_DISABLE_IT(&huart1,UART_IT_RXNE);
 
-            HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
+            // HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
 			
 }
 

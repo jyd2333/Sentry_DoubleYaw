@@ -267,7 +267,6 @@ void DJIMotorControl()
                 memset(sender_assignment[sender_idx].tx_buff, 0, sizeof(sender_assignment[sender_idx].tx_buff));
             }
         }
-
         motor            = dji_motor_instance[i];
         motor_setting    = &motor->motor_settings;
         motor_controller = &motor->motor_controller;
@@ -284,12 +283,12 @@ void DJIMotorControl()
         }
         pid_ref          = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在计算过程中被修改
 
-        // pid_ref会顺次通过被启用的闭环充当数据的载体
-        // 计算位置环,只有启用位置环且外层闭环为位置时会计算速度环输出
         if (!DJIMotorIsOnline(motor, now_ms) || motor->stop_flag == MOTOR_STOP) {
             continue;
         }
 
+        // pid_ref会顺次通过被启用的闭环充当数据的载体
+        // 计算位置环,只有启用位置环且外层闭环为位置时会计算速度环输出
         if ((motor_setting->close_loop_type & ANGLE_LOOP) && motor_setting->outer_loop_type == ANGLE_LOOP) {
             if (motor_setting->angle_feedback_source == OTHER_FEED)
                 pid_measure = *motor_controller->other_angle_feedback_ptr;
@@ -352,24 +351,25 @@ void DJIMotorControl()
     }
 
     int index = 0;
-    if (idx > 0 && dji_motor_instance[index]->stop_flag == MOTOR_ENABLED && group_online[1]) {
-        power_data.total_power = TotalPowerCalc(power_data.input_power);
-        for (int i = 0; i < 4; i++) {
-            set                                     = CurrentOutputCalc(power_data.input_power[i], power_data.wheel_speed[i], power_data.predict_output[i]);
-            sender_assignment[1].tx_buff[2 * i]     = (uint8_t)(set >> 8);     // 低八位
-            sender_assignment[1].tx_buff[2 * i + 1] = (uint8_t)(set & 0x00ff); // 高八位
-            motorset[i]                             = set;
-        }
-    }
+    // if (idx > 0 && dji_motor_instance[index]->stop_flag == MOTOR_ENABLED && group_online[1]) {
+    //     power_data.total_power = TotalPowerCalc(power_data.input_power);
+    //     for (int i = 0; i < 4; i++) {
+    //         set                                     = CurrentOutputCalc(power_data.input_power[i], power_data.wheel_speed[i], power_data.predict_output[i]);
+    //         sender_assignment[1].tx_buff[2 * i]     = (uint8_t)(set >> 8);     // 低八位
+    //         sender_assignment[1].tx_buff[2 * i + 1] = (uint8_t)(set & 0x00ff); // 高八位
+    //         motorset[i]                             = set;
+    //     }
+    // }
 
     // 遍历flag,检查是否要发送这一帧报文
     for (size_t i = 0; i < 6; ++i) {
         if (!sender_registered_flag[i]) {
+            // TODO:测试调试
             continue;
         }
 
         if (group_online[i]) {
-            // TODO:测试调试
+            // TODO:娴嬭瘯璋冭瘯
             CANTransmit(&sender_assignment[i], 1);
             continue;
         }

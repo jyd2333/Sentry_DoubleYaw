@@ -237,9 +237,8 @@ CANInstance *CANRegister(CAN_Init_Config_s *config)
 uint8_t CANTransmit(CANInstance *_instance, float timeout)
 {
     CANBusRuntime_s *runtime = CANGetBusRuntime(_instance->can_handle);
-    float dwt_start = DWT_GetTimeline_ms();
     uint32_t error_code;
-
+    float dwt_start = DWT_GetTimeline_ms();
     if (CANBusSuspended(runtime)) {
         return 0;
     }
@@ -339,11 +338,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
  *
  * @param hcan CAN handle indicate which device the oddest mesg in FIFO_1 comes from
  */
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    CANFIFOxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
-}
-
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 {
     CANBusMarkHealthy(hcan);
@@ -375,4 +369,9 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
     }
 
     HAL_CAN_ResetError(hcan);
+}
+
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+    CANFIFOxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
 }

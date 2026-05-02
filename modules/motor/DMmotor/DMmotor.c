@@ -208,9 +208,6 @@ void DMMotorControl()
                 probe_frame_sent = 1;
             }
 
-            // On the probe cycle, only send the enable frame and wait for its immediate response.
-            // On other offline cycles, keep streaming MIT frames.
-            // STOP means "send zero-torque MIT frames", not "stop sending".
             if (probe_frame_sent) {
                 continue;
             }
