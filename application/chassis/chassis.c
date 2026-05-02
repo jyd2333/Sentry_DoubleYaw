@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file chassis.c
  * @author NeoZeng neozng1@hnu.edu.cn
  * @brief 底盘应用，负责接收 robot_cmd 的控制命令并根据命令进行运动学解算，得到输出
@@ -49,6 +49,7 @@ SuperCapInstance *cap;                                              // 超级电
 DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
 DJIMotorInstance *steering_lf, *steering_rf, *steering_rb, *steering_lb;
 steering_wheelset_t wheelset_lf, wheelset_rf, wheelset_rb, wheelset_lb;
+chassis_speed_measure_t speed_measure;
 // 为了方便调试加入的量
 static uint8_t center_gimbal_offset_x = CENTER_GIMBAL_OFFSET_X; // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
@@ -56,9 +57,9 @@ static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转�
 // 跟随模式底盘的pid
 // 目前未严格约定单位，后续如有需要再统一规范
 static PIDInstance Chassis_Follow_PID = {
-    .Kp            = 50,   // 25,//25, // 50,//70, // 4.5
+    .Kp            = 300,   // 25,//25, // 50,//70, // 4.5
     .Ki            = 0,    // 0
-    .Kd            = 0.3, // 0.0,  // 0.07,  // 0
+    .Kd            = 1, // 0.0,  // 0.07,  // 0
     .DeadBand      =  0.75,  //跟随模式设置了死区，防止抖动
     .IntegralLimit = 3000,
     .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
@@ -158,7 +159,7 @@ void ChassisInit()
         },
         .motor_type = GM6020
     };
-    steering_config.can_init_config.can_handle                              = &hcan1;
+    steering_config.can_init_config.can_handle                              = &hcan2;
     steering_config.can_init_config.tx_id                                   = 1;
     steering_lf                                                             = DJIMotorInit(&steering_config);
 
@@ -166,7 +167,7 @@ void ChassisInit()
     steering_config.can_init_config.tx_id                                   = 4;
     steering_rf                                                             = DJIMotorInit(&steering_config);
 
-    steering_config.can_init_config.can_handle                              = &hcan2;
+    steering_config.can_init_config.can_handle                              = &hcan1;
     steering_config.can_init_config.tx_id                                   = 3;
     steering_rb                                                             = DJIMotorInit(&steering_config);
 
@@ -175,7 +176,7 @@ void ChassisInit()
     steering_lb                                                             = DJIMotorInit(&steering_config);
 
     //  @todo: 当前未统一电机正反方向，仍需手动处理 reference 正负号，待电机模块支持后修复
-    chassis_motor_config.can_init_config.can_handle                         = &hcan1;
+    chassis_motor_config.can_init_config.can_handle                         = &hcan2;
     chassis_motor_config.can_init_config.tx_id                              = 2;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
     motor_lf                                                                = DJIMotorInit(&chassis_motor_config);
@@ -185,7 +186,7 @@ void ChassisInit()
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
     motor_rf                                                                = DJIMotorInit(&chassis_motor_config);
 
-    chassis_motor_config.can_init_config.can_handle                         = &hcan2;
+    chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 2;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
     motor_rb                                                                = DJIMotorInit(&chassis_motor_config);
@@ -436,9 +437,80 @@ static float Power_Output;
      cap->cap_msg_g.power_limit = chassis_cmd_recv.power_limit - 30 + 30 * (cap->cap_msg_s.CapVot - 17.0f) / 6.0f;
  }
 
-// float offset_angle_watch;
-uint8_t chassis_rate=100;
-int8_t chassis_flag=1;
+static void ChassisSpeedMeasure()
+{
+    const float half_side = CHASSIS_R * 0.70710678f;
+    float lf_speed, rf_speed, rb_speed, lb_speed;
+    float lf_angle, rf_angle, rb_angle, lb_angle;
+    float lf_vx, rf_vx, rb_vx, lb_vx;
+    float lf_vy, rf_vy, rb_vy, lb_vy;
+    float raw_vx, raw_vy, raw_wz;
+    float sample_count;
+
+    if (motor_lf == NULL || motor_rf == NULL || motor_rb == NULL || motor_lb == NULL ||
+        steering_lf == NULL || steering_rf == NULL || steering_rb == NULL || steering_lb == NULL) {
+        speed_measure.real_vx = 0.0f;
+        speed_measure.real_vy = 0.0f;
+        speed_measure.real_wz = 0.0f;
+        chassis_feedback_data.real_vx = 0.0f;
+        chassis_feedback_data.real_vy = 0.0f;
+        chassis_feedback_data.real_wz = 0.0f;
+        return;
+    }
+
+    lf_speed = motor_lf->measure.speed_rpm / REDUCTION_RATIO_WHEEL / 60.0f * PERIMETER_WHEEL;
+    rf_speed = motor_rf->measure.speed_rpm / REDUCTION_RATIO_WHEEL / 60.0f * PERIMETER_WHEEL;
+    rb_speed = motor_rb->measure.speed_rpm / REDUCTION_RATIO_WHEEL / 60.0f * PERIMETER_WHEEL;
+    lb_speed = motor_lb->measure.speed_rpm / REDUCTION_RATIO_WHEEL / 60.0f * PERIMETER_WHEEL;
+
+    lf_angle = -((float)steering_lf->measure.ecd - STEERING_LF_ECD) * ECD_ANGLE_COEF_DJI * DEGREE_2_RAD;
+    rf_angle = -((float)steering_rf->measure.ecd - STEERING_RF_ECD) * ECD_ANGLE_COEF_DJI * DEGREE_2_RAD;
+    rb_angle = -((float)steering_rb->measure.ecd - STEERING_RB_ECD) * ECD_ANGLE_COEF_DJI * DEGREE_2_RAD;
+    lb_angle = -((float)steering_lb->measure.ecd - STEERING_LB_ECD) * ECD_ANGLE_COEF_DJI * DEGREE_2_RAD;
+
+    lf_vx = lf_speed * arm_cos_f32(lf_angle);
+    rf_vx = rf_speed * arm_cos_f32(rf_angle);
+    rb_vx = rb_speed * arm_cos_f32(rb_angle);
+    lb_vx = lb_speed * arm_cos_f32(lb_angle);
+    lf_vy = lf_speed * arm_sin_f32(lf_angle);
+    rf_vy = rf_speed * arm_sin_f32(rf_angle);
+    rb_vy = rb_speed * arm_sin_f32(rb_angle);
+    lb_vy = lb_speed * arm_sin_f32(lb_angle);
+
+    raw_vx = (lf_vx + rf_vx + rb_vx + lb_vx) * 0.25f;
+    raw_vy = (lf_vy + rf_vy + rb_vy + lb_vy) * 0.25f;
+    raw_wz = (lf_vx + lb_vx - rf_vx - rb_vx + rb_vy + lb_vy - lf_vy - rf_vy) / (8.0f * half_side);
+
+    speed_measure.vx_sum -= speed_measure.vx_window[speed_measure.window_index];
+    speed_measure.vy_sum -= speed_measure.vy_window[speed_measure.window_index];
+    speed_measure.wz_sum -= speed_measure.wz_window[speed_measure.window_index];
+    speed_measure.vx_window[speed_measure.window_index] = raw_vx;
+    speed_measure.vy_window[speed_measure.window_index] = raw_vy;
+    speed_measure.wz_window[speed_measure.window_index] = raw_wz;
+    speed_measure.vx_sum += raw_vx;
+    speed_measure.vy_sum += raw_vy;
+    speed_measure.wz_sum += raw_wz;
+
+    if (speed_measure.window_count < CHASSIS_SPEED_MEASURE_WINDOW_SIZE) {
+        speed_measure.window_count++;
+    }
+
+    speed_measure.window_index++;
+    if (speed_measure.window_index >= CHASSIS_SPEED_MEASURE_WINDOW_SIZE) {
+        speed_measure.window_index = 0;
+    }
+
+    sample_count = (float)speed_measure.window_count;
+    speed_measure.real_vx = speed_measure.vx_sum / sample_count;
+    speed_measure.real_vy = speed_measure.vy_sum / sample_count;
+    speed_measure.real_wz = speed_measure.wz_sum / sample_count;
+
+    chassis_feedback_data.real_vx = speed_measure.real_vx;
+    chassis_feedback_data.real_vy = speed_measure.real_vy;
+    chassis_feedback_data.real_wz = speed_measure.real_wz;
+
+}
+
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
 {
@@ -446,9 +518,9 @@ void ChassisTask()
     // 获取新的控制信息
 
     SubGetMessage(chassis_sub, &chassis_cmd_recv);
-
+    
 #ifdef CHASSIS_BOARD
-
+    ChassisSpeedMeasure();
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) { // 如果出现关键模块离线或遥控器急停，则关闭电机输出
         DJIMotorStop(motor_lf);
         DJIMotorStop(motor_rf);
@@ -507,11 +579,9 @@ void ChassisTask()
            //  if (cap->cap_msg_s.SuperCap_open_flag_from_real == SUPERCAP_PMOS_OPEN) {
            //      vw_set = 7000;
            //  } else {
-                vw_set = 3800 * ((float)chassis_cmd_recv.chassis_rotate_speed / 255.0f);
+                vw_set = 20000 * ((float)chassis_cmd_recv.chassis_rotate_speed / 255.0f);
             // }
-            // if(vw_set<=3000) chassis_flag=1;
-            // if(vw_set>=6500) chassis_flag=-1;
-            // vw_set+=2*chassis_flag;
+
 
             chassis_vw       = (current_speed_vw + (vw_set - current_speed_vw) * ramp_calc(&rotate_ramp));
             current_speed_vw = chassis_vw;

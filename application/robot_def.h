@@ -18,8 +18,8 @@
 
 /* 开发板类型定义，烧录时注意不要弄错对应功能；修改定义后需要重新编译；只能存在一个定义 */
 // #define ONE_BOARD // 单板控制整车
-// #define CHASSIS_BOARD // 底盘板
-#define GIMBAL_BOARD  // 云台板
+#define CHASSIS_BOARD // 底盘板
+// #define GIMBAL_BOARD  // 云台板
 
 //#define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -41,13 +41,13 @@
 #define YAW_BIG_YAW_ALIGN_ECD       5426    // 大小 Yaw 对齐时小 Yaw 编码器值
 #define YAW_LEFT_LIMIT_ECD          7000    //小Yaw左限位时电机反馈位置
 #define YAW_RIGHT_LIMIT_ECD         4000    //小Yaw右限位时电机反馈位置
-#define BIG_YAW_CHASSIS_ALIGN_POS   -1.584f //大Yaw与底盘对齐时单机反馈位置
+#define BIG_YAW_CHASSIS_ALIGN_POS   1.57983f //大Yaw与底盘对齐时单机反馈位置
 #define LOADER_ANGLE_PER_BULLET     3240.0f   // 拨出一发弹丸时拨盘转动角度（36 * 90）
 
-#define STEERING_LF_ECD             690
-#define STEERING_RF_ECD             2665
-#define STEERING_RB_ECD             6842
-#define STEERING_LB_ECD             4055
+#define STEERING_LF_ECD             4674
+#define STEERING_RF_ECD             1329
+#define STEERING_RB_ECD             2678
+#define STEERING_LB_ECD             49
 #define STEERING_LF_ANGLE           STEERING_LF_ECD * ECD_ANGLE_COEF_DJI
 #define STEERING_RF_ANGLE           STEERING_RF_ECD * ECD_ANGLE_COEF_DJI
 #define STEERING_RB_ANGLE           STEERING_RB_ECD * ECD_ANGLE_COEF_DJI
@@ -63,15 +63,16 @@
 #define REDUCTION_RATIO_LOADER 36.0f // 拨盘电机减速比；英雄可按实际电机改为 3508 的 19.0f
 #define NUM_PER_CIRCLE         8     // 拨盘一圈的装载量
 // 机器人底盘修改的参数,单位为mm(毫米)
-#define WHEEL_BASE             350   // 320.5   // 纵向轴距(前进后退方向)
-#define TRACK_WIDTH            350   // 320.5   // 横向轮距(左右平移方向)
-#define CHASSIS_R              236   //轮子到车体中心的距离
+#define WHEEL_BASE             344   // 320.5   // 纵向轴距(前进后退方向)
+#define TRACK_WIDTH            344   // 320.5   // 横向轮距(左右平移方向)
+#define CHASSIS_R              243.245f   //轮子到车体中心的距离
 #define CENTER_GIMBAL_OFFSET_X 0     // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 #define CENTER_GIMBAL_OFFSET_Y 0     // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
-#define RADIUS_WHEEL           80   // 轮子半径
+#define RADIUS_WHEEL           55.0f   // 轮子半径
 #define REDUCTION_RATIO_WHEEL  15.76f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
 
 #define CHASSIS_SPEED          40000 // 键盘控制不限功率时底盘最大移动速度
+#define CHASSIS_SPEED_MEASURE_WINDOW_SIZE 20U
 #define YAW_K                  0.0004f
 #define PITCH_K                0.000004f
 
@@ -188,6 +189,20 @@ typedef struct {
     float angle_ref;
     float angle_diff;
 } steering_wheelset_t;
+
+typedef struct {
+    float real_vx;
+    float real_vy;
+    float real_wz;
+    float vx_window[CHASSIS_SPEED_MEASURE_WINDOW_SIZE];
+    float vy_window[CHASSIS_SPEED_MEASURE_WINDOW_SIZE];
+    float wz_window[CHASSIS_SPEED_MEASURE_WINDOW_SIZE];
+    float vx_sum;
+    float vy_sum;
+    float wz_sum;
+    uint8_t window_index;
+    uint8_t window_count;
+} chassis_speed_measure_t;
 
 /* ----------------CMD 应用发布的控制数据，应由 gimbal/chassis/shoot/UI 订阅---------------- */
 /**

@@ -26,15 +26,13 @@ static Publisher_t *gimbal_pub;                   // 云台应用消息发布者
 static Subscriber_t *gimbal_sub;                  // cmd控制消息订阅者
 static Gimbal_Upload_Data_s gimbal_feedback_data; // 回传给cmd的云台状态信息
 static Gimbal_Ctrl_Cmd_s gimbal_cmd_recv;         // 来自cmd的控制信息
-float chassis_rotate_wz_measure = 0;
-float chassis_rotate_sum = 0;
-float chassis_rotate_avg = 0;
-uint32_t chassis_rotate_count = 0;
+float base_yaw_vel_feedforward = 0;
 float pitch_tor_feedforward = 0;
 float pitch_tor_feedforward_ori = 0;
 float pitch_vel_feedforward = 0;
 float yaw_vel_feedforward = 0;
 extern  NUC_cmd_t NUC_cmd;
+extern chassis_speed_measure_t speed_measure;
 void GimbalInit()
 {
 #ifdef GIMBAL_BOARD
@@ -112,7 +110,7 @@ void GimbalInit()
 
     Motor_Init_Config_s pitch_motor_config = {//DM4310
         .can_init_config = {
-            .can_handle = &hcan2,
+            .can_handle = &hcan1,
             .tx_id = 0x02,
             .rx_id = 0x12,
         },
@@ -134,7 +132,7 @@ void GimbalInit()
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
                 .IntegralLimit = 1,
-                .MaxOut = 4,
+                .MaxOut = 1,
             },
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -163,7 +161,7 @@ void GimbalInit()
 #ifdef CHASSIS_BOARD
     Motor_Init_Config_s big_yaw_motor_config = {//DM6006
         .can_init_config = {
-            .can_handle = &hcan1,
+            .can_handle = &hcan2,
             .tx_id = 0x01,
             .rx_id = 0x11,
         },
@@ -187,7 +185,7 @@ void GimbalInit()
                 .IntegralLimit = 0,
                 .MaxOut = 10,
             },
-            // .speed_feedforward_ptr = &chassis_rotate_avg,
+            .speed_feedforward_ptr = &base_yaw_vel_feedforward,
         },
         .controller_setting_init_config ={
             .angle_feedback_source = MOTOR_FEED,
@@ -195,7 +193,7 @@ void GimbalInit()
             .outer_loop_type       = ANGLE_LOOP,
             .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
-            // .feedforward_flag = SPEED_FEEDFORWARD,
+            .feedforward_flag = SPEED_FEEDFORWARD,
             .control_range = {
                 .P_max = 12.5663704,
                 .V_max = 45,
@@ -271,14 +269,8 @@ void GimbalTask()
         case GIMBAL_GYRO_MODE: // 后续只保留此模式
             DJIMotorEnable(yaw_motor);
             DMMotorEnable1(pitch_motor);
-            // DMMotorEnable1(big_yaw_motor);
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
-            DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
             pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET];
-
-            pitch_motor->ctrl.kp_set = 80;
-            pitch_motor->ctrl.kd_set = 2;
-            pitch_motor->ctrl.tor_set = -0.584 * tan(0.82 + gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]);
             if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
             if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
             pitch_motor->ctrl.pos_set = pitch_target;
@@ -298,16 +290,7 @@ void GimbalTask()
 
     big_yaw_target = big_yaw_motor->measure.pos + 1 * comm_cmd_data.yaw_diff;
     big_yaw_kp = 3.0f + (fabsf(comm_cmd_data.yaw_diff) > PI / 3.0f ? PI / 3.0f : fabsf(comm_cmd_data.yaw_diff)) / (PI / 3.0f) * 12.0f;
-    // chassis_rotate_wz_measure =  (motor_lf->measure.speed_rpm + motor_rf->measure.speed_rpm + motor_rb->measure.speed_rpm + motor_lb->measure.speed_rpm) / 4 / 60 * 2 * PI;
-    // chassis_rotate_sum +=  chassis_rotate_wz_measure;
-    // chassis_rotate_count++;
-    // if(chassis_rotate_count >= 99)
-    // {
-    //     chassis_rotate_avg = -1.1 * chassis_rotate_sum / 100 / 50;
-    //     chassis_rotate_count = 0;
-    //     chassis_rotate_sum = 0;
-    // }
-    
+    base_yaw_vel_feedforward = speed_measure.real_wz;
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
     switch (gimbal_cmd_recv.gimbal_mode) {

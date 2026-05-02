@@ -7,6 +7,7 @@
 #include "bsp_usart.h"
 #include "dji_motor.h"
 #include "crc_ref.h"
+#include "DMmotor.h"
 
 static Subscriber_t *chassis_monitor_sub;                   // 用于订阅底盘控制命令
 static Subscriber_t *gimbal_monitor_sub;                  // cmd控制消息订阅者
@@ -25,7 +26,8 @@ static referee_cmd_t referee_cmd = {};
 
 extern referee_info_t referee_info;           // 裁判系统数据
 extern DJIMotorInstance *yaw_motor;
-
+extern chassis_speed_measure_t speed_measure;
+extern DMMotorInstance *big_yaw_motor;
 static CommInstance_t comm_instance;
 
 static void CommRestartRxInternal(void);
@@ -140,8 +142,8 @@ void CommSend(void)
     comm_upload_data.shooter_referee_heat = shoot_cmd_monitor.shooter_referee_heat;
     comm_upload_data.shooter_cooling_limit = shoot_cmd_monitor.shooter_cooling_limit;
     comm_upload_data.cap_voltage = 0.0f;
-    memset(comm_upload_data.reserve, 0, sizeof(comm_upload_data.reserve));
-
+    // comm_upload_data.debug_1 = speed_measure.real_wz;
+    // comm_upload_data.debug_2 = big_yaw_motor->measure.vel;
     if (commSendCount >= 3)
         commSendCount = 0;
 

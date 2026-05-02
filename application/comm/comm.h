@@ -42,7 +42,9 @@ typedef struct
     uint8_t chassis_rotate_speed;
     gimbal_mode_e gimbal_mode;
     float yaw_diff;
-    uint8_t reserve[9];
+    float debug_1;
+    float debug_2;
+    uint8_t reserve[1];
     uint8_t referee_cmd[32];
     uint8_t crc8;
 } comm_cmd_t;
@@ -57,7 +59,9 @@ typedef struct
     uint16_t shooter_referee_heat;
     uint16_t shooter_cooling_limit;
     float cap_voltage;
-    uint8_t reserve[8];
+    float debug_1;
+    float debug_2;
+    // uint8_t reserve[8];
     uint8_t referee_upload[32];
     uint8_t crc8;
 } comm_upload_t;

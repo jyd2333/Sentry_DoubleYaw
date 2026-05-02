@@ -175,7 +175,6 @@ static void DeterminRobotID()
 
 float yaw_control;   // 遥控器YAW自由度输入值
 float pitch_control; // 遥控器PITCH自由度输入值
-float big_yaw_offset = 0.0f;
 uint8_t check_count=0;
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
@@ -187,16 +186,16 @@ static void CalcOffsetAngle()
 {
     // 别名angle提高可读性,不然太长了不好看,虽然基本不会动这个函数
     static float angle;
-    static float gimbal_yaw_current_angle;                                                // 云台yaw轴当前角度
-    static float gimbal_yaw_set_angle;                                                    // 云台yaw轴目标角度
-    angle                               = gimbal_fetch_data.yaw_motor_single_round_angle - (big_yaw_offset * RAD_2_DEGREE); // 从云台获取的当前yaw电机单圈角度
+    // static float gimbal_yaw_current_angle;                                                // 云台yaw轴当前角度
+    // static float gimbal_yaw_set_angle;                                                    // 云台yaw轴目标角度
+    angle                               = gimbal_fetch_data.yaw_motor_single_round_angle - (BIG_YAW_CHASSIS_ALIGN_POS * RAD_2_DEGREE - 90.0f); // 从云台获取的当前yaw电机单圈角度
     // gimbal_yaw_current_angle            = gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET];
-    gimbal_yaw_set_angle                = yaw_control;
+    // gimbal_yaw_set_angle                = yaw_control;
     // chassis_cmd_send.gimbal_error_angle = gimbal_yaw_set_angle - gimbal_yaw_current_angle; // 云台误差角
 
     if(angle < 0) angle += 360;
     chassis_cmd_send.offset_angle = angle;
-
+    angle = -angle;
     // if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
     for(check_count = 0; check_count < 10; check_count++)//防止阻塞
     {

@@ -36,7 +36,7 @@ void ShootInit()
     // 左摩擦轮
     Motor_Init_Config_s friction_config = {
         .can_init_config = {
-            .can_handle = &hcan2,
+            .can_handle = &hcan1,
         },
         .controller_param_init_config = {
             .speed_PID = {
