@@ -195,7 +195,6 @@ static void CalcOffsetAngle()
 
     if(angle < 0) angle += 360;
     chassis_cmd_send.offset_angle = angle;
-    angle = -angle;
     // if(gimbal_fetch_data.base_yaw_tilt->alpha > 0.07) angle -= gimbal_fetch_data.base_yaw_tilt->direction;
     for(check_count = 0; check_count < 10; check_count++)//防止阻塞
     {
@@ -350,8 +349,8 @@ static void RemoteControlSet()
         // else
         // {
             
-        chassis_cmd_send.vx = NUC_cmd.vx; // 水平方向
-        chassis_cmd_send.vy = NUC_cmd.vy; // 竖直方向
+        chassis_cmd_send.vx = 1000.0f * NUC_cmd.vx; // 水平方向
+        chassis_cmd_send.vy = 1000.0f * NUC_cmd.vy; // 竖直方向
         // chassis_cmd_send.chassis_mode = NUC_cmd.rotate
         // chassis_cmd_send.chassis_mode = CHASSIS_ROTATE;
         // chassis_cmd_send.chassis_rotate_speed = 200;
@@ -392,7 +391,7 @@ static void RemoteControlSet()
         pitch_control+=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
         if(NUC_cmd.shoot == 0 && gimbal_fetch_data.gimbal_online)
         {
-            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.3;
+            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.1;
             pitch_control += pitch_search_flag * 0.0015f + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
             if(pitch_control > -0.15f)
                 pitch_search_flag=-1;
@@ -437,8 +436,8 @@ static void RemoteControlSet()
                 break;
         }
         gimbal_cmd_send.control_type = NUC_NORMAL;
-        chassis_cmd_send.vx = 40.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
-        chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
+        chassis_cmd_send.vx = 5.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
+        chassis_cmd_send.vy = -5.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
         yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
         pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
     }
@@ -451,8 +450,8 @@ static void RemoteControlSet()
                 shoot_cmd_send.friction_mode = FRICTION_OFF;
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 gimbal_cmd_send.control_type = NUC_NORMAL;
-                chassis_cmd_send.vx = 40.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
-                chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
+                chassis_cmd_send.vx = 5.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
+                chassis_cmd_send.vy = -5.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
                 yaw_control-= YAW_K * (float)WFLY_data[TEMP].rocker_l_;
                 pitch_control-=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
                 break;
@@ -460,8 +459,8 @@ static void RemoteControlSet()
                 shoot_cmd_send.friction_mode = FRICTION_OFF;
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 gimbal_cmd_send.control_type = NUC_NORMAL;
-                chassis_cmd_send.vx = NUC_cmd.vx; // 水平方向
-                chassis_cmd_send.vy = NUC_cmd.vy; // 竖直方向
+                chassis_cmd_send.vx = 1000.0f * NUC_cmd.vx; // 水平方向
+                chassis_cmd_send.vy = 1000.0f * NUC_cmd.vy; // 竖直方向
                 if(NUC_cmd.rotateMode == 0)
                 {
                     chassis_cmd_send.chassis_mode = CHASSIS_NO_FOLLOW;//CHASSIS_ROTATE;
@@ -494,7 +493,7 @@ static void RemoteControlSet()
                         shoot_cmd_send.friction_mode = FRICTION_ON;
                         if(NUC_cmd.time_stamp != last_time_stamp)
                         {
-                            if(NUC_cmd.shoot==2) 
+                            if(NUC_cmd.shoot == 2) 
                             {
                                 shoot_cmd_send.load_mode = LOAD_BURSTFIRE;
                                 shoot_wait = 100;
@@ -506,8 +505,8 @@ static void RemoteControlSet()
                     default:
                         break;
                 }
-                chassis_cmd_send.vx = 40.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
-                chassis_cmd_send.vy = -40.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
+                chassis_cmd_send.vx = 5.0f * (float)WFLY_data[TEMP].rocker_r_; // 水平方向
+                chassis_cmd_send.vy = -5.0f * (float)WFLY_data[TEMP].rocker_r1; // 竖直方向
                 if(NUC_cmd.time_stamp != last_time_stamp)
                 {
                     if(NUC_cmd.shoot)

@@ -70,9 +70,13 @@
 #define CENTER_GIMBAL_OFFSET_Y 0     // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
 #define RADIUS_WHEEL           55.0f   // 轮子半径
 #define REDUCTION_RATIO_WHEEL  15.76f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
+#define SPEED_TO_DJI_MOTOR_APS (REDUCTION_RATIO_WHEEL * 360.0f / PERIMETER_WHEEL)
 
 #define CHASSIS_SPEED          40000 // 键盘控制不限功率时底盘最大移动速度
 #define CHASSIS_SPEED_MEASURE_WINDOW_SIZE 20U
+#define CHASSIS_HIGH_SPEED                  3000.0f     //mm/s
+#define CHASSIS_ACCELERATION_HIGH_LIMIT      50000.0f   // mm/(s*s)
+#define CHASSIS_ACCELERATION_LOW_LIMIT      300000.0f   // mm/(s*s)
 #define YAW_K                  0.0004f
 #define PITCH_K                0.000004f
 

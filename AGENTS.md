@@ -27,3 +27,83 @@
 - 如果你认为读到了“行末中文注释屏蔽了其后紧邻的业务代码”的情况，不要进行修改。
 - 每次修改内容后，检查所修改文件中的中文注释是否产生乱码。
 - 需要修改代码时，优先仅修改我明确提到的函数，不进行整文件重构，不要修改我的业务代码实现逻辑。
+
+## 构建与验证
+
+本仓库当前优先使用 EIDE 构建。不要优先花时间寻找 CMake/Makefile 构建入口。
+
+### 已验证环境
+
+- `cmake` 当前不在 PATH。
+- `ninja` 当前不在 PATH。
+- `make` 当前不在 PATH。
+- `mingw32-make` 存在，但当前仓库没有可直接使用的 Makefile。
+- `git` 可能不在 PATH，优先使用：
+
+```powershell
+D:\Git\cmd\git.exe
+```
+
+- EIDE ARM GCC：
+
+```powershell
+$env:USERPROFILE\.eide\tools\gcc_arm\bin\arm-none-eabi-gcc.exe
+```
+
+- EIDE 构建器：
+
+```powershell
+$env:USERPROFILE\.vscode\extensions\cl.eide-3.26.9\res\tools\win32\unify_builder\unify_builder.exe
+```
+
+### 完整 Debug 构建
+
+在仓库根目录执行：
+
+```powershell
+& "$env:USERPROFILE\.vscode\extensions\cl.eide-3.26.9\res\tools\win32\unify_builder\unify_builder.exe" --no-color -p build\Debug\builder.params
+```
+
+该命令会写入 `build\Debug\.lock`、`.obj`、`.elf`、`.hex`、`.bin` 等产物。
+如果当前工具处于只读沙箱，必须申请提升权限后再运行；即使 `--dry-run` 也会尝试写 `.lock`，只读下会失败。
+
+2026-05-03 实测结果：
+
+```text
+[ DONE ] build successfully !
+```
+
+输出文件：
+
+```text
+build/Debug/basic_framework.hex
+build/Debug/basic_framework.bin
+```
+
+构建中存在若干既有 warning，例如 unused function/variable、指针类型不匹配，以及 `AHRS.lib` 的 wchar_t 链接 warning；这些不一定是本次修改引入的问题。
+
+### 轻量检查
+
+检查补丁空白问题：
+
+```powershell
+D:\Git\cmd\git.exe diff --check --
+```
+
+只检查单个文件：
+
+```powershell
+D:\Git\cmd\git.exe diff --check -- application/chassis/chassis.c
+```
+
+### 终端显示注意
+
+PowerShell 输出里可能反复出现：
+
+```text
+无法设置属性。此语言模式仅支持核心类型的属性设置。
+```
+
+这是受限语言模式下设置 `[Console]::OutputEncoding` 失败。若命令 exit code 为 0，可忽略。
+
+中文注释在终端中可能显示乱码，这是控制台 codepage/解码问题，不等于文件内容一定损坏。修改中文注释后仍需谨慎检查实际文件内容。

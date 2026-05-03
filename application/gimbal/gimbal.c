@@ -287,7 +287,6 @@ void GimbalTask()
 #endif
 
 #ifdef CHASSIS_BOARD
-
     big_yaw_target = big_yaw_motor->measure.pos + 1 * comm_cmd_data.yaw_diff;
     big_yaw_kp = 3.0f + (fabsf(comm_cmd_data.yaw_diff) > PI / 3.0f ? PI / 3.0f : fabsf(comm_cmd_data.yaw_diff)) / (PI / 3.0f) * 12.0f;
     base_yaw_vel_feedforward = speed_measure.real_wz;
