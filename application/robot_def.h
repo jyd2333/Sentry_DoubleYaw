@@ -292,20 +292,13 @@ typedef struct
     float real_vx;
     float real_vy;
     float real_wz;
-
     uint8_t CapFlag_open_from_real;
     float cap_voltage;
     uint16_t capget_power_limit;
     float chassis_power_output;
     float chassis_voltage;
-
+    float tilt_direction;
 } Chassis_Upload_Data_s;
-
-typedef struct
-{
-    float direction;
-    float alpha;
-} base_yaw_tilt_s;
 
 typedef struct
 {
@@ -313,7 +306,6 @@ typedef struct
     uint16_t yaw_motor_single_round_angle;
     uint16_t yaw_ecd;
     uint8_t gimbal_online;
-    base_yaw_tilt_s *base_yaw_tilt;
 } Gimbal_Upload_Data_s;
 
 typedef struct

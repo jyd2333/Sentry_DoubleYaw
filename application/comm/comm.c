@@ -9,6 +9,8 @@
 #include "crc_ref.h"
 #include "DMmotor.h"
 
+#define COMM_OFFLINE_HANDLE_INTERVAL_MS 100U
+
 static Subscriber_t *chassis_monitor_sub;                   // 用于订阅底盘控制命令
 static Subscriber_t *gimbal_monitor_sub;                  // cmd控制消息订阅者
 static Subscriber_t *shoot_monitor_sub;
@@ -29,6 +31,7 @@ extern DJIMotorInstance *yaw_motor;
 extern chassis_speed_measure_t speed_measure;
 extern DMMotorInstance *big_yaw_motor;
 static CommInstance_t comm_instance;
+static uint32_t comm_last_offline_handle_ms;
 
 static void CommRestartRxInternal(void);
 static void CommHandleOffline(CommInstance_t *comm);
@@ -232,6 +235,8 @@ static void CommRestartRxInternal(void)
 
 static void CommHandleOffline(CommInstance_t *comm)
 {
+    comm_last_offline_handle_ms = CommGetTimelineMs();
+
     memset(comm->rx_buf, 0, sizeof(comm->rx_buf));
     comm->rx_updated = 0;
     comm->online = 0;
@@ -318,11 +323,15 @@ uint8_t CommIsOnline(void)
         return 0;
     }
 
+    now_ms = CommGetTimelineMs();
+
     if (!comm_instance.online) {
+        if ((now_ms - comm_last_offline_handle_ms) >= COMM_OFFLINE_HANDLE_INTERVAL_MS) {
+            CommHandleOffline(&comm_instance);
+        }
         return 0;
     }
 
-    now_ms = CommGetTimelineMs();
     if ((now_ms - comm_instance.last_feed_ms) > COMM_WATCHDOG_TIMEOUT_MS) {
         CommHandleOffline(&comm_instance);
         return 0;

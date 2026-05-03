@@ -50,6 +50,7 @@ DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forwa
 DJIMotorInstance *steering_lf, *steering_rf, *steering_rb, *steering_lb;
 steering_wheelset_t wheelset_lf, wheelset_rf, wheelset_rb, wheelset_lb;
 chassis_speed_measure_t speed_measure;
+static float chassis_tilt_deadband_deg = 4.0f;
 // 为了方便调试加入的量
 static uint8_t center_gimbal_offset_x = CENTER_GIMBAL_OFFSET_X; // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
@@ -564,16 +565,56 @@ static void ChassisSpeedMeasure()
 
 }
 
+/**
+ * @brief 底盘梯度方向
+ *
+ */
+static void ChassisTiltCalc()
+{
+    float pitch, roll;
+    float sin_pitch, sin_roll, cos_pitch, cos_roll;
+    float tilt_x, tilt_y;
+    float tilt_alpha;
+    float tilt_direction;
+
+    if (chassis_IMU_data == NULL) {
+        chassis_feedback_data.tilt_direction = 0.0f;
+        return;
+    }
+
+    pitch     = chassis_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET];
+    roll      = chassis_IMU_data->output.INS_angle[INS_ROLL_ADDRESS_OFFSET];
+    sin_pitch = arm_sin_f32(pitch);
+    sin_roll  = arm_sin_f32(roll);
+    cos_pitch = arm_cos_f32(pitch);
+    cos_roll  = arm_cos_f32(roll);
+    tilt_x    = -sin_pitch;
+    tilt_y    = sin_roll * cos_pitch;
+
+    tilt_alpha = atan2f(sqrtf(tilt_x * tilt_x + tilt_y * tilt_y), cos_roll * cos_pitch) * RAD_2_DEGREE;
+    if (tilt_alpha < chassis_tilt_deadband_deg) {
+        chassis_feedback_data.tilt_direction = 0.0f;
+        return;
+    }
+
+    tilt_direction = atan2f(tilt_y, tilt_x) * RAD_2_DEGREE;
+    if (tilt_direction < 0.0f) {
+        tilt_direction += 360.0f;
+    }
+
+    chassis_feedback_data.tilt_direction = tilt_direction;
+}
+
 /* 机器人底盘控制核心任务 */
 void ChassisTask()
 {
-    // 后续可增加“未收到消息”时的处理（双板场景）
     // 获取新的控制信息
 
     SubGetMessage(chassis_sub, &chassis_cmd_recv);
     
 #ifdef CHASSIS_BOARD
     ChassisSpeedMeasure();
+    ChassisTiltCalc();
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) { // 如果出现关键模块离线或遥控器急停，则关闭电机输出
         DJIMotorStop(motor_lf);
         DJIMotorStop(motor_rf);

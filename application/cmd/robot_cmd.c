@@ -101,7 +101,7 @@ extern DaemonInstance *rc_daemon_instance;
 void HOST_RECV_CALLBACK()
 {
     memcpy(vision_recv_data, host_instance->comm_instance, host_instance->RECV_SIZE);
-    vision_recv_data[8] = 1;
+    // vision_recv_data[8] = 1;
 }
 void RobotCMDInit()
 {
@@ -113,7 +113,7 @@ void RobotCMDInit()
         .RECV_SIZE = 8,
     };
     host_instance = HostInit(&host_conf); // 视觉通信串口
-        GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
