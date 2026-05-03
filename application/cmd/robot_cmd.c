@@ -41,21 +41,12 @@
 #endif
 
 /* cmd应用包含的模块实例指针和交互信息存储*/
-// #ifdef GIMBAL_BOARD // 对双板的兼容,条件编译
-// #include "can_comm.h"
-// static CANCommInstance *cmd_can_comm; // 双板通信
-// #endif
-// #ifdef ONE_BOARD
 static Publisher_t *chassis_cmd_pub;   // 底盘控制消息发布者
-// static Publisher_t *chassis_cmd_pub_2;   // 底盘控制消息发布者
 static Subscriber_t *chassis_feed_sub; // 底盘反馈信息订阅者
 
-// static Subscriber_t *NUC_cmd_sub;   //整车信息订阅者 //=SubRegister("NUC_cmd",sizeof(NUC_cmd_t));
-// static  NUC_cmd_t NUC_cmd_use;  //speed
 extern NUC_cmd_t NUC_cmd;
 extern comm_cmd_t comm_cmd_data;
 extern comm_upload_t comm_upload_data;
-// #endif                                 // ONE_BOARD
 Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
 static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反馈信息信息,底盘功率枪口热量与底盘运动状态等
 
@@ -67,7 +58,6 @@ HostInstance *host_instance; // 上位机接口
 
 // 这里的四元数以wxyz的顺序
 static uint8_t vision_recv_data[9];  // 从视觉上位机接收的数据-绝对角度，第9个字节作为识别到目标的标志位
-// static uint8_t vision_send_data[23]; // 给视觉上位机发送的数据-四元数
 
 static Publisher_t *gimbal_cmd_pub  ;            // 云台控制消息发布者
 static Subscriber_t *gimbal_feed_sub;          // 云台反馈信息订阅者
@@ -95,7 +85,6 @@ uint8_t auto_rune; // 自瞄打符标志位
 // float rec_yaw, rec_pitch;
 uint8_t i=0;
 uint8_t SuperCap_flag_from_user = 0; // 超电标志位
-float nuc_yaw_k = 0.00001;
 extern DaemonInstance *rc_daemon_instance;
 
 void HOST_RECV_CALLBACK()
@@ -206,33 +195,29 @@ static void CalcOffsetAngle()
 }
 
 /**
- * @brief 对Pitch轴角度变化进行限位
+ * @brief 对Pitch轴角度变化进行动态限位
  *
  */
 static void PitchAngleLimit()
 {
-    float limit_min, limit_max;
-#if PITCH_INS_FEED_TYPE
-    limit_min = PITCH_LIMIT_ANGLE_DOWN * DEGREE_2_RAD;
-    limit_max = PITCH_LIMIT_ANGLE_UP * DEGREE_2_RAD;
-#else
-    limit_min = PITCH_LIMIT_ANGLE_DOWN;
-    limit_max = PITCH_LIMIT_ANGLE_UP;
-#endif
+    float pitch_angle;
+    float pitch_pos;
+    float limit_min;
+    float limit_max;
 
-#if PITCH_ECD_UP_ADD // 云台抬升,反馈值增
-    if (current > limit_max)
-        current = limit_max;
-    if (current < limit_min)
-        current = limit_min;
-#else
-    if (pitch_control < limit_max)
+    if (gimbal_fetch_data.gimbal_imu_data == NULL) {
+        return;
+    }
+
+    pitch_angle = gimbal_fetch_data.gimbal_imu_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET];
+    pitch_pos   = gimbal_fetch_data.pitch_motor_pos;
+    limit_max   = pitch_angle + pitch_pos - PITCH_UP_POS;
+    limit_min   = pitch_angle + pitch_pos - PITCH_DOWN_POS;
+
+    if (pitch_control > limit_max)
         pitch_control = limit_max;
-    if (pitch_control > limit_min)
+    if (pitch_control < limit_min)
         pitch_control = limit_min;
-#endif
-
-     //gimbal_cmd_send.pitch = pitch_control;
 }
 
 /**
@@ -532,14 +517,13 @@ static void RemoteControlSet()
                 break;
         }
     }
-
-    if(pitch_control<-0.45) pitch_control=-0.45;
-    if(pitch_control>0.3) pitch_control=0.3;
     rc_daemon_instance->temp_count--;
     if(rc_daemon_instance->temp_count<=0)
     {
         RCLostCallback(NULL);
     }
+    // 云台软件限位
+    PitchAngleLimit(); // PITCH限位
     // 云台参数
     YawControlProcess();
     HeatControl();
@@ -562,8 +546,7 @@ static void RemoteControlSet()
     gimbal_cmd_send.yaw   = yaw_control;
     gimbal_cmd_send.pitch = pitch_control;
 
-    // 云台软件限位
-    // PitchAngleLimit(); // PITCH限位
+
 }
 
 ramp_t fb_ramp;

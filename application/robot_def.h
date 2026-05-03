@@ -18,8 +18,8 @@
 
 /* 开发板类型定义，烧录时注意不要弄错对应功能；修改定义后需要重新编译；只能存在一个定义 */
 // #define ONE_BOARD // 单板控制整车
-#define CHASSIS_BOARD // 底盘板
-// #define GIMBAL_BOARD  // 云台板
+// #define CHASSIS_BOARD // 底盘板
+#define GIMBAL_BOARD  // 云台板
 
 //#define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -35,9 +35,9 @@
 #define PITCH_POS_UP_LIMIT_ECD    4900 // 云台俯仰上限位的编码器值，机械改动后需重新标定
 #define PITCH_POS_DOWN_LIMIT_ECD  3750 // 云台俯仰下限位的编码器值，机械改动后需重新标定
 
-#define PITCH_HORIZON_POS           0.970f  // 云台水平时电机反馈位置
-#define PITCH_UP_POS                -0.51f  // 云台上限位时电机反馈位置（较机械限位略保守）
-#define PITCH_DOWN_POS              0.45f  // 云台下限位时电机反馈位置（较机械限位略保守）
+#define PITCH_HORIZON_POS           0.960f  // 云台水平时电机反馈位置
+#define PITCH_UP_POS                0.5f  // 云台上限位时电机反馈位置（较机械限位略保守）
+#define PITCH_DOWN_POS              1.4f  // 云台下限位时电机反馈位置（较机械限位略保守）
 #define YAW_BIG_YAW_ALIGN_ECD       5426    // 大小 Yaw 对齐时小 Yaw 编码器值
 #define YAW_LEFT_LIMIT_ECD          7000    //小Yaw左限位时电机反馈位置
 #define YAW_RIGHT_LIMIT_ECD         4000    //小Yaw右限位时电机反馈位置
@@ -306,6 +306,7 @@ typedef struct
     uint16_t yaw_motor_single_round_angle;
     uint16_t yaw_ecd;
     uint8_t gimbal_online;
+    float pitch_motor_pos;
 } Gimbal_Upload_Data_s;
 
 typedef struct

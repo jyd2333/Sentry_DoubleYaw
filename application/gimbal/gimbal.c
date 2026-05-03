@@ -270,10 +270,6 @@ void GimbalTask()
             DJIMotorEnable(yaw_motor);
             DMMotorEnable1(pitch_motor);
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
-            pitch_target = gimbal_cmd_recv.pitch - gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET];
-            if(pitch_target < PITCH_UP_POS) pitch_target = PITCH_UP_POS;        //todo:待修改为单独函数并判断电机转向（或许无意义）
-            if(pitch_target >PITCH_DOWN_POS) pitch_target = PITCH_DOWN_POS;
-            pitch_motor->ctrl.pos_set = pitch_target;
             pitch_motor->motor_controller.pid_ref = gimbal_cmd_recv.pitch;
             break;
         default:
@@ -283,6 +279,7 @@ void GimbalTask()
     if(yaw_motor->dt < 0.1) gimbal_feedback_data.gimbal_online = 1;
     else gimbal_feedback_data.gimbal_online = 0;
     gimbal_feedback_data.gimbal_imu_data              = gimbal_IMU_data;
+    gimbal_feedback_data.pitch_motor_pos              = pitch_motor->measure.pos;
     gimbal_feedback_data.yaw_ecd                      = yaw_motor->measure.ecd;
 #endif
 
