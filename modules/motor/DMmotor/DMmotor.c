@@ -217,7 +217,7 @@ void DMMotorControl()
             if (setting->angle_feedback_source == OTHER_FEED)
                 pid_measure = *motor_controller->other_angle_feedback_ptr;
             else
-                pid_measure = measure->pos;
+                pid_measure = measure->total_pos;
             pid_ref = PIDCalculate(&motor_controller->angle_PID, pid_measure, pid_ref);
             if (setting->feedforward_flag & SPEED_FEEDFORWARD)
                 pid_ref += *motor_controller->speed_feedforward_ptr;

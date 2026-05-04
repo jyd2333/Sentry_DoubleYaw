@@ -105,6 +105,7 @@ void CommSend(void)
     comm_cmd_data.chassis_mode = chassis_cmd_monitor.chassis_mode;
     comm_cmd_data.chassis_rotate_speed = chassis_cmd_monitor.chassis_rotate_speed;
     comm_cmd_data.gimbal_mode = gimbal_cmd_monitor.gimbal_mode;
+    comm_cmd_data.base_search_speed = gimbal_cmd_monitor.base_search_speed;
     comm_cmd_data.yaw_diff = (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
     referee_cmd.cmdid = 0x01;
     referee_cmd.ally_power_rune_active = 0;

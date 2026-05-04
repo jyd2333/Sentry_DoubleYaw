@@ -87,6 +87,8 @@ uint8_t i=0;
 uint8_t SuperCap_flag_from_user = 0; // 超电标志位
 extern DaemonInstance *rc_daemon_instance;
 
+static float yaw_l_limit, yaw_r_limit;
+
 void HOST_RECV_CALLBACK()
 {
     memcpy(vision_recv_data, host_instance->comm_instance, host_instance->RECV_SIZE);
@@ -224,13 +226,18 @@ static void PitchAngleLimit()
  * @brief 云台Yaw轴反馈值改单圈角度后过圈处理
  *
  */
+static void YawControlFollowAngle(float yaw_feedback)
+{
+    yaw_control = yaw_feedback + theta_format(yaw_control - yaw_feedback);
+}
+
 static void YawControlProcess()
 {
-    if (yaw_control - gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET] > 180) {
-        yaw_control -= 360;
-    } else if (yaw_control - gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET] < -180) {
-        yaw_control += 360;
+    if (gimbal_fetch_data.gimbal_imu_data == NULL) {
+        return;
     }
+
+    YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET]);
 }
 
 static void HeatControl()
@@ -250,6 +257,59 @@ static void HeatControl()
 
     if ((float)heat_limit - shoot_fetch_data.shooter_local_heat <= reserve_heat) {
         shoot_cmd_send.load_mode = LOAD_STOP;
+    }
+}
+
+static void GetSearchRange()
+{
+    int32_t yaw_ecd_delta;
+    float small_yaw_offset;
+
+    if (gimbal_fetch_data.gimbal_imu_data == NULL) {
+        return;
+    }
+
+    yaw_ecd_delta = (int32_t)gimbal_fetch_data.yaw_ecd - YAW_BIG_YAW_ALIGN_ECD;
+    if (yaw_ecd_delta > 4096) {
+        yaw_ecd_delta -= 8192;
+    } else if (yaw_ecd_delta < -4096) {
+        yaw_ecd_delta += 8192;
+    }
+
+    small_yaw_offset = (float)yaw_ecd_delta * ECD_ANGLE_COEF_DJI;
+    yaw_l_limit = gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg
+                - small_yaw_offset
+                - SEARCH_RANGE / 2.0f;
+    yaw_r_limit = yaw_l_limit + SEARCH_RANGE;
+}
+
+static void Search()
+{
+    static int8_t pitch_search_flag = 1;
+    static int8_t yaw_search_flag = 1;
+
+    if (gimbal_fetch_data.gimbal_imu_data == NULL) {
+        return;
+    }
+
+    YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg);
+    yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + (float)yaw_search_flag * SEARCH_YAW_SPEED;
+    pitch_control += (float)pitch_search_flag * SEARCH_PITCH_SPEED + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
+    gimbal_cmd_send.base_search_speed = SEARCH_BASE_YAW_SPEED;
+
+    if (yaw_control > yaw_r_limit) {
+        yaw_control = yaw_r_limit;
+        yaw_search_flag = -1;
+    }
+    if (yaw_control < yaw_l_limit) {
+        yaw_control = yaw_l_limit;
+        yaw_search_flag = 1;
+    }
+    if (pitch_control > 0.15f) {
+        pitch_search_flag = -1;
+    }
+    if (pitch_control < -0.1f) {
+        pitch_search_flag = 1;
     }
 }
 
@@ -287,8 +347,8 @@ uint64_t last_time_stamp;
 int32_t shoot_wait=0;
 // uint16_t shoot_delay=0,fire_flag=0;
 uint16_t vision_wait=0;
-int8_t pitch_search_flag=1;//pitch上升下降
-int8_t yaw_search_flag=1;
+// int8_t pitch_search_flag=1;//pitch上升下降
+// int8_t yaw_search_flag=1;
 extern INS_Instance *INS;
 int16_t yaw_test_count = 1000, yaw_test_state = 1, yaw_test_range = 10;
 int16_t pitch_test_count = 1000,pitch_test_state = 1;
@@ -372,12 +432,14 @@ static void RemoteControlSet()
         pitch_control+=PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
         if(NUC_cmd.shoot == 0 && gimbal_fetch_data.gimbal_online)
         {
-            yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.1;
-            pitch_control += pitch_search_flag * 0.0015f + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-            if(pitch_control > -0.15f)
-                pitch_search_flag=-1;
-            if(pitch_control < -0.4f)
-                pitch_search_flag=1;
+            gimbal_cmd_send.gimbal_mode = GIMBAL_SEARCH_MODE;
+            Search();
+            // yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + 1  * 0.1;
+            // pitch_control += pitch_search_flag * 0.0015f + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
+            // if(pitch_control > -0.15f)
+            //     pitch_search_flag=-1;
+            // if(pitch_control < -0.4f)
+            //     pitch_search_flag=1;
         }
     }
 
@@ -562,6 +624,7 @@ void RobotCMDTask()
     // SubGetMessage(ui_feed_sub, &ui_fetch_data);
     DeterminRobotID();
 #ifdef GIMBAL_BOARD
+    GetSearchRange();
     // 根据遥控器SA判断是否急停
     if (WFLY_data[TEMP].state_SA == SWITCH_DOWN) {
         EmergencyHandler(); // 调试/疯车时急停
@@ -581,6 +644,7 @@ void RobotCMDTask()
         chassis_cmd_send.vy                     = comm_cmd_data.vy;
         chassis_cmd_send.chassis_rotate_speed   = comm_cmd_data.chassis_rotate_speed;
         gimbal_cmd_send.gimbal_mode             = comm_cmd_data.gimbal_mode;
+        gimbal_cmd_send.base_search_speed       = comm_cmd_data.base_search_speed;
     }
     else
     {

@@ -213,6 +213,7 @@ float big_yaw_fetch_angle;
 int32_t big_yaw_fetch_angle_single;
 // base_yaw_tilt_s base_yaw_tilt;
 uint8_t last_NUC_detect = 0;
+gimbal_mode_e last_gimbal_mode = GIMBAL_ZERO_FORCE;
 // base_yaw_tilt_s* GetBaseYawTilt(void)
 // {
 //     static float gimbal_yaw_pitch,gimbal_yaw_roll;
@@ -266,7 +267,8 @@ void GimbalTask()
             pitch_motor->motor_controller.speed_PID.Iout    = 0;
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
-        case GIMBAL_GYRO_MODE: // 后续只保留此模式
+        case GIMBAL_GYRO_MODE:
+        case GIMBAL_SEARCH_MODE:
             DJIMotorEnable(yaw_motor);
             DMMotorEnable1(pitch_motor);
             DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
@@ -284,8 +286,19 @@ void GimbalTask()
 #endif
 
 #ifdef CHASSIS_BOARD
-    big_yaw_target = big_yaw_motor->measure.pos + 1 * comm_cmd_data.yaw_diff;
-    big_yaw_kp = 3.0f + (fabsf(comm_cmd_data.yaw_diff) > PI / 3.0f ? PI / 3.0f : fabsf(comm_cmd_data.yaw_diff)) / (PI / 3.0f) * 12.0f;
+    if(last_gimbal_mode != GIMBAL_SEARCH_MODE && gimbal_cmd_recv.gimbal_mode == GIMBAL_SEARCH_MODE)
+        big_yaw_target = big_yaw_motor->measure.total_pos;
+    if(gimbal_cmd_recv.gimbal_mode == GIMBAL_SEARCH_MODE)
+    {
+        big_yaw_target += (float)gimbal_cmd_recv.base_search_speed / 255 * 0.001f;
+        big_yaw_kp = 10.0f;
+    }
+    else
+    {
+        big_yaw_target = big_yaw_motor->measure.total_pos + 1 * comm_cmd_data.yaw_diff;
+        big_yaw_kp = 3.0f + (fabsf(comm_cmd_data.yaw_diff) > PI / 3.0f ? PI / 3.0f : fabsf(comm_cmd_data.yaw_diff)) / (PI / 3.0f) * 12.0f;
+    }
+
     base_yaw_vel_feedforward = speed_measure.real_wz;
     // @todo:现在已不再需要电机反馈,实际上可以始终使用IMU的姿态数据来作为云台的反馈,yaw电机的offset只是用来跟随底盘
     // 根据控制模式进行电机反馈切换和过渡,视觉模式在robot_cmd模块就已经设置好,gimbal只看yaw_ref和pitch_ref
@@ -296,7 +309,8 @@ void GimbalTask()
             big_yaw_motor->motor_controller.angle_PID.Iout  = 0;
             break;
         //使用陀螺仪的反馈,底盘根据yaw电机的offset跟随云台或视觉模式采用
-        case GIMBAL_GYRO_MODE: // 后续只保留此模式
+        case GIMBAL_GYRO_MODE:
+        case GIMBAL_SEARCH_MODE:
             DMMotorEnable1(big_yaw_motor);
             big_yaw_motor->motor_controller.angle_PID.Kp = big_yaw_kp;
             big_yaw_motor->motor_controller.pid_ref = big_yaw_target;
@@ -317,6 +331,7 @@ void GimbalTask()
     
     // gimbal_feedback_data.base_yaw_tilt                = GetBaseYawTilt();
 #endif
+    last_gimbal_mode = gimbal_cmd_recv.gimbal_mode;
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);
 }
