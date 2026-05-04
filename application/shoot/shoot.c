@@ -176,7 +176,7 @@ static void Load_Reverse()
 
 int heat_control    = 0; // 热量控制
 float local_heat    = 0;  // 本地热量
-int One_bullet_heat = 10; // 打一发消耗热量
+int One_bullet_heat = SHOOT_ONE_BULLET_HEAT; // 打一发消耗热量
 int32_t shoot_count;      // 已发弹量
 // 热量控制算法
 static void Shoot_Fric_data_process(void)

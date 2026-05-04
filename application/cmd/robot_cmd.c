@@ -233,26 +233,22 @@ static void YawControlProcess()
     }
 }
 
-static float heat_coef;
-
 static void HeatControl()
 {
+    uint16_t heat_limit = referee_data->GameRobotStatus.shooter_barrel_heat_limit;
+    float reserve_heat = (float)(SHOOT_ONE_BULLET_HEAT * SHOOT_HEAT_RESERVE_BULLETS);
+
     if (shoot_cmd_send.friction_mode == FRICTION_OFF) {
         shoot_cmd_send.load_mode = LOAD_STOP;
+        return;
     }
-    static float rate_coef;
-    if (heat_coef >= 1)
-        rate_coef = 1;
-    else if (heat_coef >= 0.8 && heat_coef < 1)
-        rate_coef = 0.8;
-    else if (heat_coef >= 0.6 && heat_coef < 0.8)
-        rate_coef = 0.6;
-    else if (heat_coef < 0.6)
-        rate_coef = 0.4;
-    heat_coef = ((referee_data->GameRobotStatus.shooter_barrel_heat_limit - referee_data->PowerHeatData.shooter_17mm_barrel_heat + rate_coef * referee_data->GameRobotStatus.shooter_barrel_cooling_value) * 1.7f) / (1.0f * referee_data->GameRobotStatus.shooter_barrel_heat_limit);
-    // 新热量管理
-    if (referee_data->GameRobotStatus.shooter_barrel_cooling_value + 130 + 100 * heat_coef - shoot_fetch_data.shooter_local_heat <= shoot_fetch_data.shooter_heat_control) 
-    {
+
+    if (heat_limit == 0) {
+        shoot_cmd_send.load_mode = LOAD_STOP;
+        return;
+    }
+
+    if ((float)heat_limit - shoot_fetch_data.shooter_local_heat <= reserve_heat) {
         shoot_cmd_send.load_mode = LOAD_STOP;
     }
 }

@@ -159,6 +159,9 @@ typedef enum {
 } gimbal_NUC_mode_e;
 
 // 发射模式设置
+#define SHOOT_ONE_BULLET_HEAT      10
+#define SHOOT_HEAT_RESERVE_BULLETS 3
+
 typedef enum {
     SHOOT_OFF = 0,
     SHOOT_ON,
