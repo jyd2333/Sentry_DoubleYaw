@@ -24,7 +24,6 @@ static float accel_fliter_3[3]   = {0.0f, 0.0f, 0.0f};
 static const float fliter_num[3] = {1.929454039488895f, -0.93178349823448126f, 0.002329458745586203f};
 
 INS_Instance *INS = NULL;
-INS_Instance *NUC_SEND_IMU=NULL;
 /**
  * @brief          旋转陀螺仪,加速度计和磁力计,并计算零漂,因为设备有不同安装方式
  * @param[out]     gyro: 加上零漂和旋转
@@ -65,7 +64,6 @@ INS_Instance *INS_Init(BMI088Instance *bmi088)
     accel_fliter_1[2] = accel_fliter_2[2] = accel_fliter_3[2] = INSinstance->INS_data.INS_accel[2];
 
     INS = INSinstance;
-    NUC_SEND_IMU=INSinstance;
     return INSinstance;
 }
 

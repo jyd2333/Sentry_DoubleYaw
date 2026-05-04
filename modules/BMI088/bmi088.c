@@ -410,7 +410,7 @@ uint8_t BMI088Acquire_IT_Status(BMI088Instance *bmi088)
 }
 
 #pragma message ("REMEMBER TO CHANGE CALI PARAMETERS IF YOU CHOOSE NOT TO CALIBRATE ONLINE(parameters in robot_def.h)")
-#define GYRO_CALIBRATE_TIME 20000 // 20s
+#define GYRO_CALIBRATE_TIME 60000 // 20s
 /**
  * @brief BMI088 gyro 标定
  * @attention 不管工作模式是blocking还是IT,标定时都是blocking模式,所以不用担心中断关闭后无法标定(RobotInit关闭了全局中断)

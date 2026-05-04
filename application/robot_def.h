@@ -18,8 +18,8 @@
 
 /* 开发板类型定义，烧录时注意不要弄错对应功能；修改定义后需要重新编译；只能存在一个定义 */
 // #define ONE_BOARD // 单板控制整车
-// #define CHASSIS_BOARD // 底盘板
-#define GIMBAL_BOARD  // 云台板
+#define CHASSIS_BOARD // 底盘板
+// #define GIMBAL_BOARD  // 云台板
 
 //#define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -96,9 +96,17 @@
 #endif // !IMU_DEF_PARAM_WARNING
 
 // 陀螺仪校准数据，开启陀螺仪校准后可从 INS 中获取
-#define BMI088_PRE_CALI_GYRO_X_OFFSET -0.000909539289f
-#define BMI088_PRE_CALI_GYRO_Y_OFFSET 0.00354450056f
-#define BMI088_PRE_CALI_GYRO_Z_OFFSET -0.00185f
+#ifdef GIMBAL_BOARD
+#define BMI088_PRE_CALI_GYRO_X_OFFSET 0.000715131406f
+#define BMI088_PRE_CALI_GYRO_Y_OFFSET 0.000697459152f
+#define BMI088_PRE_CALI_GYRO_Z_OFFSET -0.002f
+#endif
+
+#ifdef CHASSIS_BOARD
+#define BMI088_PRE_CALI_GYRO_X_OFFSET -0.00242434512f
+#define BMI088_PRE_CALI_GYRO_Y_OFFSET -0.000412355439f
+#define BMI088_PRE_CALI_GYRO_Z_OFFSET -0.00428985665f
+#endif
 // 陀螺仪默认环境温度
 #define BMI088_AMBIENT_TEMPERATURE 25.0f
 // 设置陀螺仪数据相较于云台 yaw/pitch/roll 的方向

@@ -112,12 +112,12 @@ void USB_Decode(void)
 			memcpy(&Navigation_Receive, UserRxBufferFS, sizeof(Navigation_Receive));
 			if(Navigation_Receive.head == FRAME_HEADER && Navigation_Receive.end == FRAME_END && Navigation_Receive.check_sum == Check_Sum_16(&Navigation_Receive.head,sizeof(navigation_receive_t)-3))
 			{
-				NUC_cmd.time_stamp	= Navigation_Receive.time_stamp;
-				NUC_cmd.vx 			= -Navigation_Receive.vy;
-				NUC_cmd.vy 			= Navigation_Receive.vx;
-				NUC_cmd.base_yaw	= Navigation_Receive.base_yaw;
-				NUC_cmd.scanMode	= Navigation_Receive.mode;
-				NUC_cmd.rotateMode	= Navigation_Receive.chassis_status;
+				NUC_cmd.navi_time_stamp	= Navigation_Receive.time_stamp;
+				NUC_cmd.vx 				= -Navigation_Receive.vy;
+				NUC_cmd.vy 				= Navigation_Receive.vx;
+				NUC_cmd.base_yaw		= Navigation_Receive.base_yaw;
+				NUC_cmd.scanMode		= Navigation_Receive.mode;
+				NUC_cmd.rotateMode		= Navigation_Receive.chassis_status;
 			}
 			break;
 		default:

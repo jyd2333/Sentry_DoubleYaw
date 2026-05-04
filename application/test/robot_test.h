@@ -70,6 +70,7 @@ typedef struct
 	int shoot;
 	int16_t delay;
 	uint64_t time_stamp;
+	uint64_t navi_time_stamp;
 	uint8_t scanMode;		//0：对装甲板 1：对前哨战 2：对能量机关 3：对基地（）
 	uint8_t rotateMode;
 	float base_yaw;
