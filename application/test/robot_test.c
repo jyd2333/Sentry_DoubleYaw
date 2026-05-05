@@ -104,8 +104,8 @@ void USB_Decode(void)
 				NUC_cmd.shoot 		= Vision_Receive.fireadvise;
 				NUC_cmd.pitch_vel 	= 0;//-Vision_Receive.pitch_vel;
 				NUC_cmd.pitch_acc 	= 0;//-Vision_Receive.pitch_acc;
-				NUC_cmd.yaw_vel 	= 0;//-Vision_Receive.yaw_vel;
-				NUC_cmd.yaw_acc 	= 0;//-Vision_Receive.yaw_acc;
+				NUC_cmd.yaw_vel 	= -Vision_Receive.yaw_vel;
+				NUC_cmd.yaw_acc 	= Vision_Receive.yaw_acc;
 			}
 			break;
 		case 0x02:

@@ -48,6 +48,11 @@ typedef enum {
     CURRENT_AND_SPEED_FEEDFORWARD = CURRENT_FEEDFORWARD | SPEED_FEEDFORWARD,
 } Feedfoward_Type_e;
 
+typedef enum {
+    SELF_PID            = 0b00,
+    MPC_SPEED_PARALLEL  = 0b01,
+} Motor_Mpc_Type_e;
+
 /* 反馈来源设定,若设为OTHER_FEED则需要指定数据来源指针,详见Motor_Controller_s*/
 typedef enum {
     MOTOR_FEED = 0,
@@ -86,6 +91,7 @@ typedef struct
     Feedback_Source_e angle_feedback_source;       // 角度反馈类型
     Feedback_Source_e speed_feedback_source;       // 速度反馈类型
     Feedfoward_Type_e feedforward_flag;            // 前馈标志
+    Motor_Mpc_Type_e mpc_type;                     // 是否启用mpc并联速度环
     Motor_Control_Range_s control_range;
 } Motor_Control_Setting_s;
 
@@ -95,14 +101,16 @@ typedef struct
 {
     float *other_angle_feedback_ptr; // 其他反馈来源的反馈数据指针
     float *other_speed_feedback_ptr;
+
     float *speed_feedforward_ptr;
     float *current_feedforward_ptr;
+
+    float *mpc_speed_ref_ptr;
 
     PIDInstance current_PID;
     PIDInstance speed_PID;
     PIDInstance angle_PID;
-    PIDInstance follow_speed_PID;
-    PIDInstance follow_angle_PID;
+    PIDInstance mpc_speed_PID;
 
     float pid_ref; // 将会作为每个环的输入和输出顺次通过串级闭环
 } Motor_Controller_s;
@@ -134,11 +142,12 @@ typedef struct
     float *speed_feedforward_ptr;   // 速度前馈数据指针
     float *current_feedforward_ptr; // 电流前馈数据指针
 
+    float *mpc_speed_ref_ptr;
+
     PID_Init_Config_s current_PID;
     PID_Init_Config_s speed_PID;
     PID_Init_Config_s angle_PID;
-    PIDInstance follow_speed_PID;
-    PIDInstance follow_angle_PID;
+    PID_Init_Config_s mpc_speed_PID;
 } Motor_Controller_Init_s;
 
 /* 用于初始化CAN电机的结构体,各类电机通用 */

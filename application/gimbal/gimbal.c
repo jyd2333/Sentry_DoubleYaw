@@ -31,6 +31,8 @@ float pitch_tor_feedforward = 0;
 float pitch_tor_feedforward_ori = 0;
 float pitch_vel_feedforward = 0;
 float yaw_vel_feedforward = 0;
+float yaw_tor_feedforward = 0;
+volatile static float yaw_tor_k = 60.0f;
 extern  NUC_cmd_t NUC_cmd;
 extern chassis_speed_measure_t speed_measure;
 void GimbalInit()
@@ -76,8 +78,8 @@ void GimbalInit()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 0.7,//12, // 0.24, // 0.31, // 0.45
-                .Ki            = 0.01,
+                .Kp            = 2,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 0.0f,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
@@ -85,17 +87,24 @@ void GimbalInit()
                 .MaxOut = 1000,
             },
             .speed_PID = {
-                .Kp            = 6000,//6000,//10000, //11000,
+                .Kp            = 2000,//6000,//10000, //11000,
                 .Ki            = 0,    // 0
-                .Kd            = 8,//5, // 30
+                .Kd            = 0,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 3000,
-                .MaxOut        = 20000, // 20000
+                .MaxOut        = 10000, // 20000
             },
-            .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET], // yaw反馈角度值
+            .mpc_speed_PID = {
+                .Kp            = 5000,
+                .Ki            = 0,
+                .Kd            = 0,
+                .MaxOut        = 10000,
+            },
+            .other_angle_feedback_ptr   = &gimbal_IMU_data->output.INS_angle_deg[INS_YAW_ADDRESS_OFFSET], // yaw反馈角度值
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
-            .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_YAW_ADDRESS_OFFSET],
-            .speed_feedforward_ptr = &yaw_vel_feedforward,
+            .other_speed_feedback_ptr   = &gimbal_IMU_data->INS_data.INS_gyro[INS_YAW_ADDRESS_OFFSET],
+            .mpc_speed_ref_ptr          = &yaw_vel_feedforward,
+            .current_feedforward_ptr    = &yaw_tor_feedforward,
         },
         .controller_setting_init_config = {
             .angle_feedback_source = OTHER_FEED,
@@ -103,7 +112,8 @@ void GimbalInit()
             .outer_loop_type       = ANGLE_LOOP,
             .close_loop_type       = ANGLE_LOOP | SPEED_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
-            .feedforward_flag      = SPEED_FEEDFORWARD,
+            .feedforward_flag      = CURRENT_FEEDFORWARD,
+            .mpc_type              = MPC_SPEED_PARALLEL,
         },
         .motor_type = GM6020};
     yaw_motor   = DJIMotorInit(&yaw_config);
@@ -132,7 +142,7 @@ void GimbalInit()
                 .DeadBand = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit ,
                 .IntegralLimit = 1,
-                .MaxOut = 1,
+                .MaxOut = 4,
             },
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -243,12 +253,16 @@ void GimbalTask()
     if(gimbal_cmd_recv.control_type == NUC_CONTROL)
     {
         pitch_vel_feedforward   = NUC_cmd.pitch_vel;
-        yaw_vel_feedforward     = NUC_cmd.yaw_vel;
+        yaw_vel_feedforward     = -NUC_cmd.yaw_vel;
+        yaw_tor_feedforward     = yaw_tor_k * NUC_cmd.yaw_acc;
+        yaw_motor->motor_controller.mpc_speed_PID.MaxOut = 5000;
     }
     else
     {
         pitch_vel_feedforward   = 0;
         yaw_vel_feedforward     = 0;
+        yaw_tor_feedforward     = 0;
+        yaw_motor->motor_controller.mpc_speed_PID.MaxOut = 0;
     }
     if(NUC_cmd.shoot != 0 && last_NUC_detect == 0)
     {

@@ -8,6 +8,8 @@
 
 #define DJI_OFFLINE_TIMEOUT_MS 10.0f
 #define DJI_PROBE_INTERVAL_MS 100.0f
+#define DJI_OUTPUT_LIMIT_6020_3508 16384.0f
+#define DJI_OUTPUT_LIMIT_2006 10000.0f
 
 static uint8_t idx = 0; // register idx,是该文件的全局电机索引,在注册时使用
 /* DJI电机的实例,此处仅保存指针,内存的分配将通过电机实例初始化时通过malloc()进行 */
@@ -50,6 +52,23 @@ static uint8_t DJIMotorIsOnline(DJIMotorInstance *motor, float now_ms)
         return 0;
     }
     return (now_ms - motor->last_feedback_ms) <= DJI_OFFLINE_TIMEOUT_MS;
+}
+
+static int16_t DJIMotorLimitTorqueCurrent(Motor_Type_e motor_type, float output)
+{
+    float limit = DJI_OUTPUT_LIMIT_6020_3508;
+
+    if (motor_type == M2006) {
+        limit = DJI_OUTPUT_LIMIT_2006;
+    }
+
+    if (output > limit) {
+        output = limit;
+    } else if (output < -limit) {
+        output = -limit;
+    }
+
+    return (int16_t)output;
 }
 
 /**
@@ -184,10 +203,12 @@ DJIMotorInstance *DJIMotorInit(Motor_Init_Config_s *config)
     PIDInit(&instance->motor_controller.current_PID, &config->controller_param_init_config.current_PID);
     PIDInit(&instance->motor_controller.speed_PID, &config->controller_param_init_config.speed_PID);
     PIDInit(&instance->motor_controller.angle_PID, &config->controller_param_init_config.angle_PID);
+    PIDInit(&instance->motor_controller.mpc_speed_PID, &config->controller_param_init_config.mpc_speed_PID);
     instance->motor_controller.other_angle_feedback_ptr = config->controller_param_init_config.other_angle_feedback_ptr;
     instance->motor_controller.other_speed_feedback_ptr = config->controller_param_init_config.other_speed_feedback_ptr;
     instance->motor_controller.current_feedforward_ptr  = config->controller_param_init_config.current_feedforward_ptr;
     instance->motor_controller.speed_feedforward_ptr    = config->controller_param_init_config.speed_feedforward_ptr;
+    instance->motor_controller.mpc_speed_ref_ptr        = config->controller_param_init_config.mpc_speed_ref_ptr;
     // 后续增加电机前馈控制器(速度和电流)
 
     // 电机分组,因为至多4个电机可以共用一帧CAN控制报文
@@ -283,7 +304,7 @@ void DJIMotorControl()
         }
         pid_ref          = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在计算过程中被修改
 
-        if (!DJIMotorIsOnline(motor, now_ms) || motor->stop_flag == MOTOR_STOP) {
+        if (!DJIMotorIsOnline(motor, now_ms)) {
             continue;
         }
 
@@ -321,16 +342,25 @@ void DJIMotorControl()
             pid_ref = PIDCalculate(&motor_controller->current_PID, measure->real_current, pid_ref);
         }
 
+        // 计算MPC并联速度环
+        if(motor_setting->mpc_type & MPC_SPEED_PARALLEL){
+            if (motor_setting->speed_feedback_source == OTHER_FEED)
+                pid_measure = *motor_controller->other_speed_feedback_ptr;
+            else // MOTOR_FEED
+                pid_measure = measure->speed_aps;
+            pid_ref += PIDCalculate(&motor_controller->mpc_speed_PID, pid_measure, *motor_controller->mpc_speed_ref_ptr);
+        }
+
         if (motor_setting->feedback_reverse_flag == FEEDBACK_DIRECTION_REVERSE)
             pid_ref *= -1;
 
         // 获取最终输出
-        set = (int16_t)pid_ref;
+        set = DJIMotorLimitTorqueCurrent(motor->motor_type, pid_ref);
 
         // if(motor->motor_type==GM6020&&motor->motor_can_instance->id==4) pid_ref=3000 ;
 
 #ifdef SAMPLING
-        set = (int16_t)motor_controller->pid_ref;
+        set = DJIMotorLimitTorqueCurrent(motor->motor_type, motor_controller->pid_ref);
 #endif
 
         // 分组填入发送数据
