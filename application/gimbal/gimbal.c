@@ -304,7 +304,8 @@ void GimbalTask()
         big_yaw_target = big_yaw_motor->measure.total_pos;
     if(gimbal_cmd_recv.gimbal_mode == GIMBAL_SEARCH_MODE)
     {
-        big_yaw_target += (float)gimbal_cmd_recv.base_search_speed / 255 * 0.001f;
+        big_yaw_target += 1.0f * 0.001f;
+        big_yaw_target += speed_measure.real_wz * 0.001f;
         big_yaw_kp = 10.0f;
     }
     else

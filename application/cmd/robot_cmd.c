@@ -295,7 +295,6 @@ static void Search()
     YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg);
     yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + (float)yaw_search_flag * SEARCH_YAW_SPEED;
     pitch_control += (float)pitch_search_flag * SEARCH_PITCH_SPEED + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
-    gimbal_cmd_send.base_search_speed = SEARCH_BASE_YAW_SPEED;
 
     if (yaw_control > yaw_r_limit) {
         yaw_control = yaw_r_limit;
@@ -361,7 +360,8 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 12;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 16;   // 射频默认30Hz
+    chassis_cmd_send.control_type = NUC_NORMAL;
 
     // if (rc_data[TEMP].rc.dial > 400) {
     //     SuperCap_flag_from_user = SUPER_USER_OPEN;
@@ -389,7 +389,7 @@ static void RemoteControlSet()
         shoot_cmd_send.friction_mode = FRICTION_ON;
         // else
         // {
-            
+        chassis_cmd_send.control_type = NUC_CONTROL;
         chassis_cmd_send.vx = 1000.0f * NUC_cmd.vx; // 水平方向
         chassis_cmd_send.vy = 1000.0f * NUC_cmd.vy; // 竖直方向
         // chassis_cmd_send.chassis_mode = NUC_cmd.rotate
@@ -502,6 +502,7 @@ static void RemoteControlSet()
                 shoot_cmd_send.friction_mode = FRICTION_OFF;
                 shoot_cmd_send.load_mode = LOAD_STOP;
                 gimbal_cmd_send.control_type = NUC_NORMAL;
+                chassis_cmd_send.control_type = NUC_CONTROL;
                 chassis_cmd_send.vx = 1000.0f * NUC_cmd.vx; // 水平方向
                 chassis_cmd_send.vy = 1000.0f * NUC_cmd.vy; // 竖直方向
                 if(NUC_cmd.rotateMode == 0)
@@ -644,7 +645,6 @@ void RobotCMDTask()
         chassis_cmd_send.vy                     = comm_cmd_data.vy;
         chassis_cmd_send.chassis_rotate_speed   = comm_cmd_data.chassis_rotate_speed;
         gimbal_cmd_send.gimbal_mode             = comm_cmd_data.gimbal_mode;
-        gimbal_cmd_send.base_search_speed       = comm_cmd_data.base_search_speed;
     }
     else
     {

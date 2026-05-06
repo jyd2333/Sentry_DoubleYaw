@@ -42,7 +42,7 @@ typedef struct
     uint8_t chassis_rotate_speed;
     gimbal_mode_e gimbal_mode;
     float yaw_diff;
-    uint8_t base_search_speed;
+    uint8_t navi_stamp;
     float debug_1;
     float debug_2;
     // uint8_t reserve[1];

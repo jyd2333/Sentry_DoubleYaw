@@ -8,6 +8,7 @@
 #include "dji_motor.h"
 #include "crc_ref.h"
 #include "DMmotor.h"
+#include "robot_test.h"
 
 #define COMM_OFFLINE_HANDLE_INTERVAL_MS 100U
 
@@ -30,8 +31,10 @@ extern referee_info_t referee_info;           // 裁判系统数据
 extern DJIMotorInstance *yaw_motor;
 extern chassis_speed_measure_t speed_measure;
 extern DMMotorInstance *big_yaw_motor;
+extern NUC_cmd_t NUC_cmd;
 static CommInstance_t comm_instance;
 static uint32_t comm_last_offline_handle_ms;
+static uint64_t last_navi_time_stamp;
 
 static void CommRestartRxInternal(void);
 static void CommHandleOffline(CommInstance_t *comm);
@@ -105,8 +108,21 @@ void CommSend(void)
     comm_cmd_data.chassis_mode = chassis_cmd_monitor.chassis_mode;
     comm_cmd_data.chassis_rotate_speed = chassis_cmd_monitor.chassis_rotate_speed;
     comm_cmd_data.gimbal_mode = gimbal_cmd_monitor.gimbal_mode;
-    comm_cmd_data.base_search_speed = gimbal_cmd_monitor.base_search_speed;
     comm_cmd_data.yaw_diff = (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+    if(chassis_cmd_monitor.control_type == NUC_CONTROL)
+    {
+        if(last_navi_time_stamp != NUC_cmd.navi_time_stamp)
+        {
+            comm_cmd_data.navi_stamp++;
+            if(comm_cmd_data.navi_stamp == 64)
+                comm_cmd_data.navi_stamp = 1;
+        }
+    }
+    else
+    {
+        comm_cmd_data.navi_stamp = 0;
+    }
+    last_navi_time_stamp = NUC_cmd.navi_time_stamp;
     referee_cmd.cmdid = 0x01;
     referee_cmd.ally_power_rune_active = 0;
     memcpy(comm_cmd_data.referee_cmd, &referee_cmd, REFEREE_CMD_SIZE);

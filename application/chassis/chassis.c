@@ -17,6 +17,7 @@
 #include "super_cap.h"
 #include "message_center.h"
 #include "referee_init.h"
+#include "bsp_dwt.h"
 
 #include "general_def.h"
 #include "bsp_dwt.h"
@@ -25,6 +26,7 @@
 #include "arm_math.h"
 #include "power_calc.h"
 #include "tool.h"
+#include "comm.h"
 
 /* 根据 robot_def.h 中的宏自动计算参数 */
 #define HALF_WHEEL_BASE  (WHEEL_BASE / 2.0f)     // 半轴距
@@ -43,7 +45,7 @@ static Subscriber_t *chassis_sub;                   // 用于订阅底盘控制�
 // #endif                                              // !ONE_BOARD
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制命令
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
-
+extern comm_cmd_t comm_cmd_data;
 SuperCapInstance *cap;                                              // 超级电容
 // 驱动与转向电机实例
 DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
@@ -51,6 +53,10 @@ DJIMotorInstance *steering_lf, *steering_rf, *steering_rb, *steering_lb;
 steering_wheelset_t wheelset_lf, wheelset_rf, wheelset_rb, wheelset_lb;
 chassis_speed_measure_t speed_measure;
 static float chassis_tilt_deadband_deg = 4.0f;
+static uint8_t last_navi_stamp;
+static uint32_t last_navi_DWT_stamp;
+static uint8_t navi_speed_valid;
+static float navi_raw_vx, navi_raw_vy, navi_raw_yaw;
 // 为了方便调试加入的量
 static uint8_t center_gimbal_offset_x = CENTER_GIMBAL_OFFSET_X; // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
@@ -566,6 +572,47 @@ static void ChassisSpeedMeasure()
 }
 
 /**
+ * @brief 底盘速度插值
+ *
+ */
+static void ChassisSpeedInterpolate()
+{
+    uint32_t now_ms = (uint32_t)DWT_GetTimeline_ms();
+    float delta_yaw;
+    float sin_delta_yaw, cos_delta_yaw;
+
+    if (comm_cmd_data.navi_stamp == 0 || chassis_IMU_data == NULL) {
+        last_navi_stamp = comm_cmd_data.navi_stamp;
+        last_navi_DWT_stamp = now_ms;
+        navi_speed_valid = 0;
+        return;
+    }
+
+    if (!navi_speed_valid || last_navi_stamp != comm_cmd_data.navi_stamp)
+    {
+        navi_raw_vx = chassis_vx;
+        navi_raw_vy = chassis_vy;
+        navi_raw_yaw = chassis_IMU_data->output.Yaw_total_angle;
+        last_navi_DWT_stamp = now_ms;
+        last_navi_stamp = comm_cmd_data.navi_stamp;
+        navi_speed_valid = 1;
+        return;
+    }
+
+    if (now_ms - last_navi_DWT_stamp > 1000U) {
+        chassis_vx = 0.0f;
+        chassis_vy = 0.0f;
+        return;
+    }
+
+    delta_yaw = chassis_IMU_data->output.Yaw_total_angle - navi_raw_yaw;
+    sin_delta_yaw = arm_sin_f32(delta_yaw);
+    cos_delta_yaw = arm_cos_f32(delta_yaw);
+    chassis_vx = navi_raw_vx * cos_delta_yaw - navi_raw_vy * sin_delta_yaw;
+    chassis_vy = navi_raw_vx * sin_delta_yaw + navi_raw_vy * cos_delta_yaw;
+}
+
+/**
  * @brief 底盘梯度方向
  *
  */
@@ -695,8 +742,8 @@ void ChassisTask()
         default:
             break;
     }
-
     SpeedUnitsConvert();
+    ChassisSpeedInterpolate();
     ChassisAccelerationPlan();
     // 根据控制模式进行正运动学解算,计算底盘输出
     SteeringCalculate();
