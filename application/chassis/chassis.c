@@ -65,10 +65,10 @@ static uint8_t center_gimbal_offset_y = CENTER_GIMBAL_OFFSET_Y; // 云台旋转�
 // 跟随模式底盘的pid
 // 目前未严格约定单位，后续如有需要再统一规范
 static PIDInstance Chassis_Follow_PID = {
-    .Kp            = 0.2,   // 25,//25, // 50,//70, // 4.5
+    .Kp            = 0.1f,   // 25,//25, // 50,//70, // 4.5
     .Ki            = 0,    // 0
     .Kd            = 0, // 0.0,  // 0.07,  // 0
-    .DeadBand      =  0.75,  //跟随模式设置了死区，防止抖动
+    .DeadBand      = 1.5f,  //跟随模式设置了死区，防止抖动
     .IntegralLimit = 3000,
     .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
     .MaxOut        = 10000,
@@ -85,6 +85,16 @@ static float vt_lf, vt_rf, vt_lb, vt_rb;         // 底盘速度解算后的临�
 static ramp_t rotate_ramp;
 static float offset_angle;
 static float sin_theta, cos_theta;
+static volatile float chassis_offset_delay_s        = 0.4f;
+static volatile float chassis_offset_ff_limit_deg   = 90.0f;
+static volatile float chassis_offset_ff_min_speed   = 100.0f;
+static volatile float chassis_offset_ff_full_speed  = CHASSIS_HIGH_SPEED * 2.0f;
+static volatile float steering_ff_delay_s           = 0.0f;
+static volatile float steering_ff_limit_deg         = 15.0f;
+static volatile float steering_ff_min_speed         = 100.0f;
+static float steering_lf_angle_ff, steering_rf_angle_ff, steering_rb_angle_ff, steering_lb_angle_ff;
+static float steering_lf_last_angle, steering_rf_last_angle, steering_rb_last_angle, steering_lb_last_angle;
+static uint8_t steering_ff_valid;
 void ChassisInit()
 {
 #ifdef CHASSIS_BOARD
@@ -143,8 +153,8 @@ void ChassisInit()
     Motor_Init_Config_s steering_config = {
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 70,//12, // 0.24, // 0.31, // 0.45
-                .Ki            = 10,
+                .Kp            = 60,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 7,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
@@ -152,9 +162,9 @@ void ChassisInit()
                 .MaxOut = 10000,
             },
             .speed_PID = {
-                .Kp            = 20,//6000,//10000, //11000,
-                .Ki            = 10,    // 0
-                .Kd            = 0.02,//5, // 30
+                .Kp            = 18,//6000,//10000, //11000,
+                .Ki            = 8,    // 0
+                .Kd            = 0.01,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 3000,
                 .MaxOut        = 20000 // 20000
@@ -236,12 +246,158 @@ static void MecanumCalculate()
     vt_rb = chassis_vx + chassis_vy - chassis_vw * RB_CENTER;
 }
 
+static float ChassisLimitFloat(float value, float limit)
+{
+    if (limit < 0.0f) {
+        limit = -limit;
+    }
+
+    if (value > limit) {
+        return limit;
+    }
+    if (value < -limit) {
+        return -limit;
+    }
+    return value;
+}
+
+static float ChassisAngleDiffRad(float target, float measure)
+{
+    float diff = target - measure;
+
+    while (diff > PI) {
+        diff -= 2.0f * PI;
+    }
+    while (diff < -PI) {
+        diff += 2.0f * PI;
+    }
+    return diff;
+}
+
+static uint8_t ChassisIsRotateMode(void)
+{
+    return chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE ||
+           chassis_cmd_recv.chassis_mode == CHASSIS_REVERSE_ROTATE;
+}
+
+static void ChassisOffsetAngleFeedforwardCalc(void)
+{
+    float offset_ff_deg = 0.0f;
+    float move_speed;
+    float speed_factor;
+
+    if (ChassisIsRotateMode()) {
+        move_speed = sqrtf(chassis_cmd_recv.vx * chassis_cmd_recv.vx + chassis_cmd_recv.vy * chassis_cmd_recv.vy);
+        if (move_speed > chassis_offset_ff_min_speed) {
+            if (chassis_offset_ff_full_speed > chassis_offset_ff_min_speed) {
+                speed_factor = (move_speed - chassis_offset_ff_min_speed) /
+                               (chassis_offset_ff_full_speed - chassis_offset_ff_min_speed);
+                speed_factor = ChassisLimitFloat(speed_factor, 1.0f);
+            } else {
+                speed_factor = 1.0f;
+            }
+        } else {
+            speed_factor = 0.0f;
+        }
+
+        offset_ff_deg = chassis_vw * chassis_offset_delay_s * RAD_2_DEGREE * speed_factor;
+        offset_ff_deg = ChassisLimitFloat(offset_ff_deg, chassis_offset_ff_limit_deg);
+    }
+    comm_upload_data.debug_1 = offset_ff_deg;
+    offset_angle += offset_ff_deg;
+    cos_theta = arm_cos_f32(offset_angle * DEGREE_2_RAD);
+    sin_theta = arm_sin_f32(offset_angle * DEGREE_2_RAD);
+}
+
+static void ChassisSteeringFeedforwardReset(void)
+{
+    steering_lf_angle_ff = 0.0f;
+    steering_rf_angle_ff = 0.0f;
+    steering_rb_angle_ff = 0.0f;
+    steering_lb_angle_ff = 0.0f;
+    steering_ff_valid    = 0;
+}
+
+static float ChassisSteeringAngleFeedforward(float target_angle, float last_angle, float target_speed)
+{
+    float target_angle_rate;
+    float angle_ff_limit_rad = fabsf(steering_ff_limit_deg) * DEGREE_2_RAD;
+    float min_speed          = fabsf(steering_ff_min_speed);
+
+    if (target_speed < min_speed || angle_ff_limit_rad <= 0.0f) {
+        return 0.0f;
+    }
+
+    target_angle_rate = ChassisAngleDiffRad(target_angle, last_angle) * 1000.0f;
+    return ChassisLimitFloat(target_angle_rate * steering_ff_delay_s, angle_ff_limit_rad);
+}
+
+static void ChassisSteeringFeedforwardCalc(void)
+{
+    const float half_side = CHASSIS_R * 0.707f;
+    float lf_vx, rf_vx, rb_vx, lb_vx;
+    float lf_vy, rf_vy, rb_vy, lb_vy;
+    float lf_angle, rf_angle, rb_angle, lb_angle;
+    float lf_speed, rf_speed, rb_speed, lb_speed;
+
+    lf_vx = chassis_vx + chassis_vw * half_side;
+    lf_vy = chassis_vy - chassis_vw * half_side;
+    rf_vx = chassis_vx - chassis_vw * half_side;
+    rf_vy = chassis_vy - chassis_vw * half_side;
+    rb_vx = chassis_vx - chassis_vw * half_side;
+    rb_vy = chassis_vy + chassis_vw * half_side;
+    lb_vx = chassis_vx + chassis_vw * half_side;
+    lb_vy = chassis_vy + chassis_vw * half_side;
+
+    lf_angle = -atan2f(lf_vy, lf_vx);
+    rf_angle = -atan2f(rf_vy, rf_vx);
+    rb_angle = -atan2f(rb_vy, rb_vx);
+    lb_angle = -atan2f(lb_vy, lb_vx);
+
+    if (!ChassisIsRotateMode() || fabsf(steering_ff_delay_s) < 0.000001f) {
+        steering_lf_last_angle = lf_angle;
+        steering_rf_last_angle = rf_angle;
+        steering_rb_last_angle = rb_angle;
+        steering_lb_last_angle = lb_angle;
+        ChassisSteeringFeedforwardReset();
+        return;
+    }
+
+    if (!steering_ff_valid) {
+        steering_lf_last_angle = lf_angle;
+        steering_rf_last_angle = rf_angle;
+        steering_rb_last_angle = rb_angle;
+        steering_lb_last_angle = lb_angle;
+        steering_lf_angle_ff   = 0.0f;
+        steering_rf_angle_ff   = 0.0f;
+        steering_rb_angle_ff   = 0.0f;
+        steering_lb_angle_ff   = 0.0f;
+        steering_ff_valid      = 1;
+        return;
+    }
+
+    lf_speed = sqrtf(lf_vx * lf_vx + lf_vy * lf_vy);
+    rf_speed = sqrtf(rf_vx * rf_vx + rf_vy * rf_vy);
+    rb_speed = sqrtf(rb_vx * rb_vx + rb_vy * rb_vy);
+    lb_speed = sqrtf(lb_vx * lb_vx + lb_vy * lb_vy);
+
+    steering_lf_angle_ff = ChassisSteeringAngleFeedforward(lf_angle, steering_lf_last_angle, lf_speed);
+    steering_rf_angle_ff = ChassisSteeringAngleFeedforward(rf_angle, steering_rf_last_angle, rf_speed);
+    steering_rb_angle_ff = ChassisSteeringAngleFeedforward(rb_angle, steering_rb_last_angle, rb_speed);
+    steering_lb_angle_ff = ChassisSteeringAngleFeedforward(lb_angle, steering_lb_last_angle, lb_speed);
+
+    steering_lf_last_angle = lf_angle;
+    steering_rf_last_angle = rf_angle;
+    steering_rb_last_angle = rb_angle;
+    steering_lb_last_angle = lb_angle;
+}
+
 static void SteeringCalculate(void)
 {
     wheelset_lf.vx = chassis_vx + chassis_vw * 0.707f;
     wheelset_lf.vy = chassis_vy - chassis_vw * 0.707f;
     wheelset_lf.angle_measure   = ((float)steering_lf->measure.ecd - STEERING_LF_ECD) * ECD_ANGLE_COEF_DJI;
-    wheelset_lf.angle_speed     = -atan2f(wheelset_lf.vy, wheelset_lf.vx);
+    wheelset_lf.angle_speed     = -atan2f(wheelset_lf.vy, wheelset_lf.vx) + steering_lf_angle_ff;
     wheelset_lf.rotate_range    = wheelset_lf.angle_speed * RAD_2_DEGREE - wheelset_lf.angle_measure;
     if (wheelset_lf.rotate_range > 180.0f)
         wheelset_lf.rotate_range -= 360.0f;
@@ -267,7 +423,7 @@ static void SteeringCalculate(void)
     wheelset_rf.vx = chassis_vx - chassis_vw * 0.707f;
     wheelset_rf.vy = chassis_vy - chassis_vw * 0.707f;
     wheelset_rf.angle_measure   = ((float)steering_rf->measure.ecd - STEERING_RF_ECD) * ECD_ANGLE_COEF_DJI;
-    wheelset_rf.angle_speed     = -atan2f(wheelset_rf.vy, wheelset_rf.vx);
+    wheelset_rf.angle_speed     = -atan2f(wheelset_rf.vy, wheelset_rf.vx) + steering_rf_angle_ff;
     wheelset_rf.rotate_range    = wheelset_rf.angle_speed * RAD_2_DEGREE - wheelset_rf.angle_measure;
     if (wheelset_rf.rotate_range > 180.0f)
         wheelset_rf.rotate_range -= 360.0f;
@@ -293,7 +449,7 @@ static void SteeringCalculate(void)
     wheelset_rb.vx = chassis_vx - chassis_vw * 0.707f;
     wheelset_rb.vy = chassis_vy + chassis_vw * 0.707f;
     wheelset_rb.angle_measure   = ((float)steering_rb->measure.ecd - STEERING_RB_ECD) * ECD_ANGLE_COEF_DJI;
-    wheelset_rb.angle_speed     = -atan2f(wheelset_rb.vy, wheelset_rb.vx);
+    wheelset_rb.angle_speed     = -atan2f(wheelset_rb.vy, wheelset_rb.vx) + steering_rb_angle_ff;
     wheelset_rb.rotate_range    = wheelset_rb.angle_speed * RAD_2_DEGREE - wheelset_rb.angle_measure;
     if (wheelset_rb.rotate_range > 180.0f)
         wheelset_rb.rotate_range -= 360.0f;
@@ -319,7 +475,7 @@ static void SteeringCalculate(void)
     wheelset_lb.vx = chassis_vx + chassis_vw * 0.707f;
     wheelset_lb.vy = chassis_vy + chassis_vw * 0.707f;
     wheelset_lb.angle_measure   = ((float)steering_lb->measure.ecd - STEERING_LB_ECD) * ECD_ANGLE_COEF_DJI;
-    wheelset_lb.angle_speed     = -atan2f(wheelset_lb.vy, wheelset_lb.vx);
+    wheelset_lb.angle_speed     = -atan2f(wheelset_lb.vy, wheelset_lb.vx) + steering_lb_angle_ff;
     wheelset_lb.rotate_range    = wheelset_lb.angle_speed * RAD_2_DEGREE - wheelset_lb.angle_measure;
     if (wheelset_lb.rotate_range > 180.0f)
         wheelset_lb.rotate_range -= 360.0f;
@@ -708,8 +864,6 @@ void ChassisTask()
             // 当前模式下保留外部 wz 指令（不强制置零）
             //chassis_cmd_recv.wz = 0;
             chassis_vw = 0;
-            cos_theta = arm_cos_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
-            sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
             ramp_init(&rotate_ramp, 250);
             break;
         case CHASSIS_FOLLOW_GIMBAL_YAW: // 跟随云台
@@ -722,8 +876,6 @@ void ChassisTask()
 
             chassis_vw = PIDCalculate(&Chassis_Follow_PID, chassis_cmd_recv.align_angle, 0);
 
-            cos_theta = arm_cos_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
-            sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
 
             ramp_init(&rotate_ramp, 250);
             break;
@@ -732,7 +884,7 @@ void ChassisTask()
            //  if (cap->cap_msg_s.SuperCap_open_flag_from_real == SUPERCAP_PMOS_OPEN) {
            //      vw_set = 7000;
            //  } else {
-                vw_set = 5 * ((float)chassis_cmd_recv.chassis_rotate_speed / 255.0f);
+                vw_set = 10 * ((float)chassis_cmd_recv.chassis_rotate_speed / 255.0f);
             // }
 
 
@@ -741,8 +893,6 @@ void ChassisTask()
             
 
             // chassis_cmd_recv.wz = chassis_vw;
-            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle) * DEGREE_2_RAD);
-            sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle) * DEGREE_2_RAD);
             chassis_cmd_recv.vx *= 0.6;
             chassis_cmd_recv.vy *= 0.6;
             break;
@@ -750,14 +900,16 @@ void ChassisTask()
         case CHASSIS_REVERSE_ROTATE:
             // chassis_cmd_recv.wz = -2500;
             chassis_vw          = -2;
-            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD); // 矫正小陀螺偏航
-            sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 22) * DEGREE_2_RAD);
+            offset_angle       += 22.0f;
+            break;
         default:
             break;
     }
+    ChassisOffsetAngleFeedforwardCalc();
     ChassisSpeedMap();
     ChassisSpeedInterpolate();
     ChassisAccelerationPlan();
+    ChassisSteeringFeedforwardCalc();
     SpeedUnitsConvert();
     // 根据控制模式进行正运动学解算,计算底盘输出
     SteeringCalculate();
@@ -771,7 +923,7 @@ void ChassisTask()
 
     // 获得给电容传输的电容吸取功率等级
     Power_get();
-    comm_upload_data.debug_1 = steering_rf->motor_controller.angle_PID.Err;
+    // comm_upload_data.debug_1 = steering_rf->motor_controller.angle_PID.Err;
 
     // 给电容发送数据
     //SuperCapSend(cap, (uint8_t *)&cap->cap_msg_g);
