@@ -14,6 +14,9 @@
 #include "DMmotor.h"
 #include "math.h"
 #include "arm_math.h"
+#include "bsp_dwt.h"
+
+#define SEARCH_MOTOR_OFFLINE_TIMEOUT_MS 10.0f
 
 static INS_Instance *gimbal_IMU_data; // 云台IMU数据
 DJIMotorInstance *yaw_motor;
@@ -35,6 +38,21 @@ float yaw_tor_feedforward = 0;
 volatile static float yaw_tor_k = 60.0f;
 extern  NUC_cmd_t NUC_cmd;
 extern chassis_speed_measure_t speed_measure;
+
+#ifdef CHASSIS_BOARD
+static uint8_t SearchMotorIsOnline(const DMMotorInstance *motor)
+{
+    float now_ms;
+
+    if (motor == NULL || motor->last_feedback_ms <= 0.0f) {
+        return 0;
+    }
+
+    now_ms = DWT_GetTimeline_ms();
+    return (now_ms - motor->last_feedback_ms) <= SEARCH_MOTOR_OFFLINE_TIMEOUT_MS;
+}
+#endif
+
 void GimbalInit()
 {
 #ifdef GIMBAL_BOARD
@@ -304,8 +322,10 @@ void GimbalTask()
         big_yaw_target = big_yaw_motor->measure.total_pos;
     if(gimbal_cmd_recv.gimbal_mode == GIMBAL_SEARCH_MODE)
     {
-        big_yaw_target += 1.0f * 0.001f;
-        big_yaw_target += speed_measure.real_wz * 0.001f;
+        if (SearchMotorIsOnline(big_yaw_motor)) {
+            big_yaw_target += 1.0f * 0.001f;
+            big_yaw_target += speed_measure.real_wz * 0.001f;
+        }
         big_yaw_kp = 10.0f;
     }
     else

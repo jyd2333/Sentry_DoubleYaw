@@ -22,6 +22,7 @@
 #include "bsp_log.h"
 
 #define RC_LOST (rc_data[TEMP].rc.switch_left == 0 && rc_data[TEMP].rc.switch_right == 0)
+#define SEARCH_MOTOR_OFFLINE_TIMEOUT_MS 10.0f
 
 // 私有宏,自动将编码器转换成角度值
 #define YAW_ALIGN_ANGLE (YAW_CHASSIS_ALIGN_ECD * ECD_ANGLE_COEF_DJI) // 对齐时的角度,0-360
@@ -86,8 +87,21 @@ uint8_t auto_rune; // 自瞄打符标志位
 uint8_t i=0;
 uint8_t SuperCap_flag_from_user = 0; // 超电标志位
 extern DaemonInstance *rc_daemon_instance;
+extern DJIMotorInstance *yaw_motor;
 
 static float yaw_l_limit, yaw_r_limit;
+
+static uint8_t SearchMotorIsOnline(const DJIMotorInstance *motor)
+{
+    float now_ms;
+
+    if (motor == NULL || motor->last_feedback_ms <= 0.0f) {
+        return 0;
+    }
+
+    now_ms = DWT_GetTimeline_ms();
+    return (now_ms - motor->last_feedback_ms) <= SEARCH_MOTOR_OFFLINE_TIMEOUT_MS;
+}
 
 void HOST_RECV_CALLBACK()
 {
@@ -292,18 +306,22 @@ static void Search()
         return;
     }
 
-    YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg);
-    yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + (float)yaw_search_flag * SEARCH_YAW_SPEED;
+    if (SearchMotorIsOnline(yaw_motor)) {
+        YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg);
+        yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + (float)yaw_search_flag * SEARCH_YAW_SPEED;
+
+        if (yaw_control > yaw_r_limit) {
+            yaw_control = yaw_r_limit;
+            yaw_search_flag = -1;
+        }
+        if (yaw_control < yaw_l_limit) {
+            yaw_control = yaw_l_limit;
+            yaw_search_flag = 1;
+        }
+    }
+
     pitch_control += (float)pitch_search_flag * SEARCH_PITCH_SPEED + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
 
-    if (yaw_control > yaw_r_limit) {
-        yaw_control = yaw_r_limit;
-        yaw_search_flag = -1;
-    }
-    if (yaw_control < yaw_l_limit) {
-        yaw_control = yaw_l_limit;
-        yaw_search_flag = 1;
-    }
     if (pitch_control > 0.15f) {
         pitch_search_flag = -1;
     }
@@ -360,7 +378,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 16;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 3;   // 射频默认30Hz
     chassis_cmd_send.control_type = NUC_NORMAL;
 
     // if (rc_data[TEMP].rc.dial > 400) {
