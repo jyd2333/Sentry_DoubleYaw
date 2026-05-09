@@ -71,7 +71,7 @@ typedef struct
 	int16_t delay;
 	uint64_t time_stamp;
 	uint64_t navi_time_stamp;
-	uint8_t scanMode;		//0：对装甲板 1：对前哨战 2：对能量机关 3：对基地（）
+	uint8_t scanMode;		//0：自瞄装甲板 1：前哨站 2：小能量机关 3：大能量机关
 	uint8_t rotateMode;
 	float base_yaw;
 }NUC_cmd_t;
@@ -92,22 +92,6 @@ typedef struct
 	uint16_t current_hp;
 
 }robot_status_t;
-
-// typedef struct
-// {
-// 	header_frame_t Header_Frame;
-// 	uint16_t cmdid;
-// 	float DWT_stamp;
-
-// 	uint8_t enemy_color; //0：未开始 1：红色 2：蓝色（敌方颜色）
-// 	float pitch;
-// 	float yaw;
-// 	float Yaw_diff;
-// 	float bullet_speed;
-// 	uint16_t check_sum;
-// 	uint8_t reserve[33];
-// 	uint8_t end;
-// }vision_send_t;
 
 typedef struct
 {
@@ -152,13 +136,12 @@ typedef struct
 	uint8_t head;
 	uint8_t cmd_id;
 	uint64_t time_stamp;
-	uint8_t chassis_status;
-	uint8_t sentry_status;
-	uint8_t mode;//保留
+	uint8_t chassis_status;	//底盘状态：小陀螺转速
+	uint8_t sentry_status;	//姿态信息 1：进攻姿态 2：防御姿态 3：移动姿态
+	uint8_t scanmode;		//0：自瞄装甲板 1：前哨站 2：小能量机关 3：大能量机关
 	float vx;
 	float vy;
 	float base_yaw;
-	// uint16_t 
 	uint8_t reserve[36];
 	uint16_t check_sum;
 	uint8_t end;

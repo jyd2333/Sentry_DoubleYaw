@@ -46,6 +46,7 @@ static Subscriber_t *chassis_sub;                   // 用于订阅底盘控制�
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制命令
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
 extern comm_cmd_t comm_cmd_data;
+extern comm_upload_t comm_upload_data;
 SuperCapInstance *cap;                                              // 超级电容
 // 驱动与转向电机实例
 DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
@@ -142,8 +143,8 @@ void ChassisInit()
     Motor_Init_Config_s steering_config = {
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp            = 150,//12, // 0.24, // 0.31, // 0.45
-                .Ki            = 0,
+                .Kp            = 70,//12, // 0.24, // 0.31, // 0.45
+                .Ki            = 10,
                 .Kd            = 0,//0.02,//0.01,
                 .DeadBand      = 0.0f,
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement,
@@ -151,12 +152,12 @@ void ChassisInit()
                 .MaxOut = 10000,
             },
             .speed_PID = {
-                .Kp            = 5,//6000,//10000, //11000,
-                .Ki            = 1,    // 0
-                .Kd            = 0,//5, // 30
+                .Kp            = 20,//6000,//10000, //11000,
+                .Ki            = 10,    // 0
+                .Kd            = 0.02,//5, // 30
                 .Improve       = PID_Trapezoid_Intergral | PID_Integral_Limit ,//| PID_Derivative_On_Measurement | PID_OutputFilter,
                 .IntegralLimit = 3000,
-                .MaxOut        = 10000 // 20000
+                .MaxOut        = 20000 // 20000
             },
         },
         .controller_setting_init_config = {
@@ -605,7 +606,7 @@ static void ChassisSpeedInterpolate()
         return;
     }
 
-    delta_yaw = chassis_IMU_data->output.Yaw_total_angle - navi_raw_yaw;
+    delta_yaw = navi_raw_yaw - chassis_IMU_data->output.Yaw_total_angle;
     sin_delta_yaw = arm_sin_f32(delta_yaw);
     cos_delta_yaw = arm_cos_f32(delta_yaw);
     chassis_vx = navi_raw_vx * cos_delta_yaw - navi_raw_vy * sin_delta_yaw;
@@ -728,8 +729,8 @@ void ChassisTask()
             
 
             // chassis_cmd_recv.wz = chassis_vw;
-            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD); // 矫正小陀螺偏航
-            sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle + 0) * DEGREE_2_RAD);
+            cos_theta           = arm_cos_f32((chassis_cmd_recv.offset_angle) * DEGREE_2_RAD);
+            sin_theta           = arm_sin_f32((chassis_cmd_recv.offset_angle) * DEGREE_2_RAD);
             chassis_cmd_recv.vx *= 0.6;
             chassis_cmd_recv.vy *= 0.6;
             break;
@@ -757,6 +758,7 @@ void ChassisTask()
 
     // 获得给电容传输的电容吸取功率等级
     Power_get();
+    comm_upload_data.debug_1 = steering_rf->motor_controller.angle_PID.Err;
 
     // 给电容发送数据
     //SuperCapSend(cap, (uint8_t *)&cap->cap_msg_g);

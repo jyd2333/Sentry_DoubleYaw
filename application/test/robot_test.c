@@ -116,7 +116,7 @@ void USB_Decode(void)
 				NUC_cmd.vx 				= -Navigation_Receive.vy;
 				NUC_cmd.vy 				= Navigation_Receive.vx;
 				NUC_cmd.base_yaw		= Navigation_Receive.base_yaw;
-				NUC_cmd.scanMode		= Navigation_Receive.mode;
+				NUC_cmd.scanMode		= Navigation_Receive.scanmode;
 				NUC_cmd.rotateMode		= Navigation_Receive.chassis_status;
 			}
 			break;
