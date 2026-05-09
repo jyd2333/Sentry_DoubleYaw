@@ -446,25 +446,37 @@ static void Power_get()
 }
 
 /**
+ * @brief 底盘速度方向映射与死区处理
+ *
+ */
+static void ChassisSpeedMap()
+{
+    const float speed_deadband  = 10.0f / SPEED_TO_DJI_MOTOR_APS;
+    const float rotate_deadband = 10.0f / (CHASSIS_R * SPEED_TO_DJI_MOTOR_APS);
+
+    // 根据云台与底盘的角度 offset 将控制量映射到底盘坐标系
+    // 底盘逆时针为角度正方向；云台指向作为 y 轴
+    chassis_vx = chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta;
+    chassis_vy = chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta;
+
+    if (fabsf(chassis_vx) < speed_deadband && fabsf(chassis_vy) < speed_deadband && fabsf(chassis_vw) < rotate_deadband)
+    {
+        chassis_vx = 0;
+        chassis_vy = 0;
+        chassis_vw = 1.0f / (CHASSIS_R * SPEED_TO_DJI_MOTOR_APS);
+    }
+}
+
+/**
  * @brief 底盘速度转换
  * 将vx、vy、vw转换为电机转子角速度（单位：aps）
  * (原vx、vy单位：mm/s，vw单位：rad/s)
  */
 static void SpeedUnitsConvert()
 {
-
-    // 根据云台与底盘的角度 offset 将控制量映射到底盘坐标系
-    // 底盘逆时针为角度正方向；云台指向作为 y 轴
-    chassis_vx = (chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta) * SPEED_TO_DJI_MOTOR_APS;
-    chassis_vy = (chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta) * SPEED_TO_DJI_MOTOR_APS;
+    chassis_vx = chassis_vx * SPEED_TO_DJI_MOTOR_APS;
+    chassis_vy = chassis_vy * SPEED_TO_DJI_MOTOR_APS;
     chassis_vw = chassis_vw * CHASSIS_R * SPEED_TO_DJI_MOTOR_APS;
-
-    if(fabsf(chassis_vx) < 10 && fabsf(chassis_vy) < 10 && fabsf(chassis_vw) < 10)
-    {
-        chassis_vx = 0;
-        chassis_vy = 0;
-        chassis_vw = 1.0f;
-    }
 }
 
 static void ChassisAccelerationPlan()
@@ -472,8 +484,8 @@ static void ChassisAccelerationPlan()
     float current_speed     = sqrtf(speed_measure.real_vx * speed_measure.real_vx + speed_measure.real_vy * speed_measure.real_vy);
     float acceleration_limit = CHASSIS_ACCELERATION_LOW_LIMIT;
     float max_delta_speed;
-    float target_vx         = chassis_vx / SPEED_TO_DJI_MOTOR_APS;
-    float target_vy         = chassis_vy / SPEED_TO_DJI_MOTOR_APS;
+    float target_vx         = chassis_vx;
+    float target_vy         = chassis_vy;
     float delta_vx          = target_vx - speed_measure.real_vx;
     float delta_vy          = target_vy - speed_measure.real_vy;
     float delta_speed       = sqrtf(delta_vx * delta_vx + delta_vy * delta_vy);
@@ -494,8 +506,8 @@ static void ChassisAccelerationPlan()
         target_vy   = speed_measure.real_vy + delta_vy * scale;
     }
 
-    chassis_vx = target_vx * SPEED_TO_DJI_MOTOR_APS;
-    chassis_vy = target_vy * SPEED_TO_DJI_MOTOR_APS;
+    chassis_vx = target_vx;
+    chassis_vy = target_vy;
 }
 
 static void ChassisSpeedMeasure()
@@ -743,9 +755,10 @@ void ChassisTask()
         default:
             break;
     }
-    SpeedUnitsConvert();
+    ChassisSpeedMap();
     ChassisSpeedInterpolate();
     ChassisAccelerationPlan();
+    SpeedUnitsConvert();
     // 根据控制模式进行正运动学解算,计算底盘输出
     SteeringCalculate();
     DJIMotorSetRef(steering_lf, wheelset_lf.angle_ref);
