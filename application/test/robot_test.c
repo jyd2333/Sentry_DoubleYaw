@@ -9,6 +9,7 @@
 #include "general_def.h"
 #include "SolveTrajectory.h"
 #include "crc16.h"
+#include "crc_ref.h"
 NUC_cmd_t NUC_cmd;
 extern UART_HandleTypeDef huart1;
 extern DJIMotorInstance *yaw_motor;
@@ -43,6 +44,8 @@ situation_alpha_t Situation_Alpha = {};
 situation_beta_t Situation_Beta = {};
 vision_receive_t Vision_Receive = {};
 navigation_receive_t Navigation_Receive = {};
+sentry_referee_send_t Sentry_Referee_Send = {};
+uint8_t Sentry_Energy_Confirm = 0;
 
 float vision_pitch = 0; //输出控制量 pitch绝对角度 弧度
 float vision_yaw = 0;   //输出控制量 yaw绝对角度 弧度
@@ -53,8 +56,31 @@ extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 
 static void SentryRefereeSend()
 {
-	
-	RefereeSend();
+	static uint8_t sentry_referee_seq = 0;
+	uint16_t sender_id;
+	uint32_t sentry_cmd = 0x00000001;
+
+	sender_id = referee_info.referee_id.Robot_ID;
+	if(sender_id == 0) sender_id = referee_info.GameRobotStatus.robot_id;
+
+	sentry_cmd |= ((uint32_t)(Navigation_Receive.sentry_status & 0x03)) << 21;
+	if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
+
+	Sentry_Referee_Send.FrameHeader.SOF = REFEREE_SOF;
+	Sentry_Referee_Send.FrameHeader.DataLength = SENTRY_REFEREE_DATA_LEN;
+	Sentry_Referee_Send.FrameHeader.Seq = sentry_referee_seq;
+	Append_CRC8_Check_Sum((uint8_t *)&Sentry_Referee_Send.FrameHeader, LEN_HEADER);
+
+	Sentry_Referee_Send.CmdID = ID_student_interactive;
+	Sentry_Referee_Send.datahead.data_cmd_id = SENTRY_REFEREE_CMD_ID;
+	Sentry_Referee_Send.datahead.sender_ID = sender_id;
+	Sentry_Referee_Send.datahead.receiver_ID = SENTRY_REFEREE_RECEIVER_ID;
+	Sentry_Referee_Send.data.sentry_cmd = sentry_cmd;
+
+	Append_CRC16_Check_Sum((uint8_t *)&Sentry_Referee_Send, sizeof(Sentry_Referee_Send));
+	RefereeSend((uint8_t *)&Sentry_Referee_Send, sizeof(Sentry_Referee_Send));
+
+	sentry_referee_seq++;
 }
 
 void NUC_offline()   //离线处理

@@ -12,6 +12,7 @@
 #include "main.h"
 #include "stdbool.h"
 #include "arm_math.h"
+#include "referee_protocol.h"
 #ifndef TEST_H
 #define TEST_H
 
@@ -32,6 +33,10 @@
 
 #define FRAME_HEADER    0X5A
 #define FRAME_END		0X55
+
+#define SENTRY_REFEREE_CMD_ID      0x0120
+#define SENTRY_REFEREE_RECEIVER_ID 0x8080
+#define SENTRY_REFEREE_DATA_LEN    (Interactive_Data_LEN_Head + sizeof(sentry_cmd_t))
 
 // #define NUC_RX_BUFF_SIZE 7+RECEIVE_DATA_SIZE  //NUC通信缓存大小
 #define NUC_RX_BUFF_SIZE RECEIVE_DATA_SIZE
@@ -67,6 +72,20 @@ typedef struct
 }NUC_cmd_t;
 
 #pragma pack(1) // 压缩结构体,取消字节对齐
+
+typedef struct
+{
+	uint32_t sentry_cmd;
+}sentry_cmd_t;
+
+typedef struct
+{
+	xFrameHeader FrameHeader;
+	uint16_t CmdID;
+	ext_student_interactive_header_data_t datahead;
+	sentry_cmd_t data;
+	uint16_t frametail;
+}sentry_referee_send_t;
 
 typedef struct
 {
@@ -184,4 +203,5 @@ void NUC_init(void);
 void NUC_offline();
 // void Decision_Tree();
 void USB_Decode(void);
+extern uint8_t Sentry_Energy_Confirm;
 #endif
