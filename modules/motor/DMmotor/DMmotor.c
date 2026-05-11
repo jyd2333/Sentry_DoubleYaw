@@ -26,6 +26,23 @@ static uint8_t DMMotorCANBusIndex(DMMotorInstance *motor)
 {
     return motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2;
 }
+
+static void DMMotorClearPIDIntegral(PIDInstance *pid)
+{
+    pid->Iout       = 0.0f;
+    pid->ITerm      = 0.0f;
+    pid->Last_ITerm = 0.0f;
+}
+
+static void DMMotorClearIntegral(DMMotorInstance *motor)
+{
+    Motor_Controller_s *motor_controller = &motor->motor_controller;
+
+    DMMotorClearPIDIntegral(&motor_controller->current_PID);
+    DMMotorClearPIDIntegral(&motor_controller->speed_PID);
+    DMMotorClearPIDIntegral(&motor_controller->angle_PID);
+}
+
 /**
 ************************************************************************
 * @brief:      	uint_to_float: 无符号整数转换为浮点数函数
@@ -176,7 +193,6 @@ void DMMotorControl()
     float pid_measure, pid_ref;
     float now_ms = DWT_GetTimeline_ms();
     uint8_t motor_online;
-    uint8_t probe_frame_sent;
 
     DMMotorInstance *motor;
     motor_fbpara_t *measure;
@@ -190,9 +206,9 @@ void DMMotorControl()
         motor_controller = &motor->motor_controller;
         pid_ref          = motor_controller->pid_ref;
         motor_online     = DMMotorIsOnline(motor, now_ms);
-        probe_frame_sent = 0;
 
         if (!motor_online) {
+            DMMotorClearIntegral(motor);
             if (!motor->offline_log_flag) {
                 motor->offline_log_flag = 1;
                 LOGWARNING("[DMMotor] Motor offline, can bus [%d] , id [%d]",
@@ -205,46 +221,45 @@ void DMMotorControl()
                 CANTransmit(motor->motor_can_instance, 0.1f);
                 motor->next_probe_ms = now_ms + DM_PROBE_INTERVAL_MS;
                 motor->probe_send_count++;
-                probe_frame_sent = 1;
             }
 
-            if (probe_frame_sent) {
-                continue;
-            }
+            continue;
         }
 
-        if ((setting->close_loop_type & ANGLE_LOOP) && setting->outer_loop_type == ANGLE_LOOP) {
-            if (setting->angle_feedback_source == OTHER_FEED)
-                pid_measure = *motor_controller->other_angle_feedback_ptr;
-            else
-                pid_measure = measure->total_pos;
-            pid_ref = PIDCalculate(&motor_controller->angle_PID, pid_measure, pid_ref);
-            if (setting->feedforward_flag & SPEED_FEEDFORWARD)
-                pid_ref += *motor_controller->speed_feedforward_ptr;
-        }
-
-        // 电机反转判断
-        if (setting->motor_reverse_flag == MOTOR_DIRECTION_REVERSE)
-            pid_ref *= -1;
-
-        if ((setting->close_loop_type & SPEED_LOOP) && setting->outer_loop_type & (ANGLE_LOOP | SPEED_LOOP)) {
-            if (setting->speed_feedback_source == OTHER_FEED)
-                pid_measure = *motor_controller->other_speed_feedback_ptr;
-            else
-                pid_measure = measure->vel; // MOTOR_FEED,对速度闭环,单位为angle per sec
-            pid_ref = PIDCalculate(&motor_controller->speed_PID, pid_measure, pid_ref);
-            if (setting->feedforward_flag & CURRENT_FEEDFORWARD)
-                pid_ref += *motor_controller->current_feedforward_ptr;
-        }
-        if (setting->feedback_reverse_flag == FEEDBACK_DIRECTION_REVERSE)
-            pid_ref *= -1;
-        motor->ctrl.tor_set = pid_ref;
         if (motor->stop_flag == MOTOR_STOP) {
+            DMMotorClearIntegral(motor);
             motor->ctrl.pos_set = 0;
             motor->ctrl.vel_set = 0;
             motor->ctrl.tor_set = 0;
             motor->ctrl.kp_set  = 0;
             motor->ctrl.kd_set  = 0;
+        } else {
+            if ((setting->close_loop_type & ANGLE_LOOP) && setting->outer_loop_type == ANGLE_LOOP) {
+                if (setting->angle_feedback_source == OTHER_FEED)
+                    pid_measure = *motor_controller->other_angle_feedback_ptr;
+                else
+                    pid_measure = measure->total_pos;
+                pid_ref = PIDCalculate(&motor_controller->angle_PID, pid_measure, pid_ref);
+                if (setting->feedforward_flag & SPEED_FEEDFORWARD)
+                    pid_ref += *motor_controller->speed_feedforward_ptr;
+            }
+
+        // 电机反转判断
+            if (setting->motor_reverse_flag == MOTOR_DIRECTION_REVERSE)
+                pid_ref *= -1;
+
+            if ((setting->close_loop_type & SPEED_LOOP) && setting->outer_loop_type & (ANGLE_LOOP | SPEED_LOOP)) {
+                if (setting->speed_feedback_source == OTHER_FEED)
+                    pid_measure = *motor_controller->other_speed_feedback_ptr;
+                else
+                    pid_measure = measure->vel; // MOTOR_FEED,对速度闭环,单位为angle per sec
+                pid_ref = PIDCalculate(&motor_controller->speed_PID, pid_measure, pid_ref);
+                if (setting->feedforward_flag & CURRENT_FEEDFORWARD)
+                    pid_ref += *motor_controller->current_feedforward_ptr;
+            }
+            if (setting->feedback_reverse_flag == FEEDBACK_DIRECTION_REVERSE)
+                pid_ref *= -1;
+            motor->ctrl.tor_set = pid_ref;
         }
 
         // 发送
@@ -324,6 +339,7 @@ void DMMotorErrorDetection(DMMotorInstance *motor)
 void DMMotorStop(DMMotorInstance *motor)
 {
     motor->stop_flag = MOTOR_STOP;
+    DMMotorClearIntegral(motor);
 }
 
 void DMMotorEnable1(DMMotorInstance *motor)

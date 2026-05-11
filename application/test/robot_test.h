@@ -37,23 +37,12 @@
 #define NUC_RX_BUFF_SIZE RECEIVE_DATA_SIZE
 #define NUC_TX_BUFF_SIZE SEND_DATA_SIZE
 
-
 typedef enum
 {
-	SENTRY_STOP,
-	PUSH_FORWARD,
-	PATROL,
-	HEALING,
-	BACK_FORWARD
-}behaviour_state_e;
-
-typedef enum
-{
-	NO_ROTATE,
-	HIGHSPEED_ROTATE,
-	LOWSPEED_ROTATE
-	
-}chassis_state_e;
+	TERRAIN_NORMAL,
+	TERRAIN_FORTRESS,	//堡垒
+	TERRAIN_BUMP,		//起伏路段
+}terrain_state_e;
 
 typedef struct 
 {
@@ -73,25 +62,11 @@ typedef struct
 	uint64_t navi_time_stamp;
 	uint8_t scanMode;		//0：自瞄装甲板 1：前哨站 2：小能量机关 3：大能量机关
 	uint8_t rotateMode;
+	terrain_state_e terrain_state;
 	float base_yaw;
 }NUC_cmd_t;
 
 #pragma pack(1) // 压缩结构体,取消字节对齐
-typedef struct
-{
-	uint8_t head;
-	uint16_t len;
-	uint8_t count;
-	uint8_t head_check_sum;
-}header_frame_t;
-
-typedef struct
-{
-	uint8_t robot_id;
-	uint8_t robot_level;
-	uint16_t current_hp;
-
-}robot_status_t;
 
 typedef struct
 {
@@ -142,7 +117,9 @@ typedef struct
 	float vx;
 	float vy;
 	float base_yaw;
-	uint8_t reserve[36];
+	uint8_t fortress_mode;	//堡垒
+	uint8_t bump_mode;		//起伏路段
+	uint8_t reserve[34];
 	uint16_t check_sum;
 	uint8_t end;
 }navigation_receive_t;

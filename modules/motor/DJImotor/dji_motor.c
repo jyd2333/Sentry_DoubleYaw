@@ -71,6 +71,23 @@ static int16_t DJIMotorLimitTorqueCurrent(Motor_Type_e motor_type, float output)
     return (int16_t)output;
 }
 
+static void DJIMotorClearPIDIntegral(PIDInstance *pid)
+{
+    pid->Iout       = 0.0f;
+    pid->ITerm      = 0.0f;
+    pid->Last_ITerm = 0.0f;
+}
+
+static void DJIMotorClearIntegral(DJIMotorInstance *motor)
+{
+    Motor_Controller_s *motor_controller = &motor->motor_controller;
+
+    DJIMotorClearPIDIntegral(&motor_controller->current_PID);
+    DJIMotorClearPIDIntegral(&motor_controller->speed_PID);
+    DJIMotorClearPIDIntegral(&motor_controller->angle_PID);
+    DJIMotorClearPIDIntegral(&motor_controller->mpc_speed_PID);
+}
+
 /**
  * @brief 根据电调/拨码开关上的ID,根据说明书的默认id分配方式计算发送ID和接收ID,
  *        并对电机进行分组以便处理多电机控制命令
@@ -246,6 +263,7 @@ void DJIMotorChangeFeed(DJIMotorInstance *motor, Closeloop_Type_e loop, Feedback
 void DJIMotorStop(DJIMotorInstance *motor)
 {
     motor->stop_flag = MOTOR_STOP;
+    DJIMotorClearIntegral(motor);
 }
 
 void DJIMotorEnable(DJIMotorInstance *motor)
@@ -271,6 +289,7 @@ void DJIMotorControl()
 {
     // 直接保存一次指针引用从而减小访存的开销,同样可以提高可读性
     uint8_t group, num; // 电机组号和组内编号
+    uint8_t motor_online;
     int16_t set;        // 电机控制CAN发送设定值
     DJIMotorInstance *motor;
     Motor_Control_Setting_s *motor_setting; // 电机控制参数
@@ -294,7 +313,8 @@ void DJIMotorControl()
         measure          = &motor->measure;
         group            = motor->sender_group;
         num              = motor->message_num;
-        if (DJIMotorIsOnline(motor, now_ms)) {
+        motor_online = DJIMotorIsOnline(motor, now_ms);
+        if (motor_online) {
             group_online[group] = 1;
         } else if (!motor->offline_log_flag) {
             motor->offline_log_flag = 1;
@@ -302,11 +322,19 @@ void DJIMotorControl()
                        motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2,
                        motor->motor_can_instance->tx_id);
         }
-        pid_ref          = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在计算过程中被修改
 
-        if (!DJIMotorIsOnline(motor, now_ms)) {
+        if (!motor_online) {
+            DJIMotorClearIntegral(motor);
             continue;
         }
+
+        if (motor->stop_flag == MOTOR_STOP) {
+            DJIMotorClearIntegral(motor);
+            memset(sender_assignment[group].tx_buff + 2 * num, 0, 2u);
+            continue;
+        }
+
+        pid_ref = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在计算过程中被修改
 
         // pid_ref会顺次通过被启用的闭环充当数据的载体
         // 计算位置环,只有启用位置环且外层闭环为位置时会计算速度环输出
@@ -375,9 +403,6 @@ void DJIMotorControl()
             power_data.predict_output[num] = motor->motor_controller.speed_PID.Output;
         }
 
-        // 若该电机处于停止状态,直接将buff置零
-        if (motor->stop_flag == MOTOR_STOP)
-            memset(sender_assignment[group].tx_buff + 2 * num, 0, 2u);
     }
 
     int index = 0;
