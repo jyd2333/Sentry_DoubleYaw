@@ -86,6 +86,7 @@ static float vt_lf, vt_rf, vt_lb, vt_rb;         // 底盘速度解算后的临�
 static ramp_t rotate_ramp;
 static float offset_angle;
 static float sin_theta, cos_theta;
+static float chassis_speed_direction;
 static volatile float chassis_offset_delay_s        = 0.4f;
 static volatile float chassis_offset_ff_limit_deg   = 90.0f;
 static volatile float chassis_offset_ff_min_speed   = 100.0f;
@@ -828,7 +829,62 @@ static void ChassisTiltCalc()
  */
 static void GetChassisSpeedDirection()
 {
+    const float speed_deadband = 10.0f / SPEED_TO_DJI_MOTOR_APS;
+    float chassis_speed;
+    float speed_direction;
+
+    chassis_speed = sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
+    if (chassis_speed < speed_deadband) {
+        return;
+    }
+
+    speed_direction = -atan2f(chassis_vy, chassis_vx) * RAD_2_DEGREE;
+    speed_direction = theta_format(speed_direction);
+
+    while (speed_direction > 90.0f) {
+        speed_direction -= 180.0f;
+    }
+    while (speed_direction < -90.0f) {
+        speed_direction += 180.0f;
+    }
+
+    chassis_speed_direction = speed_direction;
+}
+
+/**
+ * @brief 跨越地形时速度控制
+ *
+ */
+static void TerrainSpeedControl()
+{
+    float chassis_speed;
+    float scale;
+
+    if(!comm_cmd_data.terrain_state)
+        return;
     
+    chassis_speed = sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
+
+    if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
+    {
+        if (chassis_speed <= 0.0f) {
+            return;
+        }
+
+        scale = 1000.0f / chassis_speed;
+        chassis_vx *= scale;
+        chassis_vy *= scale;
+    }
+    if(comm_cmd_data.terrain_state == TERRAIN_FORTRESS)
+    {
+        if (chassis_speed <= 500.0f) {
+            return;
+        }
+
+        scale = 500.0f / chassis_speed;
+        chassis_vx *= scale;
+        chassis_vy *= scale;
+    }
 }
 
 /* 机器人底盘控制核心任务 */
@@ -883,8 +939,19 @@ void ChassisTask()
             //  else {
             //      offset_angle = -(chassis_cmd_recv.offset_angle >= 0 ? chassis_cmd_recv.offset_angle - 180 : chassis_cmd_recv.offset_angle + 180);
             //  }
+            if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
+            {
+                const float speed_deadband = 10.0f / SPEED_TO_DJI_MOTOR_APS;
+                float chassis_speed = sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
 
-            chassis_vw = PIDCalculate(&Chassis_Follow_PID, chassis_cmd_recv.align_angle, 0);
+                if (chassis_speed >= speed_deadband) {
+                    chassis_vw = PIDCalculate(&Chassis_Follow_PID, chassis_speed_direction, 0);
+                } else {
+                    chassis_vw = 1.0f / (CHASSIS_R * SPEED_TO_DJI_MOTOR_APS);
+                }
+            }
+            else
+                chassis_vw = PIDCalculate(&Chassis_Follow_PID, chassis_cmd_recv.align_angle, 0);
 
 
             ramp_init(&rotate_ramp, 250);
@@ -917,7 +984,9 @@ void ChassisTask()
     }
     ChassisOffsetAngleFeedforwardCalc();
     ChassisSpeedMap();
+    GetChassisSpeedDirection();
     ChassisSpeedInterpolate();
+    TerrainSpeedControl();
     ChassisAccelerationPlan();
     ChassisSteeringFeedforwardCalc();
     SpeedUnitsConvert();
