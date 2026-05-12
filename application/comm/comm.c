@@ -26,6 +26,8 @@ static referee_upload_A_t referee_upload_A = {};
 static referee_upload_B_t referee_upload_B = {};
 static referee_upload_C_t referee_upload_C = {};
 static referee_cmd_t referee_cmd = {};
+sentry_referee_send_t Sentry_Referee_Send = {};
+static uint8_t Sentry_Energy_Confirm = 0;
 
 extern referee_info_t referee_info;           // 裁判系统数据
 extern DJIMotorInstance *yaw_motor;
@@ -109,6 +111,12 @@ void CommSend(void)
     comm_cmd_data.chassis_rotate_speed = chassis_cmd_monitor.chassis_rotate_speed;
     comm_cmd_data.gimbal_mode = gimbal_cmd_monitor.gimbal_mode;
     comm_cmd_data.yaw_diff = (float)(yaw_motor->measure.ecd - YAW_BIG_YAW_ALIGN_ECD) * 2 * PI / 8192;
+    comm_cmd_data.sentry_status = NUC_cmd.sentry_status;
+    if(NUC_cmd.scanMode == 2 || NUC_cmd.scanMode == 3)
+        comm_cmd_data.rune_request = 1;
+    else
+        comm_cmd_data.rune_request = 0;
+    comm_cmd_data.terrain_state = NUC_cmd.terrain_state;
     if(chassis_cmd_monitor.control_type == NUC_CONTROL)
     {
         if(last_navi_time_stamp != NUC_cmd.navi_time_stamp)
@@ -124,7 +132,6 @@ void CommSend(void)
     }
     last_navi_time_stamp = NUC_cmd.navi_time_stamp;
     referee_cmd.cmdid = 0x01;
-    referee_cmd.ally_power_rune_active = 0;
     memcpy(comm_cmd_data.referee_cmd, &referee_cmd, REFEREE_CMD_SIZE);
     Append_CRC8_Check_Sum((uint8_t *)&comm_cmd_data, COMM_CMD_SIZE);
     CommSendDMA(&comm_cmd_data, COMM_CMD_SIZE);
@@ -132,11 +139,43 @@ void CommSend(void)
 #endif
 
 #if defined(CHASSIS_BOARD)
+static void SentryRefereeSend()
+{
+	static uint8_t sentry_referee_seq = 0;
+	uint16_t sender_id;
+	uint32_t sentry_cmd = 0x00000001;
+
+	sender_id = referee_info.referee_id.Robot_ID;
+	if(sender_id == 0) sender_id = referee_info.GameRobotStatus.robot_id;
+
+	sentry_cmd |= ((uint32_t)(comm_cmd_data.sentry_status & 0x03)) << 21;
+	if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
+
+	Sentry_Referee_Send.FrameHeader.SOF = REFEREE_SOF;
+	Sentry_Referee_Send.FrameHeader.DataLength = SENTRY_REFEREE_DATA_LEN;
+	Sentry_Referee_Send.FrameHeader.Seq = sentry_referee_seq;
+	Append_CRC8_Check_Sum((uint8_t *)&Sentry_Referee_Send.FrameHeader, LEN_HEADER);
+
+	Sentry_Referee_Send.CmdID = ID_student_interactive;
+	Sentry_Referee_Send.datahead.data_cmd_id = SENTRY_REFEREE_CMD_ID;
+	Sentry_Referee_Send.datahead.sender_ID = sender_id;
+	Sentry_Referee_Send.datahead.receiver_ID = SENTRY_REFEREE_RECEIVER_ID;
+	Sentry_Referee_Send.data.sentry_cmd = sentry_cmd;
+
+	Append_CRC16_Check_Sum((uint8_t *)&Sentry_Referee_Send, sizeof(Sentry_Referee_Send));
+	RefereeSend((uint8_t *)&Sentry_Referee_Send, sizeof(Sentry_Referee_Send));
+
+	sentry_referee_seq++;
+}
 static void CommRecieve(const uint8_t *buf)
 {
     if(buf[0] == COMM_HEADER && Verify_CRC8_Check_Sum((uint8_t *)buf,COMM_CMD_SIZE))
     {
         memcpy(&comm_cmd_data, buf, COMM_CMD_SIZE);
+        if(comm_cmd_data.rune_request)
+            Sentry_Energy_Confirm = 1;
+        else
+            Sentry_Energy_Confirm = 0;
         switch(comm_cmd_data.referee_cmd[0])
         {
             case 0x01:
@@ -145,6 +184,7 @@ static void CommRecieve(const uint8_t *buf)
             default:
                 break;
         }
+        SentryRefereeSend();
     }
 }
 uint8_t commSendCount = 0;

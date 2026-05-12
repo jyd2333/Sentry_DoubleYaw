@@ -44,8 +44,6 @@ situation_alpha_t Situation_Alpha = {};
 situation_beta_t Situation_Beta = {};
 vision_receive_t Vision_Receive = {};
 navigation_receive_t Navigation_Receive = {};
-sentry_referee_send_t Sentry_Referee_Send = {};
-uint8_t Sentry_Energy_Confirm = 0;
 
 float vision_pitch = 0; //输出控制量 pitch绝对角度 弧度
 float vision_yaw = 0;   //输出控制量 yaw绝对角度 弧度
@@ -53,35 +51,6 @@ float quat_tran[4];
 extern int32_t load_count;
 USB_Init_Config_s USB_conf = {.rx_cbk = USB_Decode};
 extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
-
-static void SentryRefereeSend()
-{
-	static uint8_t sentry_referee_seq = 0;
-	uint16_t sender_id;
-	uint32_t sentry_cmd = 0x00000001;
-
-	sender_id = referee_info.referee_id.Robot_ID;
-	if(sender_id == 0) sender_id = referee_info.GameRobotStatus.robot_id;
-
-	sentry_cmd |= ((uint32_t)(Navigation_Receive.sentry_status & 0x03)) << 21;
-	if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
-
-	Sentry_Referee_Send.FrameHeader.SOF = REFEREE_SOF;
-	Sentry_Referee_Send.FrameHeader.DataLength = SENTRY_REFEREE_DATA_LEN;
-	Sentry_Referee_Send.FrameHeader.Seq = sentry_referee_seq;
-	Append_CRC8_Check_Sum((uint8_t *)&Sentry_Referee_Send.FrameHeader, LEN_HEADER);
-
-	Sentry_Referee_Send.CmdID = ID_student_interactive;
-	Sentry_Referee_Send.datahead.data_cmd_id = SENTRY_REFEREE_CMD_ID;
-	Sentry_Referee_Send.datahead.sender_ID = sender_id;
-	Sentry_Referee_Send.datahead.receiver_ID = SENTRY_REFEREE_RECEIVER_ID;
-	Sentry_Referee_Send.data.sentry_cmd = sentry_cmd;
-
-	Append_CRC16_Check_Sum((uint8_t *)&Sentry_Referee_Send, sizeof(Sentry_Referee_Send));
-	RefereeSend((uint8_t *)&Sentry_Referee_Send, sizeof(Sentry_Referee_Send));
-
-	sentry_referee_seq++;
-}
 
 void NUC_offline()   //离线处理
 {																																																					
@@ -133,7 +102,22 @@ void USB_Decode(void)
 				NUC_cmd.base_yaw		= Navigation_Receive.base_yaw;
 				NUC_cmd.scanMode		= Navigation_Receive.scanmode;
 				NUC_cmd.rotateMode		= Navigation_Receive.chassis_status;
-				SentryRefereeSend();
+				NUC_cmd.sentry_status	= Navigation_Receive.sentry_status;
+				if(Navigation_Receive.fortress_mode && Navigation_Receive.bump_mode)
+				{
+					NUC_cmd.vx = 0;
+					NUC_cmd.vy = 0;
+					NUC_cmd.terrain_state = TERRAIN_NORMAL;
+				}
+				else
+				{
+					if(Navigation_Receive.fortress_mode)
+						NUC_cmd.terrain_state = TERRAIN_FORTRESS;
+					else if(Navigation_Receive.bump_mode)
+						NUC_cmd.terrain_state = TERRAIN_BUMP;
+					else
+						NUC_cmd.terrain_state = TERRAIN_NORMAL;
+				}
 			}
 			break;
 		default:
@@ -176,7 +160,20 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 
 void NUC_Send_Data(){
 	Vision_Send.DWT_stamp 		= DWT_GetTimeline_ms();
-	Vision_Send.enemy_color 	= (referee_info.referee_id.Robot_ID < 10) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
+	switch(NUC_cmd.scanMode)
+	{
+		// case 0:
+		// case 1:
+		default:
+			Vision_Send.enemy_color = (referee_info.referee_id.Robot_ID < 10) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
+			break;
+		case 2:
+			Vision_Send.enemy_color = 2;
+			break;
+		case 3:
+			Vision_Send.enemy_color = 3;
+			break;
+	}
 	EularAngleToQuaternion(INS->output.INS_angle[2], -INS->output.INS_angle[1], INS->output.INS_angle[0],quat_tran);
 	memcpy(Vision_Send.quat,quat_tran,16);
 	Vision_Send.pitch 			= INS->output.INS_angle[1];

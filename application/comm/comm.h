@@ -38,14 +38,17 @@ typedef struct
     uint8_t head;
     float vx;                        // 前进方向速度
     float vy;                        // 横移方向速度
-    chassis_mode_e chassis_mode;
+    uint8_t chassis_mode;
     uint8_t chassis_rotate_speed;
-    gimbal_mode_e gimbal_mode;
+    uint8_t gimbal_mode;
     float yaw_diff;
     uint8_t navi_stamp;
+    uint8_t sentry_status;
+    uint8_t rune_request;
+    uint8_t terrain_state;
+    uint8_t reserve[3];
     float debug_1;
     float debug_2;
-    // uint8_t reserve[1];
     uint8_t referee_cmd[32];
     uint8_t crc8;
 } comm_cmd_t;
@@ -116,8 +119,8 @@ typedef struct
 typedef struct
 {
     uint8_t cmdid;
-    uint8_t ally_power_rune_active;
-    uint8_t reserve[30];
+    // uint8_t ally_power_rune_active; 
+    uint8_t reserve[31];
 }referee_cmd_t;
 
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)

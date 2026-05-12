@@ -67,6 +67,7 @@ typedef struct
 	uint64_t navi_time_stamp;
 	uint8_t scanMode;		//0：自瞄装甲板 1：前哨站 2：小能量机关 3：大能量机关
 	uint8_t rotateMode;
+	uint8_t sentry_status;
 	terrain_state_e terrain_state;
 	float base_yaw;
 }NUC_cmd_t;
@@ -203,5 +204,4 @@ void NUC_init(void);
 void NUC_offline();
 // void Decision_Tree();
 void USB_Decode(void);
-extern uint8_t Sentry_Energy_Confirm;
 #endif
