@@ -99,7 +99,8 @@ typedef struct
   	float engineer_y;
   	float standard_3_x;
   	float standard_3_y;
-  	uint8_t reserve[7];
+    uint16_t projectile_allowance_17mm;
+  	uint8_t reserve[5];
 } referee_upload_B_t;
 
 typedef struct

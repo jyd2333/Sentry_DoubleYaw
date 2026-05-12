@@ -160,9 +160,10 @@ typedef struct
   	uint8_t disengaged_state;
   	uint8_t current_state;
   	uint8_t ally_power_rune_state; 
+	uint16_t projectile_allowance_17mm;
 	uint32_t rfid_status;
 
-	uint8_t reserve[35];
+	uint8_t reserve[33];
 	uint8_t end;
 	uint16_t check_sum;
 }situation_alpha_t;

@@ -160,20 +160,7 @@ extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
 
 void NUC_Send_Data(){
 	Vision_Send.DWT_stamp 		= DWT_GetTimeline_ms();
-	switch(NUC_cmd.scanMode)
-	{
-		// case 0:
-		// case 1:
-		default:
-			Vision_Send.enemy_color = (referee_info.referee_id.Robot_ID < 10) ? 2 : 1 ;//Red 1~7 BLUE 101~107本机器人
-			break;
-		case 2:
-			Vision_Send.enemy_color = 2;
-			break;
-		case 3:
-			Vision_Send.enemy_color = 3;
-			break;
-	}
+	Vision_Send.enemy_color = NUC_cmd.scanMode;
 	EularAngleToQuaternion(INS->output.INS_angle[2], -INS->output.INS_angle[1], INS->output.INS_angle[0],quat_tran);
 	memcpy(Vision_Send.quat,quat_tran,16);
 	Vision_Send.pitch 			= INS->output.INS_angle[1];
@@ -196,6 +183,7 @@ void NUC_Send_Data(){
 	Situation_Alpha.disengaged_state	= referee_info.SentryInfo.sentry_info_2 & 0x0001;
 	Situation_Alpha.current_state		= (referee_info.SentryInfo.sentry_info_2 >> 12) & 0x0003;
 	Situation_Alpha.ally_power_rune_state =	(referee_info.SentryInfo.sentry_info_2 >> 14) & 0x0001;
+	Situation_Alpha.projectile_allowance_17mm = referee_info.ProjectileAllowance.projectile_allowance_17mm;
 	Situation_Alpha.rfid_status			= referee_info.Rfid_Status.rfid_status;
 	Situation_Alpha.check_sum 			= Check_Sum_16(&Situation_Alpha.head,sizeof(situation_alpha_t)-2);
 

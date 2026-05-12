@@ -80,6 +80,7 @@ static void CommRecieve(const uint8_t *buf)
                 referee_info.GroundRobotPosition.engineer_y     = referee_upload_B.engineer_y;
                 referee_info.GroundRobotPosition.standard_3_x   = referee_upload_B.standard_3_x;
                 referee_info.GroundRobotPosition.standard_3_y   = referee_upload_B.standard_3_y;
+                referee_info.ProjectileAllowance.projectile_allowance_17mm = referee_upload_B.projectile_allowance_17mm;
                 break;
             case 0x03:
                 memcpy(&referee_upload_C, comm_upload_data.referee_upload, REFEREE_UPLOAD_C);
@@ -237,6 +238,7 @@ void CommSend(void)
             referee_upload_B.engineer_y = referee_info.GroundRobotPosition.engineer_y;
             referee_upload_B.standard_3_x = referee_info.GroundRobotPosition.standard_3_x;
             referee_upload_B.standard_3_y = referee_info.GroundRobotPosition.standard_3_y;
+            referee_upload_B.projectile_allowance_17mm = referee_info.ProjectileAllowance.projectile_allowance_17mm;
             memcpy(comm_upload_data.referee_upload, &referee_upload_B, REFEREE_UPLOAD_B);
             break;
         case 2:

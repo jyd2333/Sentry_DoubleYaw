@@ -27,6 +27,7 @@
 #include "power_calc.h"
 #include "tool.h"
 #include "comm.h"
+#include "robot_test.h"
 
 /* 根据 robot_def.h 中的宏自动计算参数 */
 #define HALF_WHEEL_BASE  (WHEEL_BASE / 2.0f)     // 半轴距
@@ -819,6 +820,15 @@ static void ChassisTiltCalc()
     }
 
     chassis_feedback_data.tilt_direction = tilt_direction;
+}
+
+/**
+ * @brief 底盘速度方向
+ *
+ */
+static void GetChassisSpeedDirection()
+{
+    
 }
 
 /* 机器人底盘控制核心任务 */
