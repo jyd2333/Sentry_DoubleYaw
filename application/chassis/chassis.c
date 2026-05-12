@@ -797,6 +797,7 @@ static void ChassisTiltCalc()
 
     if (chassis_IMU_data == NULL) {
         chassis_feedback_data.tilt_direction = 0.0f;
+        chassis_feedback_data.tilt_angle = 0.0f;
         return;
     }
 
@@ -812,6 +813,7 @@ static void ChassisTiltCalc()
     tilt_alpha = atan2f(sqrtf(tilt_x * tilt_x + tilt_y * tilt_y), cos_roll * cos_pitch) * RAD_2_DEGREE;
     if (tilt_alpha < chassis_tilt_deadband_deg) {
         chassis_feedback_data.tilt_direction = 0.0f;
+        chassis_feedback_data.tilt_angle = 0.0f;
         return;
     }
 
@@ -820,7 +822,8 @@ static void ChassisTiltCalc()
         tilt_direction += 360.0f;
     }
 
-    chassis_feedback_data.tilt_direction = tilt_direction;
+    chassis_feedback_data.tilt_direction    = tilt_direction;
+    chassis_feedback_data.tilt_angle        = tilt_alpha;
 }
 
 /**
@@ -885,6 +888,59 @@ static void TerrainSpeedControl()
         chassis_vx *= scale;
         chassis_vy *= scale;
     }
+}
+
+/**
+ * @brief 堡垒上坡助力
+ *
+ */
+static void FortressAssist()
+{
+    if(comm_cmd_data.terrain_state != TERRAIN_FORTRESS)
+        return;
+
+    const float speed_deadband = 10.0f / SPEED_TO_DJI_MOTOR_APS;
+    const float tilt_angle_cap = 25.0f;
+    float chassis_speed;
+    float speed_direction;
+    float delta_direction;
+    float dir_factor;
+    float tilt_factor;
+    float assist_scale;
+
+    chassis_speed = sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
+    if (chassis_speed < speed_deadband) {
+        return;
+    }
+
+    if (chassis_feedback_data.tilt_angle <= 0.0f) {
+        return;
+    }
+
+    speed_direction = theta_format(-atan2f(chassis_vy, chassis_vx) * RAD_2_DEGREE);
+    delta_direction = speed_direction - chassis_feedback_data.tilt_direction;
+
+    while (delta_direction > 180.0f) {
+        delta_direction -= 360.0f;
+    }
+    while (delta_direction < -180.0f) {
+        delta_direction += 360.0f;
+    }
+
+    dir_factor = arm_cos_f32(delta_direction * DEGREE_2_RAD);
+    if (dir_factor <= 0.0f) {
+        return;
+    }
+
+    tilt_factor = chassis_feedback_data.tilt_angle / tilt_angle_cap;
+    tilt_factor = ChassisLimitFloat(tilt_factor, 1.0f);
+    if (tilt_factor <= 0.0f) {
+        return;
+    }
+
+    assist_scale = 1.0f + 0.5f * dir_factor * tilt_factor;
+    chassis_vx *= assist_scale;
+    chassis_vy *= assist_scale;
 }
 
 /* 机器人底盘控制核心任务 */
@@ -987,6 +1043,7 @@ void ChassisTask()
     GetChassisSpeedDirection();
     ChassisSpeedInterpolate();
     TerrainSpeedControl();
+    FortressAssist();
     ChassisAccelerationPlan();
     ChassisSteeringFeedforwardCalc();
     SpeedUnitsConvert();

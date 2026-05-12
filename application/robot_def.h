@@ -315,6 +315,7 @@ typedef struct
     float chassis_power_output;
     float chassis_voltage;
     float tilt_direction;
+    float tilt_angle;
 } Chassis_Upload_Data_s;
 
 typedef struct
