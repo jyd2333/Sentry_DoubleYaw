@@ -162,11 +162,18 @@ void GimbalInit()
                 .IntegralLimit = 1,
                 .MaxOut = 4,
             },
+            .mpc_speed_PID = {
+                .Kp = 0.0f,
+                .Ki = 0,
+                .Kd = 0,
+                .MaxOut = 0,
+            },
              .other_angle_feedback_ptr = &gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET], // pitch反馈弧度制
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
             .other_speed_feedback_ptr = &gimbal_IMU_data->INS_data.INS_gyro[INS_PITCH_ADDRESS_OFFSET],
-            .speed_feedforward_ptr = &pitch_vel_feedforward,
+            // .speed_feedforward_ptr = &pitch_vel_feedforward,
             .current_feedforward_ptr = &pitch_tor_feedforward,
+            .mpc_speed_ref_ptr = &pitch_vel_feedforward,
 
         },
         .controller_setting_init_config = {
@@ -176,7 +183,8 @@ void GimbalInit()
             .close_loop_type       = SPEED_LOOP | ANGLE_LOOP,
             .motor_reverse_flag    = MOTOR_DIRECTION_NORMAL,
             .feedback_reverse_flag = FEEDBACK_DIRECTION_REVERSE,
-            .feedforward_flag      = CURRENT_AND_SPEED_FEEDFORWARD,
+            .feedforward_flag      = CURRENT_FEEDFORWARD,
+            .mpc_type              = MPC_SPEED_PARALLEL,
             .control_range = {
                 .P_max = 12.5,
                 .V_max = 30,
@@ -267,10 +275,12 @@ void GimbalTask()
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
 
 #ifdef GIMBAL_BOARD
-    pitch_tor_feedforward = 0.584 * tan(0.82 - abs(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]));
+    pitch_tor_feedforward_ori = 0.8 * tan(0.82 - abs(gimbal_IMU_data->output.INS_angle[INS_PITCH_ADDRESS_OFFSET]));
     if(gimbal_cmd_recv.control_type == NUC_CONTROL)
     {
         pitch_vel_feedforward   = NUC_cmd.pitch_vel;
+        pitch_tor_feedforward   = pitch_tor_feedforward_ori;
+        pitch_motor->motor_controller.mpc_speed_PID.MaxOut = 0;
         yaw_vel_feedforward     = -NUC_cmd.yaw_vel;
         yaw_tor_feedforward     = yaw_tor_k * NUC_cmd.yaw_acc;
         yaw_motor->motor_controller.mpc_speed_PID.MaxOut = 5000;
@@ -278,6 +288,8 @@ void GimbalTask()
     else
     {
         pitch_vel_feedforward   = 0;
+        pitch_tor_feedforward   = pitch_tor_feedforward_ori;
+        pitch_motor->motor_controller.mpc_speed_PID.MaxOut = 0;
         yaw_vel_feedforward     = 0;
         yaw_tor_feedforward     = 0;
         yaw_motor->motor_controller.mpc_speed_PID.MaxOut = 0;

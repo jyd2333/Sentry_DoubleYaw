@@ -5,6 +5,7 @@
 #include "robot_def.h"
 #include "shoot.h"
 #include "dji_motor.h"
+#include "DMmotor.h"
 #include "rm_referee.h"
 #include "general_def.h"
 #include "SolveTrajectory.h"
@@ -51,6 +52,8 @@ float quat_tran[4];
 extern int32_t load_count;
 USB_Init_Config_s USB_conf = {.rx_cbk = USB_Decode};
 extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
+extern DJIMotorInstance *yaw_motor;
+extern DMMotorInstance *pitch_motor;
 
 void NUC_offline()   //离线处理
 {																																																					
@@ -66,6 +69,26 @@ void NUC_offline()   //离线处理
 
             // HAL_UART_Receive_IT(&huart1,NUC_rx_buff,NUC_RX_BUFF_SIZE);
 			
+}
+
+static void FireControl()
+{
+	float total_err;
+	float yaw_err,pitch_err;
+	yaw_err = yaw_motor->motor_controller.angle_PID.Err * DEGREE_2_RAD;
+	pitch_err = pitch_motor->motor_controller.angle_PID.Err;
+	total_err = yaw_err * yaw_err + pitch_err * pitch_err;
+	if(Vision_Receive.fireadvise == 2)
+	{
+		if(total_err < 0.00001225f)
+			NUC_cmd.shoot = 2;
+
+	}
+	else
+	{
+		NUC_cmd.shoot = Vision_Receive.fireadvise;
+	}
+	
 }
 
 void USB_Decode(void)
@@ -85,9 +108,10 @@ void USB_Decode(void)
 				vision_yaw 			= RAD_2_DEGREE * Vision_Receive.yaw;
 				NUC_cmd.pitch 		= vision_pitch;
 				NUC_cmd.yaw 		= vision_yaw;
+				FireControl();
 				NUC_cmd.shoot 		= Vision_Receive.fireadvise;
-				NUC_cmd.pitch_vel 	= 0;//-Vision_Receive.pitch_vel;
-				NUC_cmd.pitch_acc 	= 0;//-Vision_Receive.pitch_acc;
+				NUC_cmd.pitch_vel 	= Vision_Receive.pitch_vel;
+				NUC_cmd.pitch_acc 	= Vision_Receive.pitch_acc;
 				NUC_cmd.yaw_vel 	= -Vision_Receive.yaw_vel;
 				NUC_cmd.yaw_acc 	= Vision_Receive.yaw_acc;
 			}

@@ -41,6 +41,7 @@ static void DMMotorClearIntegral(DMMotorInstance *motor)
     DMMotorClearPIDIntegral(&motor_controller->current_PID);
     DMMotorClearPIDIntegral(&motor_controller->speed_PID);
     DMMotorClearPIDIntegral(&motor_controller->angle_PID);
+    DMMotorClearPIDIntegral(&motor_controller->mpc_speed_PID);
 }
 
 /**
@@ -70,7 +71,16 @@ int float_to_uint(float x_float, float x_min, float x_max, int bits)
     /* Converts a float to an unsigned int, given range and number of bits */
     float span   = x_max - x_min;
     float offset = x_min;
-    return (int)((x_float - offset) * ((float)((1 << bits) - 1)) / span);
+    int result   = (int)((x_float - offset) * ((float)((1 << bits) - 1)) / span);
+    int max      = (1 << bits) - 1;
+
+    if (result < 0) {
+        result = 0;
+    } else if (result > max) {
+        result = max;
+    }
+
+    return result;
 }
 float uint_to_float(int x_int, float x_min, float x_max, int bits)
 {
@@ -135,10 +145,12 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     PIDInit(&motor->motor_controller.speed_PID, &config->controller_param_init_config.current_PID);
     PIDInit(&motor->motor_controller.speed_PID, &config->controller_param_init_config.speed_PID);
     PIDInit(&motor->motor_controller.angle_PID, &config->controller_param_init_config.angle_PID);
+    PIDInit(&motor->motor_controller.mpc_speed_PID, &config->controller_param_init_config.mpc_speed_PID);
     motor->motor_controller.other_angle_feedback_ptr = config->controller_param_init_config.other_angle_feedback_ptr;
     motor->motor_controller.other_speed_feedback_ptr = config->controller_param_init_config.other_speed_feedback_ptr;
     motor->motor_controller.current_feedforward_ptr  = config->controller_param_init_config.current_feedforward_ptr;
     motor->motor_controller.speed_feedforward_ptr    = config->controller_param_init_config.speed_feedforward_ptr;
+    motor->motor_controller.mpc_speed_ref_ptr        = config->controller_param_init_config.mpc_speed_ref_ptr;
     motor->ctrl.mode                                 = config->motor_contro_type; // 控制模式
     motor->motor_type                                = config->motor_type;
     config->can_init_config.id                       = motor;
@@ -256,6 +268,13 @@ void DMMotorControl()
                 pid_ref = PIDCalculate(&motor_controller->speed_PID, pid_measure, pid_ref);
                 if (setting->feedforward_flag & CURRENT_FEEDFORWARD)
                     pid_ref += *motor_controller->current_feedforward_ptr;
+            }
+            if (setting->mpc_type & MPC_SPEED_PARALLEL) {
+                if (setting->speed_feedback_source == OTHER_FEED)
+                    pid_measure = *motor_controller->other_speed_feedback_ptr;
+                else
+                    pid_measure = measure->vel;
+                pid_ref += PIDCalculate(&motor_controller->mpc_speed_PID, pid_measure, *motor_controller->mpc_speed_ref_ptr);
             }
             if (setting->feedback_reverse_flag == FEEDBACK_DIRECTION_REVERSE)
                 pid_ref *= -1;
