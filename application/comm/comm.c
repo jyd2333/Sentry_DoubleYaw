@@ -37,6 +37,7 @@ extern NUC_cmd_t NUC_cmd;
 static CommInstance_t comm_instance;
 static uint32_t comm_last_offline_handle_ms;
 static uint64_t last_navi_time_stamp;
+static uint8_t comm_send_divider;
 
 static void CommRestartRxInternal(void);
 static void CommHandleOffline(CommInstance_t *comm);
@@ -101,6 +102,12 @@ static void CommRecieve(const uint8_t *buf)
 
 void CommSend(void)
 {
+    if (++comm_send_divider < 5U)
+    {
+        return;
+    }
+    comm_send_divider = 0U;
+
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
     SubGetMessage(shoot_monitor_sub, &shoot_cmd_monitor);
@@ -144,11 +151,12 @@ static void SentryRefereeSend()
 {
 	static uint8_t sentry_referee_seq = 0;
 	uint16_t sender_id;
-	uint32_t sentry_cmd = 0x00000001;
+	uint32_t sentry_cmd = 0;
 
 	sender_id = referee_info.referee_id.Robot_ID;
 	if(sender_id == 0) sender_id = referee_info.GameRobotStatus.robot_id;
 
+	if(referee_info.GameRobotStatus.remain_HP == 0) sentry_cmd |= 0x00000001u;
 	sentry_cmd |= ((uint32_t)(comm_cmd_data.sentry_status & 0x03)) << 21;
 	if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
 
@@ -191,6 +199,12 @@ static void CommRecieve(const uint8_t *buf)
 uint8_t commSendCount = 0;
 void CommSend(void)
 {
+    if (++comm_send_divider < 5U)
+    {
+        return;
+    }
+    comm_send_divider = 0U;
+
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
     SubGetMessage(shoot_monitor_sub, &shoot_cmd_monitor);

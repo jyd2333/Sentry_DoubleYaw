@@ -378,7 +378,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 3.0f;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 16.0f;   // 射频默认30Hz
     chassis_cmd_send.control_type = NUC_NORMAL;
 
     // if (rc_data[TEMP].rc.dial > 400) {
