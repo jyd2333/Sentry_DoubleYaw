@@ -188,7 +188,7 @@ void NUC_Send_Data(){
 	EularAngleToQuaternion(INS->output.INS_angle[2], -INS->output.INS_angle[1], INS->output.INS_angle[0],quat_tran);
 	memcpy(Vision_Send.quat,quat_tran,16);
 	Vision_Send.pitch 			= INS->output.INS_angle[1];
-	Vision_Send.pitch_gyro		= INS->INS_data.INS_gyro[1];
+	Vision_Send.pitch_gyro		= -INS->INS_data.INS_gyro[1];
 	Vision_Send.yaw 			= INS->output.INS_angle[2];
 	Vision_Send.yaw_gyro		= INS->INS_data.INS_gyro[2];
 	Vision_Send.Yaw_diff 		= GetYawDiff();

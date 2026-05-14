@@ -841,7 +841,7 @@ static void GetChassisSpeedDirection()
         return;
     }
 
-    speed_direction = -atan2f(chassis_vy, chassis_vx) * RAD_2_DEGREE;
+    speed_direction = atan2f(chassis_vy, chassis_vx) * RAD_2_DEGREE;
     speed_direction = theta_format(speed_direction);
 
     while (speed_direction > 90.0f) {
@@ -874,7 +874,7 @@ static void TerrainSpeedControl()
             return;
         }
 
-        scale = 1000.0f / chassis_speed;
+        scale = 2500.0f / chassis_speed;
         chassis_vx *= scale;
         chassis_vy *= scale;
     }
