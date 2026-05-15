@@ -46,17 +46,6 @@ static void DMMotorClearIntegral(DMMotorInstance *motor)
 
 /**
 ************************************************************************
-* @brief:      	uint_to_float: 无符号整数转换为浮点数函数
-* @param[in]:   x_int: 待转换的无符号整数
-* @param[in]:   x_min: 范围最小值
-* @param[in]:   x_max: 范围最大值
-* @param[in]:   bits:  无符号整数的位数
-* @retval:     	浮点数结果
-* @details:    	将给定的无符号整数 x_int 在指定范围 [x_min, x_max] 内进行线性映射，映射结果为一个浮点数
-************************************************************************
-**/
-/**
-************************************************************************
 * @brief:      	float_to_uint: 浮点数转换为无符号整数函数
 * @param[in]:   x_float:	待转换的浮点数
 * @param[in]:   x_min:		范围最小值
@@ -82,6 +71,18 @@ int float_to_uint(float x_float, float x_min, float x_max, int bits)
 
     return result;
 }
+
+/**
+************************************************************************
+* @brief:      	uint_to_float: 无符号整数转换为浮点数函数
+* @param[in]:   x_int: 待转换的无符号整数
+* @param[in]:   x_min: 范围最小值
+* @param[in]:   x_max: 范围最大值
+* @param[in]:   bits:  无符号整数的位数
+* @retval:     	浮点数结果
+* @details:    	将给定的无符号整数 x_int 在指定范围 [x_min, x_max] 内进行线性映射，映射结果为一个浮点数
+************************************************************************
+**/
 float uint_to_float(int x_int, float x_min, float x_max, int bits)
 {
     /* converts unsigned int to float, given range and number of bits */
@@ -89,6 +90,7 @@ float uint_to_float(int x_int, float x_min, float x_max, int bits)
     float offset = x_min;
     return ((float)x_int) * span / ((float)((1 << bits) - 1)) + offset;
 }
+
 /**
  * @brief 电机反馈报文解析
  *

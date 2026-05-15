@@ -1,97 +1,85 @@
-/*
- * @Author: HDC h2019dc@outlook.com
- * @Date: 2023-09-08 16:47:43
- * @LastEditors: HDC h2019dc@outlook.com
- * @LastEditTime: 2023-10-18 23:26:21
- * @FilePath: \2024_Control_New_Framework_Base-dev-all\modules\super_cap\super_cap.h
- * @Description:
- *
- * Copyright (c) 2023 by Alliance-EC, All Rights Reserved.
- */
-/*
- * @Descripttion:
- * @version:
- * @Author: Chenfu
- * @Date: 2022-12-02 21:32:47
- * @LastEditTime: 2023-10-18 23:01:07
- */
-#ifndef SUPER_CAP_H
-#define SUPER_CAP_H
+#ifndef SUPER_CUP_H
+#define SUPER_CUP_H
 
 #include "bsp_can.h"
+#include "daemon.h"
+
+#define SUPERCAP_MAX_VOLTAGE 24.0f
+#define SUPERCAP_MIN_VOLTAGE 16.0f
+#define SUPERCAP_HIGHER_THRESHOLD_ENERGY 90.0f
+#define SUPERCAP_LOWER_THRESHOLD_ENERGY 10.0f
+
+#define SOFTWARE_UVP_VCAP 6.0f  //最小电容组放电截至电压，这里设定为6V。
+#define SOFTWARE_OVP_VCAP 20.0f //最大电容组充电电压，电容组过压保护
+#define SUPERCAP_AVAILABLE_VOLTAGE  (SOFTWARE_OVP_VCAP - SOFTWARE_UVP_VCAP) //电容组可用电压范围，用于粗略计算电容组的能量百分比
+
+typedef enum
+{
+    SUPERCAP_DISABLE = 0,
+    SUPERCAP_ENABLE = 1,
+}SuperCap_Enable_Flag_e;
 
 #pragma pack(1)
-
-#define SUPER_USER_OPEN     1
-#define SUPER_USER_CLOSE    0
-
-#define SUPER_VOLTAGE_OPEN  1
-#define SUPER_VOLTAGE_CLOSE 0
-
-#define SUPER_CMD_OPEN      1
-#define SUPER_CMD_CLOSE     0
-
-// 定义电压阈值
-#define SUPER_VOLTAGE_THRESHOLD_LOW  10.0f
-#define SUPER_VOLTAGE_THRESHOLD_HIGH 18.0f
-
-#define SUPERCAP_PMOS_OPEN           1
-#define SUPERCAP_PMOS_CLOSE          0
-
-/* 超级电容发送信息 */
-typedef struct
+typedef struct 
 {
-    float CapVot;                         // 电压
-    float chassis_power_from_cap;         // 底盘功率
-    float chassis_voltage_from_cap;       // 底盘电压
-    uint8_t SuperCap_open_flag_from_real; // 开关指示 未开启为1
-} SuperCap_Msg_s;
+    SuperCap_Enable_Flag_e enable_flag;
+    uint8_t charge_flag;
+    uint8_t power_limit;
+    uint8_t reserved[5];
+}SuperCap_Tx_Data_s;
 
-/* 超级电容接收信息 */
-typedef struct
+typedef enum
 {
-    uint16_t unused[3];
-    uint8_t power_limit; // 功率限制
-    uint8_t enabled;     // 电容开启状态
-} SuperCap_Msg_g;
-#pragma pack()
-
-/* 超级电容实例 */
-typedef struct
-{
-    CANInstance *can_ins;     // CAN实例
-    SuperCap_Msg_s cap_msg_s; // 超级电容发送,本机接受的信息
-    SuperCap_Msg_g cap_msg_g; // 超级电容接收,本机发送的信息
-} SuperCapInstance;
-
-/* 超级电容初始化配置 */
-typedef struct
-{
-    CAN_Init_Config_s can_config;
-} SuperCap_Init_Config_s;
-
-// 状态机
-typedef enum {
-    SUPER_STATE_LOW = 0,
-    SUPER_STATE_HIGH,
-    SUPER_STATE_ACCEL,
-    SUPER_STATE_DECELER,
+  SUPERCAP_STATE_DISCHARGE = 0,
+  SUPERCAP_STATE_CHARGE = 1,
+  SUPERCAP_STATE_WAIT = 2,
+  SUPERCAP_STATE_SOFRSTART_PROTECTION = 3,
+  SUPERCAP_STATE_OVER_LOAD_PROTECTTION = 4,
+  SUPERCAP_STATE_OVP_BAT_PROTECTION = 5,
+  SUPERCAP_STATE_UVP_BAT_PROTECTION = 6,
+  SUPERCAP_STATE_UVP_CAP_PROTECTION = 7,
+  SUPERCAP_STATE_OTP_PROTECTION = 8,
+  SUPERCAP_STATE_BOOM_PROTECTION = 9,
+  SUPERCAP_STATE_CAN_OFFLINE = 10,
 } SuperCap_State_e;
 
-/**
- * @brief 初始化超级电容
- * @attention:data是超级电容接收信息的数组，只有四位，注意不要超出范围
- * @param supercap_config 超级电容初始化配置
- * @return SuperCapInstance* 超级电容实例指针
- */
-SuperCapInstance *SuperCapInit(SuperCap_Init_Config_s *supercap_config);
+typedef struct 
+{
+    uint8_t ready_flag;//超级电容【可用标志】：1为可用，0为不可用
+    SuperCap_State_e SuperCapState;//超级电容【状态标志】：各个状态对应的状态码查看E_SuperCapState枚举。
+    uint8_t energy;//超级电容可用能量：0-100%(仅电压计算)
+    uint16_t chassis_real_power; //底盘功率，将0~512W映射到uint16_t范围
+    uint8_t bat_voltage; //通过超级电容监控电池电压*10，
+    uint8_t bat_power;
+    uint8_t reserved;
+}SuperCap_Rx_Data_s;
 
-/**
- * @brief 发送超级电容控制信息
- *
- * @param instance 超级电容实例
- * @param data 超级电容控制信息
- */
-void SuperCapSend(SuperCapInstance *instance, uint8_t *data);
+#pragma pack()
 
-#endif // !SUPER_CAP_Hd
+typedef struct 
+{
+    CAN_Init_Config_s can_config;
+    Daemon_Init_Config_s daemon_config;
+}SuperCap_Init_Config_s;
+
+typedef struct
+{
+    CANInstance *can_instance;
+    DaemonInstance *daemon_instance;
+    SuperCap_Tx_Data_s tx_data;
+    SuperCap_Rx_Data_s rx_data;
+    float chassis_real_power;       //映射回浮点型
+    float real_energy;              //换算至真实能量的百分比
+}SuperCapInstance;
+
+SuperCapInstance *SuperCapRegister(SuperCap_Init_Config_s *config);
+void SuperCapTask(void);
+void SuperCapEnable(SuperCapInstance *instance);
+void SuperCapDisable(SuperCapInstance *instance);
+void SuperCapSetPowerLimit(SuperCapInstance *instance, uint8_t power_limit);
+uint8_t SuperCapIsOnline(SuperCapInstance *instance);
+float SuperCapGetChassisRealPower(SuperCapInstance *instance);
+uint8_t SuperCapGetCapEnergy(SuperCapInstance *instance);
+uint8_t SuperCapGetReadyFlag(SuperCapInstance *instance);
+
+#endif

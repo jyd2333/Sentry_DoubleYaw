@@ -133,7 +133,7 @@ typedef struct
 	uint64_t time_stamp;
 	uint8_t chassis_status;	//底盘状态：小陀螺转速
 	uint8_t sentry_status;	//姿态信息 1：进攻姿态 2：防御姿态 3：移动姿态
-	uint8_t scanmode;		//0：自瞄装甲板 1：前哨站 2：小能量机关 3：大能量机关
+	uint8_t scanmode;		//0：空闲 1：自瞄装甲板 2：前哨站 3：小能量机关 4：大能量机关
 	float vx;
 	float vy;
 	float base_yaw;

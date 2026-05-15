@@ -48,6 +48,7 @@ static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制�
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
 extern comm_cmd_t comm_cmd_data;
 extern comm_upload_t comm_upload_data;
+extern referee_info_t referee_info;           // 裁判系统数据
 SuperCapInstance *cap;                                              // 超级电容
 // 驱动与转向电机实例
 DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
@@ -218,13 +219,13 @@ void ChassisInit()
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
     motor_lb                                                                = DJIMotorInit(&chassis_motor_config);
 
-    // SuperCap_Init_Config_s cap_conf = {
-    //     .can_config = {
-    //         .can_handle = &hcan1,
-    //         .tx_id      = 0X427, // 超级电容默认接收id
-    //         .rx_id      = 0x300, // 超级电容默认发送 ID，注意 tx/rx 对设备视角是相反的
-    //     }};
-    // cap = SuperCapInit(&cap_conf); // 超级电容初始化
+    SuperCap_Init_Config_s cap_conf = {
+        .can_config = {
+            .can_handle = &hcan1,
+            .tx_id      = 0X180, // 超级电容默认接收id
+            .rx_id      = 0x185, // 超级电容默认发送 ID，注意 tx/rx 对设备视角是相反的
+        }};
+    cap = SuperCapRegister(&cap_conf); // 超级电容初始化
     ramp_init(&rotate_ramp, 1000);
 #endif
     // 发布订阅初始化；如果为双板则需要 CAN Comm 传递消息
@@ -548,6 +549,7 @@ static float Power_Output;
 // }
 // uint8_t Super_Voltage_Allow_Flag;
 // static SuperCap_State_e SuperCap_state = SUPER_STATE_LOW;
+static uint8_t supercap_task_div_cnt = 0;
 /**
  * @brief 超电控制算法
  *
@@ -589,7 +591,13 @@ static float Power_Output;
 //         cap->cap_msg_g.enabled = SUPER_CMD_CLOSE;
          LimitChassisOutput();
 //     }
-
+    cap->tx_data.enable_flag = SUPERCAP_ENABLE;
+    cap->tx_data.charge_flag = 1;
+    cap->tx_data.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
+    if (++supercap_task_div_cnt >= 5) {
+        supercap_task_div_cnt = 0;
+        SuperCapTask();
+    }
      // 设定速度参考值
      DJIMotorSetRef(motor_lf, wheelset_lf.vt);
      DJIMotorSetRef(motor_rf, wheelset_rf.vt);
@@ -597,11 +605,6 @@ static float Power_Output;
      DJIMotorSetRef(motor_rb, wheelset_rb.vt);
  }
 
-// 获取功率裆位
-static void Power_get()
-{
-    cap->cap_msg_g.power_limit = chassis_cmd_recv.power_limit - 30 + 30 * (cap->cap_msg_s.CapVot - 17.0f) / 6.0f;
-}
 
 /**
  * @brief 底盘速度方向映射与死区处理
@@ -1057,9 +1060,7 @@ void ChassisTask()
     // 根据裁判系统与电容反馈对输出限幅，并设定闭环参考
     Super_Cap_control();
 
-    // 获得给电容传输的电容吸取功率等级
-    Power_get();
-    // comm_upload_data.debug_1 = steering_rf->motor_controller.angle_PID.Err;
+
 
     // 给电容发送数据
     //SuperCapSend(cap, (uint8_t *)&cap->cap_msg_g);
