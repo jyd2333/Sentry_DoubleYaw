@@ -38,6 +38,15 @@
 #define RF               1
 #define RB               2
 #define LB               3
+#define POWER_CALIB_RPM_TO_RAD_PER_SEC 0.104719755f
+
+#if POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_WHEEL) && defined(POWER_CALIBRATION_TARGET_STEER)
+#error You can only define one power calibration target group.
+#endif
+
+#if POWER_CALIBRATION_EXCITATION_ENABLE && (!POWER_CALIBRATION_ENABLE || !defined(POWER_CALIBRATION_TARGET_STEER))
+#error POWER_CALIBRATION_EXCITATION_ENABLE is only supported for steer power calibration.
+#endif
 
 /* 底盘应用包含的模块和信息存储，底盘为单例模式，因此不需要单独结构体 */
 static INS_Instance *chassis_IMU_data; // 底盘IMU数据
@@ -55,6 +64,11 @@ DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forwa
 DJIMotorInstance *steering_lf, *steering_rf, *steering_rb, *steering_lb;
 steering_wheelset_t wheelset_lf, wheelset_rf, wheelset_rb, wheelset_lb;
 chassis_speed_measure_t speed_measure;
+volatile uint32_t power_calib_sample_cnt;
+volatile float power_calib_cap_power_w;
+volatile float power_calib_x_abs_omega_sum;
+volatile float power_calib_x_tau2_sum;
+volatile float power_calib_effective_power;
 static float chassis_tilt_deadband_deg = 4.0f;
 static uint8_t last_navi_stamp;
 static uint32_t last_navi_DWT_stamp;
@@ -547,7 +561,7 @@ static float Power_Output;
     // chassis_cmd_recv.power_buffer = 60;
     // 固定功率限制策略（当前调试配置）
     Plimit = 0;
-    chassis_cmd_recv.power_limit = 60;
+    chassis_cmd_recv.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
     Power_Output = chassis_cmd_recv.power_limit - 10 + 20 * Plimit;
     DJIMotorPowerControlEnable(1);
     DJIMotorPowerControlSetMaxPower(Power_Output);
@@ -566,6 +580,145 @@ static float Power_Output;
 // uint8_t Super_Voltage_Allow_Flag;
 // static SuperCap_State_e SuperCap_state = SUPER_STATE_LOW;
 static uint8_t supercap_task_div_cnt = 0;
+
+#if POWER_CALIBRATION_ENABLE
+static void PowerCalibrationUpdate(void);
+#endif
+
+#if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_STEER)
+#define POWER_CALIB_EXCITATION_STEP_MS 300U
+#define POWER_CALIB_EXCITATION_STEP_COUNT 10U
+
+static const float power_calib_excitation_steps[POWER_CALIB_EXCITATION_STEP_COUNT] = {
+    0.0f, 8.0f, -8.0f, 18.0f, -18.0f, 35.0f, -35.0f, 50.0f, -50.0f, 0.0f
+};
+
+static uint8_t power_calib_excitation_initialized;
+static uint32_t power_calib_excitation_tick;
+static float power_calib_excitation_center_lf;
+static float power_calib_excitation_center_rf;
+static float power_calib_excitation_center_rb;
+static float power_calib_excitation_center_lb;
+
+static void PowerCalibrationExcitationReset(void)
+{
+    power_calib_excitation_initialized = 0U;
+    power_calib_excitation_tick = 0U;
+}
+
+static void PowerCalibrationExcitationTask(void)
+{
+    uint32_t base_index;
+    uint32_t lf_index, rf_index, rb_index, lb_index;
+
+    if (motor_lf == NULL || motor_rf == NULL || motor_rb == NULL || motor_lb == NULL ||
+        steering_lf == NULL || steering_rf == NULL || steering_rb == NULL || steering_lb == NULL ||
+        cap == NULL) {
+        return;
+    }
+
+    if (!power_calib_excitation_initialized) {
+        power_calib_excitation_center_lf = steering_lf->measure.total_angle;
+        power_calib_excitation_center_rf = steering_rf->measure.total_angle;
+        power_calib_excitation_center_rb = steering_rb->measure.total_angle;
+        power_calib_excitation_center_lb = steering_lb->measure.total_angle;
+        power_calib_excitation_tick = 0U;
+        power_calib_excitation_initialized = 1U;
+    }
+
+    DJIMotorStop(motor_lf);
+    DJIMotorStop(motor_rf);
+    DJIMotorStop(motor_lb);
+    DJIMotorStop(motor_rb);
+
+    DJIMotorEnable(steering_lf);
+    DJIMotorEnable(steering_rf);
+    DJIMotorEnable(steering_rb);
+    DJIMotorEnable(steering_lb);
+
+    base_index = (power_calib_excitation_tick / POWER_CALIB_EXCITATION_STEP_MS) % POWER_CALIB_EXCITATION_STEP_COUNT;
+    lf_index = base_index;
+    rf_index = (base_index + 2U) % POWER_CALIB_EXCITATION_STEP_COUNT;
+    rb_index = (base_index + 4U) % POWER_CALIB_EXCITATION_STEP_COUNT;
+    lb_index = (base_index + 6U) % POWER_CALIB_EXCITATION_STEP_COUNT;
+
+    DJIMotorSetRef(steering_lf, power_calib_excitation_center_lf + power_calib_excitation_steps[lf_index]);
+    DJIMotorSetRef(steering_rf, power_calib_excitation_center_rf + power_calib_excitation_steps[rf_index]);
+    DJIMotorSetRef(steering_rb, power_calib_excitation_center_rb + power_calib_excitation_steps[rb_index]);
+    DJIMotorSetRef(steering_lb, power_calib_excitation_center_lb + power_calib_excitation_steps[lb_index]);
+
+    cap->tx_data.enable_flag = SUPERCAP_DISABLE;
+    cap->tx_data.charge_flag = 1;
+    cap->tx_data.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
+    if (++supercap_task_div_cnt >= 5) {
+        supercap_task_div_cnt = 0;
+        SuperCapTask();
+    }
+    PowerCalibrationUpdate();
+
+    power_calib_excitation_tick++;
+}
+#endif
+
+#if POWER_CALIBRATION_ENABLE
+static void PowerCalibrationAccumulateMotor(DJIMotorInstance *motor,
+                                            const PowerLimitator_Params_s *params,
+                                            float speed_ratio,
+                                            float *x_abs_omega_sum,
+                                            float *x_tau2_sum,
+                                            float *effective_power)
+{
+    float omega;
+    float torque;
+
+    if (motor == NULL || params == NULL) {
+        return;
+    }
+
+    omega = motor->measure.speed_rpm * speed_ratio * POWER_CALIB_RPM_TO_RAD_PER_SEC;
+    torque = (float)motor->measure.real_current * params->k0;
+
+    *x_abs_omega_sum += fabsf(omega);
+    *x_tau2_sum += torque * torque;
+    *effective_power += torque * omega;
+}
+
+static void PowerCalibrationUpdate(void)
+{
+    float x_abs_omega_sum = 0.0f;
+    float x_tau2_sum = 0.0f;
+    float effective_power = 0.0f;
+
+#if defined(POWER_CALIBRATION_TARGET_WHEEL)
+    PowerCalibrationAccumulateMotor(motor_lf, &POWER_LIMITATOR_WHEEL_3508_DEFAULT, 1.0f / REDUCTION_RATIO_WHEEL,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+    PowerCalibrationAccumulateMotor(motor_rf, &POWER_LIMITATOR_WHEEL_3508_DEFAULT, 1.0f / REDUCTION_RATIO_WHEEL,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+    PowerCalibrationAccumulateMotor(motor_rb, &POWER_LIMITATOR_WHEEL_3508_DEFAULT, 1.0f / REDUCTION_RATIO_WHEEL,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+    PowerCalibrationAccumulateMotor(motor_lb, &POWER_LIMITATOR_WHEEL_3508_DEFAULT, 1.0f / REDUCTION_RATIO_WHEEL,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+#elif defined(POWER_CALIBRATION_TARGET_STEER)
+    PowerCalibrationAccumulateMotor(steering_lf, &POWER_LIMITATOR_STEER_6020_DEFAULT, 1.0f,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+    PowerCalibrationAccumulateMotor(steering_rf, &POWER_LIMITATOR_STEER_6020_DEFAULT, 1.0f,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+    PowerCalibrationAccumulateMotor(steering_rb, &POWER_LIMITATOR_STEER_6020_DEFAULT, 1.0f,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+    PowerCalibrationAccumulateMotor(steering_lb, &POWER_LIMITATOR_STEER_6020_DEFAULT, 1.0f,
+                                    &x_abs_omega_sum, &x_tau2_sum, &effective_power);
+#else
+#error POWER_CALIBRATION_ENABLE requires POWER_CALIBRATION_TARGET_WHEEL or POWER_CALIBRATION_TARGET_STEER.
+#endif
+
+    power_calib_cap_power_w = cap != NULL ? cap->chassis_real_power : 0.0f;
+    power_calib_x_abs_omega_sum = x_abs_omega_sum;
+    power_calib_x_tau2_sum = x_tau2_sum;
+    power_calib_effective_power = effective_power;
+    power_calib_sample_cnt++;
+}
+#endif
+
 /**
  * @brief 超电控制算法
  *
@@ -607,13 +760,16 @@ static uint8_t supercap_task_div_cnt = 0;
 //         cap->cap_msg_g.enabled = SUPER_CMD_CLOSE;
          LimitChassisOutput();
 //     }
-    cap->tx_data.enable_flag = SUPERCAP_ENABLE;
+    cap->tx_data.enable_flag = SUPERCAP_DISABLE;
     cap->tx_data.charge_flag = 1;
     cap->tx_data.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
     if (++supercap_task_div_cnt >= 5) {
         supercap_task_div_cnt = 0;
         SuperCapTask();
     }
+#if POWER_CALIBRATION_ENABLE
+    PowerCalibrationUpdate();
+#endif
      // 设定速度参考值
      DJIMotorSetRef(motor_lf, wheelset_lf.vt);
      DJIMotorSetRef(motor_rf, wheelset_rf.vt);
@@ -981,8 +1137,15 @@ void ChassisTask()
         DJIMotorStop(steering_rf);
         DJIMotorStop(steering_rb);
         DJIMotorStop(steering_lb);
-        chassis_vw = 0;
+#if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_STEER)
+        PowerCalibrationExcitationReset();
+#endif
     } else { // 正常工作
+#if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_STEER)
+        PowerCalibrationExcitationTask();
+        PubPushMessage(chassis_pub, (void *)&chassis_feedback_data);
+        return;
+#endif
         DJIMotorEnable(motor_lf);
         DJIMotorEnable(motor_rf);
         DJIMotorEnable(motor_lb);

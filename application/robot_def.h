@@ -84,6 +84,12 @@
 #define YAW_K                  0.0004f
 #define PITCH_K                0.000004f
 
+// Ozone 离线功率模型标定；默认关闭，开启时需且仅需定义一个目标组宏
+#define POWER_CALIBRATION_ENABLE 0
+// #define POWER_CALIBRATION_TARGET_WHEEL
+// #define POWER_CALIBRATION_TARGET_STEER
+#define POWER_CALIBRATION_EXCITATION_ENABLE 0
+
 // 模拟小电脑负载 652.2
 // 其他参数（尽量把所有参数集中到此文件）
 #define BUZZER_SILENCE 0 // 蜂鸣器静音：1 为静音，0 为正常
@@ -340,5 +346,5 @@ typedef struct
 
 #pragma pack() // 开启字节对齐；结束前面的 #pragma pack(1)
 
-#endif // !ROBOT_DEF_H
+#endif //
 

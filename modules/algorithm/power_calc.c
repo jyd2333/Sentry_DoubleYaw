@@ -14,17 +14,17 @@
 
 const PowerLimitator_Params_s POWER_LIMITATOR_STEER_6020_DEFAULT = {
     .k0 = DJI_GM6020_TORQUE_CONSTANT_NM_PER_A * DJI_GM6020_CURRENT_A_PER_RAW,
-    .k1 = 0.005f,
-    .k2 = 12.98f,
-    .k3 = 7.8f / 2.0f,
+    .k1 = 0.659f,
+    .k2 = 31.5f,
+    .k3 = 6.4f / 2.0f,
     .current_limit = POWER_LIMITATOR_DEFAULT_CURRENT_LIMIT,
 };
 
 const PowerLimitator_Params_s POWER_LIMITATOR_WHEEL_3508_DEFAULT = {
     .k0 = DJI_M3508_TORQUE_CONSTANT_NM_PER_A * REDUCTION_RATIO_WHEEL * DJI_C620_CURRENT_A_PER_RAW,
-    .k1 = 0.132f,
-    .k2 = 3.47f,
-    .k3 = 7.8f / 2.0f,
+    .k1 = 0.3305f,
+    .k2 = 0.005618f,
+    .k3 = 6.4f / 2.0f,
     .current_limit = POWER_LIMITATOR_DEFAULT_CURRENT_LIMIT,
 };
 
