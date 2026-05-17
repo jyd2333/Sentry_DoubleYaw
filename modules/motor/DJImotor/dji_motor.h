@@ -58,6 +58,9 @@ typedef struct
     // 分组发送设置
     uint8_t sender_group;
     uint8_t message_num;
+    DJI_Power_Limit_Group_e power_limit_group;
+    uint8_t power_limit_index;
+    float power_limit_output;
 
     Motor_Type_e motor_type;        // 电机类型
     Motor_Working_Type_e stop_flag; // 启停标志
@@ -111,6 +114,10 @@ void DJIMotorChangeFeed(DJIMotorInstance *motor, Closeloop_Type_e loop, Feedback
  * @brief 该函数被motor_task调用运行在rtos上,motor_stask内通过osDelay()确定控制频率
  */
 void DJIMotorControl();
+
+void DJIMotorPowerControlSetMaxPower(float max_power);
+
+void DJIMotorPowerControlEnable(uint8_t enable);
 
 /**
  * @brief 停止电机,注意不是将设定值设为零,而是直接给电机发送的电流值置零

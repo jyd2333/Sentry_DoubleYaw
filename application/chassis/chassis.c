@@ -184,39 +184,55 @@ void ChassisInit()
     };
     steering_config.can_init_config.can_handle                              = &hcan2;
     steering_config.can_init_config.tx_id                                   = 1;
+    steering_config.power_limit_group                                       = DJI_POWER_LIMIT_STEER;
+    steering_config.power_limit_index                                       = LF;
     steering_lf                                                             = DJIMotorInit(&steering_config);
 
     steering_config.can_init_config.can_handle                              = &hcan2;
     steering_config.can_init_config.tx_id                                   = 4;
+    steering_config.power_limit_group                                       = DJI_POWER_LIMIT_STEER;
+    steering_config.power_limit_index                                       = RF;
     steering_rf                                                             = DJIMotorInit(&steering_config);
 
     steering_config.can_init_config.can_handle                              = &hcan1;
     steering_config.can_init_config.tx_id                                   = 3;
+    steering_config.power_limit_group                                       = DJI_POWER_LIMIT_STEER;
+    steering_config.power_limit_index                                       = RB;
     steering_rb                                                             = DJIMotorInit(&steering_config);
 
     steering_config.can_init_config.can_handle                              = &hcan1;
     steering_config.can_init_config.tx_id                                   = 2;
+    steering_config.power_limit_group                                       = DJI_POWER_LIMIT_STEER;
+    steering_config.power_limit_index                                       = LB;
     steering_lb                                                             = DJIMotorInit(&steering_config);
 
     //  @todo: 当前未统一电机正反方向，仍需手动处理 reference 正负号，待电机模块支持后修复
     chassis_motor_config.can_init_config.can_handle                         = &hcan2;
     chassis_motor_config.can_init_config.tx_id                              = 2;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    chassis_motor_config.power_limit_group                                  = DJI_POWER_LIMIT_WHEEL;
+    chassis_motor_config.power_limit_index                                  = LF;
     motor_lf                                                                = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.can_handle                         = &hcan2;
     chassis_motor_config.can_init_config.tx_id                              = 3;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    chassis_motor_config.power_limit_group                                  = DJI_POWER_LIMIT_WHEEL;
+    chassis_motor_config.power_limit_index                                  = RF;
     motor_rf                                                                = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 2;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    chassis_motor_config.power_limit_group                                  = DJI_POWER_LIMIT_WHEEL;
+    chassis_motor_config.power_limit_index                                  = RB;
     motor_rb                                                                = DJIMotorInit(&chassis_motor_config);
 
     chassis_motor_config.can_init_config.can_handle                         = &hcan1;
     chassis_motor_config.can_init_config.tx_id                              = 1;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag  = MOTOR_DIRECTION_NORMAL;
+    chassis_motor_config.power_limit_group                                  = DJI_POWER_LIMIT_WHEEL;
+    chassis_motor_config.power_limit_index                                  = LB;
     motor_lb                                                                = DJIMotorInit(&chassis_motor_config);
 
     SuperCap_Init_Config_s cap_conf = {
@@ -533,7 +549,8 @@ static float Power_Output;
     Plimit = 0;
     chassis_cmd_recv.power_limit = 60;
     Power_Output = chassis_cmd_recv.power_limit - 10 + 20 * Plimit;
-    PowerControlupdate(Power_Output, 1.0f / REDUCTION_RATIO_WHEEL);
+    DJIMotorPowerControlEnable(1);
+    DJIMotorPowerControlSetMaxPower(Power_Output);
     ramp_init(&super_ramp, 300);
  }
 
@@ -543,7 +560,6 @@ static float Power_Output;
 //     static float power_output;
 //     Power_Output = (power_output + (250 - power_output) * ramp_calc(&super_ramp));
 //     // Power_Output = (power_output + (250 - 20 + 40 * (cap->cap_msg_s.CapVot - 17.0f) / 6.0f - power_output) * ramp_calc(&super_ramp));
-//     PowerControlupdate(Power_Output, 1.0f / REDUCTION_RATIO_WHEEL);
 
 //     power_output = Power_Output;
 // }

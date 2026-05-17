@@ -75,6 +75,12 @@ typedef enum {
     MOTOR_ENABLED = 1,
 } Motor_Working_Type_e;
 
+typedef enum {
+    DJI_POWER_LIMIT_NONE = 0,
+    DJI_POWER_LIMIT_STEER,
+    DJI_POWER_LIMIT_WHEEL,
+} DJI_Power_Limit_Group_e;
+
 typedef struct {
     float P_max;
     float V_max;
@@ -158,6 +164,8 @@ typedef struct
     Motor_Type_e motor_type;
     CAN_Init_Config_s can_init_config;
     Motor_Control_Type_e motor_contro_type;  //控制类型
+    DJI_Power_Limit_Group_e power_limit_group;
+    uint8_t power_limit_index;
 } Motor_Init_Config_s;
 
 #endif // !MOTOR_DEF_H
