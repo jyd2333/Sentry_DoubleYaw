@@ -44,8 +44,9 @@
 #error You can only define one power calibration target group.
 #endif
 
-#if POWER_CALIBRATION_EXCITATION_ENABLE && (!POWER_CALIBRATION_ENABLE || !defined(POWER_CALIBRATION_TARGET_STEER))
-#error POWER_CALIBRATION_EXCITATION_ENABLE is only supported for steer power calibration.
+#if POWER_CALIBRATION_EXCITATION_ENABLE && \
+    (!POWER_CALIBRATION_ENABLE || (!defined(POWER_CALIBRATION_TARGET_WHEEL) && !defined(POWER_CALIBRATION_TARGET_STEER)))
+#error POWER_CALIBRATION_EXCITATION_ENABLE requires POWER_CALIBRATION_TARGET_WHEEL or POWER_CALIBRATION_TARGET_STEER.
 #endif
 
 /* 底盘应用包含的模块和信息存储，底盘为单例模式，因此不需要单独结构体 */
@@ -320,7 +321,7 @@ static void ChassisOffsetAngleFeedforwardCalc(void)
     float speed_factor;
 
     if (ChassisIsRotateMode()) {
-        move_speed = sqrtf(chassis_cmd_recv.vx * chassis_cmd_recv.vx + chassis_cmd_recv.vy * chassis_cmd_recv.vy);
+        move_speed = sqrtf(speed_measure.real_vx * speed_measure.real_vx + speed_measure.real_vy * speed_measure.real_vy);
         if (move_speed > chassis_offset_ff_min_speed) {
             if (chassis_offset_ff_full_speed > chassis_offset_ff_min_speed) {
                 speed_factor = (move_speed - chassis_offset_ff_min_speed) /
@@ -333,7 +334,7 @@ static void ChassisOffsetAngleFeedforwardCalc(void)
             speed_factor = 0.0f;
         }
 
-        offset_ff_deg = chassis_vw * chassis_offset_delay_s * RAD_2_DEGREE * speed_factor;
+        offset_ff_deg = speed_measure.real_wz * chassis_offset_delay_s * RAD_2_DEGREE * speed_factor;
         offset_ff_deg = ChassisLimitFloat(offset_ff_deg, chassis_offset_ff_limit_deg);
     }
     comm_upload_data.debug_1 = offset_ff_deg;
@@ -562,7 +563,7 @@ static float Power_Output;
     // 固定功率限制策略（当前调试配置）
     Plimit = 0;
     chassis_cmd_recv.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
-    Power_Output = chassis_cmd_recv.power_limit - 10 + 20 * Plimit;
+    Power_Output = chassis_cmd_recv.power_limit - 0 + 20 * Plimit;
     DJIMotorPowerControlEnable(1);
     DJIMotorPowerControlSetMaxPower(Power_Output);
     ramp_init(&super_ramp, 300);
@@ -583,6 +584,65 @@ static uint8_t supercap_task_div_cnt = 0;
 
 #if POWER_CALIBRATION_ENABLE
 static void PowerCalibrationUpdate(void);
+#endif
+
+#if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_WHEEL)
+#define POWER_CALIB_WHEEL_EXCITATION_STEP_MS 2500U
+#define POWER_CALIB_WHEEL_EXCITATION_STEP_COUNT 12U
+
+static const float power_calib_wheel_excitation_speed_mm_s[POWER_CALIB_WHEEL_EXCITATION_STEP_COUNT] = {
+    0.0f, 800.0f, -800.0f, 1600.0f, -1600.0f, 2400.0f,
+    -2400.0f, 3200.0f, -3200.0f, 4000.0f, -4000.0f, 0.0f
+};
+
+static uint32_t power_calib_wheel_excitation_tick;
+
+static void PowerCalibrationWheelExcitationReset(void)
+{
+    power_calib_wheel_excitation_tick = 0U;
+}
+
+static void PowerCalibrationWheelExcitationTask(void)
+{
+    uint32_t step_index;
+    float ref;
+
+    if (motor_lf == NULL || motor_rf == NULL || motor_rb == NULL || motor_lb == NULL ||
+        steering_lf == NULL || steering_rf == NULL || steering_rb == NULL || steering_lb == NULL ||
+        cap == NULL) {
+        return;
+    }
+
+    DJIMotorStop(steering_lf);
+    DJIMotorStop(steering_rf);
+    DJIMotorStop(steering_rb);
+    DJIMotorStop(steering_lb);
+
+    DJIMotorEnable(motor_lf);
+    DJIMotorEnable(motor_rf);
+    DJIMotorEnable(motor_rb);
+    DJIMotorEnable(motor_lb);
+
+    step_index = (power_calib_wheel_excitation_tick / POWER_CALIB_WHEEL_EXCITATION_STEP_MS) %
+                 POWER_CALIB_WHEEL_EXCITATION_STEP_COUNT;
+    ref = power_calib_wheel_excitation_speed_mm_s[step_index] * SPEED_TO_DJI_MOTOR_APS;
+
+    DJIMotorSetRef(motor_lf, ref);
+    DJIMotorSetRef(motor_rf, -ref);
+    DJIMotorSetRef(motor_rb, ref);
+    DJIMotorSetRef(motor_lb, -ref);
+
+    cap->tx_data.enable_flag = SUPERCAP_DISABLE;
+    cap->tx_data.charge_flag = 1;
+    cap->tx_data.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
+    if (++supercap_task_div_cnt >= 5) {
+        supercap_task_div_cnt = 0;
+        SuperCapTask();
+    }
+    PowerCalibrationUpdate();
+
+    power_calib_wheel_excitation_tick++;
+}
 #endif
 
 #if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_STEER)
@@ -760,7 +820,7 @@ static void PowerCalibrationUpdate(void)
 //         cap->cap_msg_g.enabled = SUPER_CMD_CLOSE;
          LimitChassisOutput();
 //     }
-    cap->tx_data.enable_flag = SUPERCAP_DISABLE;
+    cap->tx_data.enable_flag = SUPERCAP_ENABLE;
     cap->tx_data.charge_flag = 1;
     cap->tx_data.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
     if (++supercap_task_div_cnt >= 5) {
@@ -1140,9 +1200,17 @@ void ChassisTask()
 #if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_STEER)
         PowerCalibrationExcitationReset();
 #endif
+#if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_WHEEL)
+        PowerCalibrationWheelExcitationReset();
+#endif
     } else { // 正常工作
 #if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_STEER)
         PowerCalibrationExcitationTask();
+        PubPushMessage(chassis_pub, (void *)&chassis_feedback_data);
+        return;
+#endif
+#if POWER_CALIBRATION_EXCITATION_ENABLE && POWER_CALIBRATION_ENABLE && defined(POWER_CALIBRATION_TARGET_WHEEL)
+        PowerCalibrationWheelExcitationTask();
         PubPushMessage(chassis_pub, (void *)&chassis_feedback_data);
         return;
 #endif
@@ -1179,7 +1247,7 @@ void ChassisTask()
             //  }
             if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
             {
-                const float speed_deadband = 10.0f / SPEED_TO_DJI_MOTOR_APS;
+                const float speed_deadband = 15.0f / SPEED_TO_DJI_MOTOR_APS;
                 float chassis_speed = sqrtf(chassis_vx * chassis_vx + chassis_vy * chassis_vy);
 
                 if (chassis_speed >= speed_deadband) {

@@ -9,7 +9,7 @@
 #define POWER_FLOAT_EPSILON 1.0e-6f
 #define DJI_GM6020_TORQUE_CONSTANT_NM_PER_A 0.741f
 #define DJI_GM6020_CURRENT_A_PER_RAW 0.0001f
-#define DJI_M3508_TORQUE_CONSTANT_NM_PER_A 0.3f
+#define DJI_M3508_TORQUE_CONSTANT_NM_PER_A_AT_19_RATIO 0.3f
 #define DJI_C620_CURRENT_A_PER_RAW (20.0f / 16384.0f)
 
 const PowerLimitator_Params_s POWER_LIMITATOR_STEER_6020_DEFAULT = {
@@ -21,9 +21,9 @@ const PowerLimitator_Params_s POWER_LIMITATOR_STEER_6020_DEFAULT = {
 };
 
 const PowerLimitator_Params_s POWER_LIMITATOR_WHEEL_3508_DEFAULT = {
-    .k0 = DJI_M3508_TORQUE_CONSTANT_NM_PER_A * REDUCTION_RATIO_WHEEL * DJI_C620_CURRENT_A_PER_RAW,
-    .k1 = 0.3305f,
-    .k2 = 0.005618f,
+    .k0 = DJI_M3508_TORQUE_CONSTANT_NM_PER_A_AT_19_RATIO * (REDUCTION_RATIO_WHEEL / 19.0f) * DJI_C620_CURRENT_A_PER_RAW,
+    .k1 = 0.22f,
+    .k2 = 2.135f,
     .k3 = 6.4f / 2.0f,
     .current_limit = POWER_LIMITATOR_DEFAULT_CURRENT_LIMIT,
 };
@@ -219,7 +219,7 @@ void PowerLimitatorGetDecayCurrent(PowerLimitator_s *limitator,
                      power_weight * allocatable_power);
 
         if (PowerLimitatorFloatEqual(delta, 0.0f) || delta < 0.0f) {
-            root = -cur_av / (2.0f * limitator->params.k2) / limitator->params.k0;
+            root = 0.0f;
         } else if (decay_current[i] > 0.0f) {
             root = (-cur_av + sqrtf(delta)) / (2.0f * limitator->params.k2) / limitator->params.k0;
         } else {
