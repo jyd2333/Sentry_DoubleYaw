@@ -138,7 +138,11 @@ void USB_Decode(void)
 					if(Navigation_Receive.fortress_mode)
 						NUC_cmd.terrain_state = TERRAIN_FORTRESS;
 					else if(Navigation_Receive.bump_mode)
-						NUC_cmd.terrain_state = TERRAIN_BUMP;
+					{
+						NUC_cmd.terrain_state 	= TERRAIN_BUMP;
+						NUC_cmd.rotateMode		= 30;
+						NUC_cmd.sentry_status	= 3;
+					}
 					else
 						NUC_cmd.terrain_state = TERRAIN_NORMAL;
 				}
@@ -169,7 +173,7 @@ void NUC_init(void)
 	Situation_Beta.head 	= FRAME_HEADER;
 	Situation_Beta.cmdid 	= 0x03;
 	Situation_Beta.end 		= FRAME_END;
-
+	Navigation_Receive.scanmode = 1;
 }
 
 extern DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb;
