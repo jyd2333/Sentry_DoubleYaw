@@ -885,7 +885,8 @@ static void ChassisAccelerationPlan()
     float delta_vx          = target_vx - speed_measure.real_vx;
     float delta_vy          = target_vy - speed_measure.real_vy;
     float delta_speed       = sqrtf(delta_vx * delta_vx + delta_vy * delta_vy);
-
+    if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
+        return;
     if (current_speed >= CHASSIS_HIGH_SPEED) {
         acceleration_limit = CHASSIS_ACCELERATION_HIGH_LIMIT;
     } else if (current_speed > 0.000001f && CHASSIS_HIGH_SPEED > 0.000001f) {

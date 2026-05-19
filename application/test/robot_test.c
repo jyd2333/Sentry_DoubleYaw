@@ -109,7 +109,7 @@ void USB_Decode(void)
 				NUC_cmd.pitch 		= vision_pitch;
 				NUC_cmd.yaw 		= vision_yaw;
 				FireControl();
-				NUC_cmd.shoot 		= Vision_Receive.fireadvise;
+				// NUC_cmd.shoot 		= Vision_Receive.fireadvise;
 				NUC_cmd.pitch_vel 	= Vision_Receive.pitch_vel;
 				NUC_cmd.pitch_acc 	= Vision_Receive.pitch_acc;
 				NUC_cmd.yaw_vel 	= -Vision_Receive.yaw_vel;
@@ -127,24 +127,39 @@ void USB_Decode(void)
 				NUC_cmd.scanMode		= Navigation_Receive.scanmode;
 				NUC_cmd.rotateMode		= Navigation_Receive.chassis_status;
 				NUC_cmd.sentry_status	= Navigation_Receive.sentry_status;
-				if(Navigation_Receive.fortress_mode && Navigation_Receive.bump_mode)
+				// if(Navigation_Receive.fortress_mode && Navigation_Receive.bump_mode)
+				// {
+				// 	NUC_cmd.vx = 0;
+				// 	NUC_cmd.vy = 0;
+				// 	NUC_cmd.terrain_state = TERRAIN_NORMAL;
+				// }
+				// else
+				// {
+				// 	if(Navigation_Receive.fortress_mode)
+				// 		NUC_cmd.terrain_state = TERRAIN_FORTRESS;
+				// 	else if(Navigation_Receive.bump_mode)
+				// 	{
+				// 		NUC_cmd.terrain_state 	= TERRAIN_BUMP;
+				// 		NUC_cmd.rotateMode		= 50;
+				// 		NUC_cmd.sentry_status	= 3;
+				// 	}
+				// 	else
+				// 		NUC_cmd.terrain_state = TERRAIN_NORMAL;
+				// }
+
+				switch(Navigation_Receive.fortress_mode)
 				{
-					NUC_cmd.vx = 0;
-					NUC_cmd.vy = 0;
-					NUC_cmd.terrain_state = TERRAIN_NORMAL;
-				}
-				else
-				{
-					if(Navigation_Receive.fortress_mode)
+					case 1:
 						NUC_cmd.terrain_state = TERRAIN_FORTRESS;
-					else if(Navigation_Receive.bump_mode)
-					{
+						break;
+					case 2:
 						NUC_cmd.terrain_state 	= TERRAIN_BUMP;
-						NUC_cmd.rotateMode		= 30;
+						NUC_cmd.rotateMode		= 50;
 						NUC_cmd.sentry_status	= 3;
-					}
-					else
+						break;
+					default:
 						NUC_cmd.terrain_state = TERRAIN_NORMAL;
+						break;
 				}
 			}
 			break;

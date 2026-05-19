@@ -308,7 +308,7 @@ static void Search()
 
     if (SearchMotorIsOnline(yaw_motor)) {
         YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg);
-        yaw_control += -YAW_K * (float)WFLY_data[TEMP].rocker_l_ + (float)yaw_search_flag * SEARCH_YAW_SPEED;
+        yaw_control += (float)yaw_search_flag * SEARCH_YAW_SPEED;// - YAW_K * (float)WFLY_data[TEMP].rocker_l_;
 
         if (yaw_control > yaw_r_limit) {
             yaw_control = yaw_r_limit;
@@ -320,12 +320,12 @@ static void Search()
         }
     }
 
-    pitch_control += (float)pitch_search_flag * SEARCH_PITCH_SPEED + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
+    pitch_control += (float)pitch_search_flag * SEARCH_PITCH_SPEED;// + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
 
-    if (pitch_control > 0.15f) {
+    if (pitch_control > 0.3f) {
         pitch_search_flag = -1;
     }
-    if (pitch_control < -0.1f) {
+    if (pitch_control < -0.3f) {
         pitch_search_flag = 1;
     }
 }
@@ -378,7 +378,7 @@ static void RemoteControlSet()
 {
     shoot_cmd_send.shoot_mode   = SHOOT_ON; // 发射机构常开
     gimbal_cmd_send.gimbal_mode = GIMBAL_GYRO_MODE;
-    shoot_cmd_send.shoot_rate   = 6.0f;   // 射频默认30Hz
+    shoot_cmd_send.shoot_rate   = 16.0f;   // 射频默认30Hz
     chassis_cmd_send.control_type = NUC_NORMAL;
 
     // if (rc_data[TEMP].rc.dial > 400) {
