@@ -7,6 +7,7 @@
 #include "bsp_log.h"
 
 #define REMOTE_CONTROL_FRAME_SIZE 32 // 遥控器接收的buffer大小
+#define RC_RESTART_INTERVAL_COUNT 100 // DaemonTask 1kHz, 100 count = 10Hz restart
 
 // 遥控器数据
 static RC_ctrl_t rc_ctrl[2];     //[0]:当前数据TEMP,[1]:上一次的数据LAST.用于按键持续按下和切换的判断
@@ -124,8 +125,14 @@ static void RemoteControlRxCallback()
  */
 void RCLostCallback(void *id)
 {
+    static uint16_t restart_count = 0;
+
     memset(WFLY_ctrl, 0, sizeof(WFLY_ctrl)); // 清空遥控器数据
 
+    if (++restart_count < RC_RESTART_INTERVAL_COUNT)
+        return;
+
+    restart_count = 0;
     USARTServiceInit(rc_usart_instance); // 尝试重新启动接收
     LOGWARNING("[rc] remote control lost");
 }

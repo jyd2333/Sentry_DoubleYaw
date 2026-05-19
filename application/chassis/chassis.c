@@ -562,7 +562,10 @@ static float Power_Output;
     // chassis_cmd_recv.power_buffer = 60;
     // 固定功率限制策略（当前调试配置）
     Plimit = 0;
-    chassis_cmd_recv.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
+    if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
+        chassis_cmd_recv.power_limit = 200;
+    else
+        chassis_cmd_recv.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
     Power_Output = chassis_cmd_recv.power_limit - 0 + 20 * Plimit;
     DJIMotorPowerControlEnable(1);
     DJIMotorPowerControlSetMaxPower(Power_Output);
@@ -1105,13 +1108,8 @@ static void TerrainSpeedControl()
 
     if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
     {
-        if (chassis_speed <= 0.0f) {
-            return;
-        }
-
-        scale = 2500.0f / chassis_speed;
-        chassis_vx *= scale;
-        chassis_vy *= scale;
+        chassis_vx *= 2;
+        chassis_vy *= 2;
     }
     if(comm_cmd_data.terrain_state == TERRAIN_FORTRESS)
     {
