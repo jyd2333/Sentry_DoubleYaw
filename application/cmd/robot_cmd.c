@@ -181,6 +181,8 @@ static void DeterminRobotID()
 float yaw_control;   // 遥控器YAW自由度输入值
 float pitch_control; // 遥控器PITCH自由度输入值
 uint8_t check_count=0;
+static float pitch_search_up = 0.1f;
+static float pitch_search_down = -0.3f;
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
  *        单圈绝对角度的范围是0~360,说明文档中有图示
@@ -305,7 +307,16 @@ static void Search()
     if (gimbal_fetch_data.gimbal_imu_data == NULL) {
         return;
     }
-
+    if(NUC_cmd.scanMode == 2 || NUC_cmd.scanMode == 3 || NUC_cmd.scanMode == 4)
+    {
+        pitch_search_up = 0.35f;
+        pitch_search_down = 0.1f;
+    }
+    else
+    {
+        pitch_search_up = 0.1f;
+        pitch_search_down = -0.3f;
+    }
     if (SearchMotorIsOnline(yaw_motor)) {
         YawControlFollowAngle(gimbal_fetch_data.gimbal_imu_data->output.Yaw_total_angle_deg);
         yaw_control += (float)yaw_search_flag * SEARCH_YAW_SPEED;// - YAW_K * (float)WFLY_data[TEMP].rocker_l_;
@@ -322,10 +333,10 @@ static void Search()
 
     pitch_control += (float)pitch_search_flag * SEARCH_PITCH_SPEED;// + PITCH_K * (float)WFLY_data[TEMP].rocker_l1;
 
-    if (pitch_control > 0.3f) {
+    if (pitch_control > pitch_search_up) {
         pitch_search_flag = -1;
     }
-    if (pitch_control < -0.3f) {
+    if (pitch_control < pitch_search_down) {
         pitch_search_flag = 1;
     }
 }

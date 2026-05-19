@@ -44,8 +44,8 @@
 #define BIG_YAW_CHASSIS_ALIGN_POS   -1.4406f //大Yaw与底盘对齐时单机反馈位置
 #define LOADER_ANGLE_PER_BULLET     3240.0f   // 拨出一发弹丸时拨盘转动角度（36 * 90）
 #define SEARCH_RANGE                100.0f  //小yaw搜索范围（注意不要超出机械限位）
-#define SEARCH_YAW_SPEED            0.15f
-#define SEARCH_PITCH_SPEED          0.0020f
+#define SEARCH_YAW_SPEED            0.1f
+#define SEARCH_PITCH_SPEED          0.0010f
 
 
 #define STEERING_LF_ECD             4683

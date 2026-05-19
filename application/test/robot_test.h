@@ -65,7 +65,7 @@ typedef struct
 	int16_t delay;
 	uint64_t time_stamp;
 	uint64_t navi_time_stamp;
-	uint8_t scanMode;		//0：自瞄装甲板 1：前哨站 2：小能量机关 3：大能量机关
+	uint8_t scanMode;		//0：空闲 1：自瞄装甲板 2：前哨站 3：小能量机关 4：大能量机关
 	uint8_t rotateMode;
 	uint8_t sentry_status;
 	terrain_state_e terrain_state;
