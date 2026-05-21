@@ -562,8 +562,8 @@ static float Power_Output;
     // chassis_cmd_recv.power_buffer = 60;
     // 固定功率限制策略（当前调试配置）
     Plimit = 0;
-    if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
-        chassis_cmd_recv.power_limit = 200;
+    if(1||comm_cmd_data.terrain_state == TERRAIN_BUMP)
+        chassis_cmd_recv.power_limit = 150;
     else
         chassis_cmd_recv.power_limit = referee_info.GameRobotStatus.chassis_power_limit;
     Power_Output = chassis_cmd_recv.power_limit - 0 + 20 * Plimit;
@@ -885,7 +885,7 @@ static void ChassisAccelerationPlan()
     float delta_vx          = target_vx - speed_measure.real_vx;
     float delta_vy          = target_vy - speed_measure.real_vy;
     float delta_speed       = sqrtf(delta_vx * delta_vx + delta_vy * delta_vy);
-    if(comm_cmd_data.terrain_state == TERRAIN_BUMP)
+    if(1||comm_cmd_data.terrain_state == TERRAIN_BUMP)
         return;
     if (current_speed >= CHASSIS_HIGH_SPEED) {
         acceleration_limit = CHASSIS_ACCELERATION_HIGH_LIMIT;

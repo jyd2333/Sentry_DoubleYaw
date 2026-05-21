@@ -335,7 +335,7 @@ void GimbalTask()
     if(gimbal_cmd_recv.gimbal_mode == GIMBAL_SEARCH_MODE)
     {
         if (SearchMotorIsOnline(big_yaw_motor)) {
-            big_yaw_target += 1.0f * 0.001f;
+            big_yaw_target += 2.0f * 0.001f;
             big_yaw_target += speed_measure.real_wz * 0.001f;
         }
         big_yaw_kp = 10.0f;

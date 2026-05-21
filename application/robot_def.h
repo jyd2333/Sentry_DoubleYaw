@@ -18,8 +18,8 @@
 
 /* 开发板类型定义，烧录时注意不要弄错对应功能；修改定义后需要重新编译；只能存在一个定义 */
 // #define ONE_BOARD // 单板控制整车
-// #define CHASSIS_BOARD // 底盘板
-#define GIMBAL_BOARD  // 云台板
+#define CHASSIS_BOARD // 底盘板
+// #define GIMBAL_BOARD  // 云台板
 
 //#define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -44,7 +44,7 @@
 #define BIG_YAW_CHASSIS_ALIGN_POS   -1.4406f //大Yaw与底盘对齐时单机反馈位置
 #define LOADER_ANGLE_PER_BULLET     3240.0f   // 拨出一发弹丸时拨盘转动角度（36 * 90）
 #define SEARCH_RANGE                100.0f  //小yaw搜索范围（注意不要超出机械限位）
-#define SEARCH_YAW_SPEED            0.1f
+#define SEARCH_YAW_SPEED            0.15f
 #define SEARCH_PITCH_SPEED          0.0010f
 
 
@@ -179,7 +179,7 @@ typedef enum {
 
 // 发射模式设置
 #define SHOOT_ONE_BULLET_HEAT      10
-#define SHOOT_HEAT_RESERVE_BULLETS 3
+#define SHOOT_HEAT_RESERVE_BULLETS 5
 
 typedef enum {
     SHOOT_OFF = 0,

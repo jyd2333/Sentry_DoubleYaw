@@ -80,7 +80,7 @@ static void FireControl()
 	total_err = yaw_err * yaw_err + pitch_err * pitch_err;
 	if(Vision_Receive.fireadvise == 2)
 	{
-		if(total_err < 0.00001225f)
+		if(total_err < 0.0001f)
 			NUC_cmd.shoot = 2;
 
 	}
@@ -154,7 +154,7 @@ void USB_Decode(void)
 						break;
 					case 2:
 						NUC_cmd.terrain_state 	= TERRAIN_BUMP;
-						NUC_cmd.rotateMode		= 50;
+						NUC_cmd.rotateMode		= 0;
 						NUC_cmd.sentry_status	= 3;
 						break;
 					default:
