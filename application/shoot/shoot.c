@@ -23,6 +23,9 @@ static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信�
 // dwt定时,计算冷却用
 static float hibernate_time = 0, dead_time = 0;
 
+
+extern referee_info_t referee_info;           // 裁判系统数据
+
 float d_watch;
 uint8_t infraredSensor = 0,lastInfraredSensor = 0;
 void ShootInit()
@@ -243,6 +246,37 @@ int32_t load_count = 0;
 float cool_down_time = 0;
 float load_time_ms = 0;
 
+static void BulletSpeedStabilizer()
+{
+    static float last_bullet_speed = 0.0f;
+    static float current_target_fric_speed = 37000.0f;
+
+    float bullet_speed = referee_info.ShootData.bullet_speed;
+
+
+    target_fric_speed = current_target_fric_speed;
+
+    if (bullet_speed <= 10.0f || bullet_speed == last_bullet_speed) {
+        return;
+    }
+
+    last_bullet_speed = bullet_speed;
+
+    if (bullet_speed > 24.0f) {
+        current_target_fric_speed -= 10.0f;
+    } else if (bullet_speed < 20.0f) {
+        current_target_fric_speed += 10.0f;
+    }
+
+    if (current_target_fric_speed > 39000.0f) {
+        current_target_fric_speed = 39000.0f;
+    } else if (current_target_fric_speed < 35000.0f) {
+        current_target_fric_speed = 35000.0f;
+    }
+
+    target_fric_speed = current_target_fric_speed;
+}
+
 /* 机器人发射机构控制核心任务 */
 void ShootTask()
 {
@@ -333,6 +367,7 @@ void ShootTask()
     }
     last_load_mode = shoot_cmd_recv.load_mode;
     // 确定是否开启摩擦轮,后续可能修改为键鼠模式下始终开启摩擦轮(上场时建议一直开启)
+    BulletSpeedStabilizer();
     if (shoot_cmd_recv.friction_mode == FRICTION_ON) {
         // 根据收到的弹速设置设定摩擦轮电机参考值,需实测后填入
         fric_speed = (shoot_speed + (target_fric_speed - shoot_speed) * ramp_calc(&fric_on_ramp));
