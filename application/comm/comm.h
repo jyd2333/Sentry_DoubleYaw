@@ -47,7 +47,8 @@ typedef struct
     uint8_t sentry_status;
     uint8_t rune_request;
     uint8_t terrain_state;
-    uint8_t reserve[3];
+    uint8_t revive_suppression;
+    uint8_t reserve[2];
     float debug_1;
     float debug_2;
     uint8_t referee_cmd[32];
@@ -138,6 +139,10 @@ typedef struct
     uint8_t free_revive_availible;
     uint8_t immediate_revive_available;
     uint16_t immediate_revive_gold_cost;
+    uint8_t disengage_state;
+    uint16_t projectile_allowance_17mm_exchange_remaining;
+    uint8_t current_state;
+    uint8_t ally_power_rune_state;
 }sentry_feedback_t;
 
 typedef struct

@@ -35,6 +35,7 @@ extern DJIMotorInstance *yaw_motor;
 extern chassis_speed_measure_t speed_measure;
 extern DMMotorInstance *big_yaw_motor;
 extern NUC_cmd_t NUC_cmd;
+extern navigation_receive_t Navigation_Receive;
 static CommInstance_t comm_instance;
 static uint32_t comm_last_offline_handle_ms;
 static uint64_t last_navi_time_stamp;
@@ -141,6 +142,7 @@ void CommSend(void)
     }
     last_navi_time_stamp = NUC_cmd.navi_time_stamp;
     referee_cmd.cmdid = 0x01;
+    comm_cmd_data.revive_suppression = Navigation_Receive.bump_mode;
     memcpy(comm_cmd_data.referee_cmd, &referee_cmd, REFEREE_CMD_SIZE);
     Append_CRC8_Check_Sum((uint8_t *)&comm_cmd_data, COMM_CMD_SIZE);
     CommSendDMA(&comm_cmd_data, COMM_CMD_SIZE);
@@ -149,8 +151,10 @@ void CommSend(void)
 
 #if defined(CHASSIS_BOARD)
 #define SENTRY_PROJECTILE_EXCHANGE_CD_TICKS 2000U
+#define SENTRY_HP_EXCHANGE_CD_TICKS         2000U
 
 static uint16_t sentry_projectile_exchange_cd_ticks;
+static uint16_t sentry_hp_exchange_cd_ticks;
 
 static void SentryRefereeDecode(void);
 
@@ -177,7 +181,7 @@ static void SentryRefereeSend()
 
     if(referee_info.GameRobotStatus.remain_HP == 0)
     {
-        if(Sentry_Feedback.free_revive_availible != 0)
+        if((comm_cmd_data.revive_suppression != 1U) && (Sentry_Feedback.free_revive_availible != 0))
         {
             sentry_cmd |= 0x00000001u;
         }
@@ -187,7 +191,18 @@ static void SentryRefereeSend()
             sentry_cmd |= (1u << 1);
         }
     }
-    else if((referee_info.ProjectileAllowance.projectile_allowance_17mm < 100U)
+    else if((Sentry_Feedback.disengage_state != 0U)
+         && (referee_info.GameRobotStatus.remain_HP < 250U)
+         && (remaining_gold_coin > 800U)
+         && (sentry_hp_exchange_cd_ticks == 0U)
+         && (Sentry_Feedback.hp_exchange_count < 15U))
+    {
+        sentry_cmd &= ~((uint32_t)0x0Fu << 17);
+        sentry_cmd |= ((uint32_t)((Sentry_Feedback.hp_exchange_count + 1U) & 0x0Fu)) << 17;
+        sentry_hp_exchange_cd_ticks = SENTRY_HP_EXCHANGE_CD_TICKS;
+    }
+    else if((Sentry_Feedback.disengage_state != 0U)
+         && (referee_info.ProjectileAllowance.projectile_allowance_17mm < 100U)
          && (remaining_gold_coin >= 700U)
          && (sentry_projectile_exchange_cd_ticks == 0U)
          && (Sentry_Feedback.projectile_exchange_count < 15U))
@@ -217,6 +232,7 @@ static void SentryRefereeSend()
 static void SentryRefereeDecode(void)
 {
     uint32_t sentry_info = referee_info.SentryInfo.sentry_info;
+    uint16_t sentry_info_2 = referee_info.SentryInfo.sentry_info_2;
 
     Sentry_Feedback.projectile_allowance_17mm_exchanged = (uint16_t)(sentry_info & 0x07FFu);
     Sentry_Feedback.projectile_exchange_count = (uint8_t)((sentry_info >> 11) & 0x0Fu);
@@ -224,6 +240,10 @@ static void SentryRefereeDecode(void)
     Sentry_Feedback.free_revive_availible = (uint8_t)((sentry_info >> 19) & 0x01u);
     Sentry_Feedback.immediate_revive_available = (uint8_t)((sentry_info >> 20) & 0x01u);
     Sentry_Feedback.immediate_revive_gold_cost = (uint16_t)((sentry_info >> 21) & 0x03FFu);
+    Sentry_Feedback.disengage_state = (uint8_t)(sentry_info_2 & 0x01u);
+    Sentry_Feedback.projectile_allowance_17mm_exchange_remaining = (uint16_t)((sentry_info_2 >> 1) & 0x07FFu);
+    Sentry_Feedback.current_state = (uint8_t)((sentry_info_2 >> 12) & 0x03u);
+    Sentry_Feedback.ally_power_rune_state = (uint8_t)((sentry_info_2 >> 14) & 0x01u);
 }
 
 static void CommRecieve(const uint8_t *buf)
@@ -258,6 +278,8 @@ void CommSend(void)
     comm_send_divider = 0U;
     if(sentry_projectile_exchange_cd_ticks > 0U)
         sentry_projectile_exchange_cd_ticks--;
+    if(sentry_hp_exchange_cd_ticks > 0U)
+        sentry_hp_exchange_cd_ticks--;
 
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
