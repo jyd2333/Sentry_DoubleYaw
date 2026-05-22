@@ -76,20 +76,6 @@ typedef struct
 
 typedef struct
 {
-	uint32_t sentry_cmd;
-}sentry_cmd_t;
-
-typedef struct
-{
-	xFrameHeader FrameHeader;
-	uint16_t CmdID;
-	ext_student_interactive_header_data_t datahead;
-	sentry_cmd_t data;
-	uint16_t frametail;
-}sentry_referee_send_t;
-
-typedef struct
-{
 	uint8_t head;
 	uint8_t cmdid;
 	float DWT_stamp;

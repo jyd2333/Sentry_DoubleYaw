@@ -314,7 +314,7 @@ static void Search()
     }
     else
     {
-        pitch_search_up = 0.1f;
+        pitch_search_up = 0.2f;
         pitch_search_down = -0.3f;
     }
     if (SearchMotorIsOnline(yaw_motor)) {

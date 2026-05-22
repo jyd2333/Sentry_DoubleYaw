@@ -5,6 +5,7 @@
 
 #include "usart.h"
 #include "robot_def.h"
+#include "referee_protocol.h"
 
 #define COMM_UART_HANDLE    (&huart1)
 #define COMM_RX_BUF_SIZE    64
@@ -123,6 +124,30 @@ typedef struct
     // uint8_t ally_power_rune_active; 
     uint8_t reserve[31];
 }referee_cmd_t;
+
+typedef struct
+{
+	uint32_t sentry_cmd;
+}sentry_cmd_t;
+
+typedef struct
+{
+    uint16_t projectile_allowance_17mm_exchanged;
+    uint8_t projectile_exchange_count;
+    uint8_t hp_exchange_count;
+    uint8_t free_revive_availible;
+    uint8_t immediate_revive_available;
+    uint16_t immediate_revive_gold_cost;
+}sentry_feedback_t;
+
+typedef struct
+{
+	xFrameHeader FrameHeader;
+	uint16_t CmdID;
+	ext_student_interactive_header_data_t datahead;
+	sentry_cmd_t data;
+	uint16_t frametail;
+}sentry_referee_send_t;
 
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)
 

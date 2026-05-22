@@ -28,6 +28,7 @@ static referee_upload_C_t referee_upload_C = {};
 static referee_cmd_t referee_cmd = {};
 sentry_referee_send_t Sentry_Referee_Send = {};
 static uint8_t Sentry_Energy_Confirm = 0;
+sentry_feedback_t Sentry_Feedback = {};
 
 extern referee_info_t referee_info;           // 裁判系统数据
 extern DJIMotorInstance *yaw_motor;
@@ -147,18 +148,54 @@ void CommSend(void)
 #endif
 
 #if defined(CHASSIS_BOARD)
+#define SENTRY_PROJECTILE_EXCHANGE_CD_TICKS 2000U
+
+static uint16_t sentry_projectile_exchange_cd_ticks;
+
+static void SentryRefereeDecode(void);
+
 static void SentryRefereeSend()
 {
 	static uint8_t sentry_referee_seq = 0;
 	uint16_t sender_id;
+	uint16_t remaining_gold_coin;
+	uint16_t immediate_revive_gold_cost;
 	uint32_t sentry_cmd = 0;
+
+    SentryRefereeDecode();
 
 	sender_id = referee_info.referee_id.Robot_ID;
 	if(sender_id == 0) sender_id = referee_info.GameRobotStatus.robot_id;
+    remaining_gold_coin = referee_info.ProjectileAllowance.remaining_gold_coin;
+    immediate_revive_gold_cost = Sentry_Feedback.immediate_revive_gold_cost;
 
-	if(referee_info.GameRobotStatus.remain_HP == 0) sentry_cmd |= 0x00000001u;
+    sentry_cmd |= ((uint32_t)(Sentry_Feedback.projectile_allowance_17mm_exchanged & 0x07FFu)) << 2;
+    sentry_cmd |= ((uint32_t)(Sentry_Feedback.projectile_exchange_count & 0x0Fu)) << 13;
+    sentry_cmd |= ((uint32_t)(Sentry_Feedback.hp_exchange_count & 0x0Fu)) << 17;
 	sentry_cmd |= ((uint32_t)(comm_cmd_data.sentry_status & 0x03)) << 21;
 	if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
+
+    if(referee_info.GameRobotStatus.remain_HP == 0)
+    {
+        if(Sentry_Feedback.free_revive_availible != 0)
+        {
+            sentry_cmd |= 0x00000001u;
+        }
+        else if((Sentry_Feedback.immediate_revive_available != 0)
+             && (remaining_gold_coin >= (uint16_t)(immediate_revive_gold_cost + 500U)))
+        {
+            sentry_cmd |= (1u << 1);
+        }
+    }
+    else if((referee_info.ProjectileAllowance.projectile_allowance_17mm < 100U)
+         && (remaining_gold_coin >= 700U)
+         && (sentry_projectile_exchange_cd_ticks == 0U)
+         && (Sentry_Feedback.projectile_exchange_count < 15U))
+    {
+        sentry_cmd &= ~((uint32_t)0x0Fu << 13);
+        sentry_cmd |= ((uint32_t)((Sentry_Feedback.projectile_exchange_count + 1U) & 0x0Fu)) << 13;
+        sentry_projectile_exchange_cd_ticks = SENTRY_PROJECTILE_EXCHANGE_CD_TICKS;
+    }
 
 	Sentry_Referee_Send.FrameHeader.SOF = REFEREE_SOF;
 	Sentry_Referee_Send.FrameHeader.DataLength = SENTRY_REFEREE_DATA_LEN;
@@ -176,6 +213,19 @@ static void SentryRefereeSend()
 
 	sentry_referee_seq++;
 }
+
+static void SentryRefereeDecode(void)
+{
+    uint32_t sentry_info = referee_info.SentryInfo.sentry_info;
+
+    Sentry_Feedback.projectile_allowance_17mm_exchanged = (uint16_t)(sentry_info & 0x07FFu);
+    Sentry_Feedback.projectile_exchange_count = (uint8_t)((sentry_info >> 11) & 0x0Fu);
+    Sentry_Feedback.hp_exchange_count = (uint8_t)((sentry_info >> 15) & 0x0Fu);
+    Sentry_Feedback.free_revive_availible = (uint8_t)((sentry_info >> 19) & 0x01u);
+    Sentry_Feedback.immediate_revive_available = (uint8_t)((sentry_info >> 20) & 0x01u);
+    Sentry_Feedback.immediate_revive_gold_cost = (uint16_t)((sentry_info >> 21) & 0x03FFu);
+}
+
 static void CommRecieve(const uint8_t *buf)
 {
     if(buf[0] == COMM_HEADER && Verify_CRC8_Check_Sum((uint8_t *)buf,COMM_CMD_SIZE))
@@ -199,11 +249,15 @@ static void CommRecieve(const uint8_t *buf)
 uint8_t commSendCount = 0;
 void CommSend(void)
 {
+    SentryRefereeDecode();
+
     if (++comm_send_divider < 5U)
     {
         return;
     }
     comm_send_divider = 0U;
+    if(sentry_projectile_exchange_cd_ticks > 0U)
+        sentry_projectile_exchange_cd_ticks--;
 
     SubGetMessage(chassis_monitor_sub, &chassis_cmd_monitor);
     SubGetMessage(gimbal_monitor_sub, &gimbal_cmd_monitor);
