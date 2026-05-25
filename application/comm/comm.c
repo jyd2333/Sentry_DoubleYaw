@@ -177,7 +177,7 @@ static void SentryRefereeSend()
     sentry_cmd |= ((uint32_t)(Sentry_Feedback.projectile_exchange_count & 0x0Fu)) << 13;
     sentry_cmd |= ((uint32_t)(Sentry_Feedback.hp_exchange_count & 0x0Fu)) << 17;
 	sentry_cmd |= ((uint32_t)(comm_cmd_data.sentry_status & 0x03)) << 21;
-	if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
+	// if(Sentry_Energy_Confirm != 0) sentry_cmd |= (1u << 23);
 
     if(referee_info.GameRobotStatus.remain_HP == 0)
     {
